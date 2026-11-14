@@ -1,0 +1,17 @@
+{
+  "category.handsonvr": "HandsOn VR",
+  "key.handsonvr.settings": "HandsOn VR: ajustes",
+  "button.handsonvr.settings": "Coldres VR",
+  "screen.handsonvr.title": "HandsOn VR — coldres e controles",
+  "option.handsonvr.holsters": "Coldres físicos",
+  "holster.handsonvr.right_shoulder": "Ombro direito",
+  "holster.handsonvr.left_shoulder": "Ombro esquerdo",
+  "holster.handsonvr.right_hip": "Quadril direito",
+  "holster.handsonvr.left_hip": "Quadril esquerdo",
+  "option.handsonvr.empty": "(vazio)",
+  "option.handsonvr.clear": "Esvaziar: %s",
+  "option.handsonvr.render": "Itens no corpo",
+  "option.handsonvr.backpack": "Sem troca pelas costas",
+  "option.handsonvr.left_trigger": "Gatilho esq.: mão esq.",
+  "option.handsonvr.right_stick": "Analógico dir.: hotbar"
+}

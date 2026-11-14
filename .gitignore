@@ -1,0 +1,16 @@
+# HandsOn VR. Depende do jar do Vivecraft (veja README, seção de build).
+.gradle/
+build/
+run/
+run-prod/
+run-prod-nullvr/
+run-*.log
+*.log
+libs/
+
+# Arquivos locais
+.idea/
+.vscode/
+*.iml
+local.properties
+*.bak-*
