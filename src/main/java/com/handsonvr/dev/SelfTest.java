@@ -156,6 +156,19 @@ public final class SelfTest {
             HandsOnVR.LOGGER.error("[SELFTEST] não consegui gravar o relatório", e);
         }
         HandsOnVR.LOGGER.info("[SELFTEST] FIM ({} falhas)", fails);
+        // O driver de vídeo às vezes trava o jogo ao fechar. O relatório já está gravado: se o jogo não fechar em 30 s,
+        // sai à força (só no teste).
+        Thread exit = new Thread(() -> {
+            try {
+                Thread.sleep(30_000);
+            } catch (InterruptedException ignored) {
+                return;
+            }
+            HandsOnVR.LOGGER.warn("[SELFTEST] o jogo não fechou em 30 s: saindo à força");
+            Runtime.getRuntime().halt(0);
+        }, "handsonvr-selftest-exit");
+        exit.setDaemon(true);
+        exit.start();
         client.stop();
     }
 
@@ -319,6 +332,8 @@ public final class SelfTest {
 
     /** Telas que mods do modpack abrem sozinhas (boas-vindas, configuração inicial...) já registradas. */
     private static final java.util.Set<String> strayScreens = new java.util.HashSet<>();
+    /** O próprio teste abre o menu de pausa e os ajustes (último passo): essas telas ficam abertas. */
+    private static boolean testOpensScreens = false;
 
     /**
      * Com o modpack inteiro, algum mod pode abrir uma tela por cima do jogo (boas-vindas, configuração inicial). O
@@ -327,9 +342,9 @@ public final class SelfTest {
      */
     private static void closeStrayScreen(Minecraft client) {
         var screen = client.gui.screen();
-        if (screen == null || client.player == null || step < 2
-                || screen instanceof net.minecraft.client.gui.screens.PauseScreen
-                || screen instanceof com.handsonvr.screen.HandsOnScreen) {
+        if (screen == null || client.player == null || step < 2 || (testOpensScreens
+                && (screen instanceof net.minecraft.client.gui.screens.PauseScreen
+                || screen instanceof com.handsonvr.screen.HandsOnScreen))) {
             return;
         }
         if (strayScreens.add(screen.getClass().getName())) {
@@ -346,6 +361,8 @@ public final class SelfTest {
         }
         switch (step) {
             case 0 -> { // tela inicial: mundo plano novo
+                client.options.pauseOnLostFocus = false; // outra janela em foco não pausa o teste
+                client.options.tutorialStep = net.minecraft.client.tutorial.TutorialSteps.NONE; // prints sem o tutorial
                 if ((client.gui.screen() instanceof TitleScreen && client.gui.overlay() == null && stepTicks > 40)
                         || stepTicks > 600) {
                     deleteWorld(client);
@@ -388,6 +405,7 @@ public final class SelfTest {
         Inventory inv = client.player.getInventory();
         if (at(1)) {
             section("Coldres");
+            client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
             onServer(client, player -> {
                 player.setGameMode(GameType.SURVIVAL);
                 Inventory pinv = player.getInventory();
@@ -1209,6 +1227,9 @@ public final class SelfTest {
             inv.setSelectedSlot(0);
             check(SimulatedVr.pulseCount(0) > 0 && SimulatedVr.pulseCount(1) > 0,
                     "vibração nas duas mãos (" + SimulatedVr.pulseCount(0) + "/" + SimulatedVr.pulseCount(1) + ")");
+        }
+        if (at(9)) {
+            testOpensScreens = true;
         }
         if (at(10)) {
             client.gui.setScreen(new net.minecraft.client.gui.screens.PauseScreen(true));
