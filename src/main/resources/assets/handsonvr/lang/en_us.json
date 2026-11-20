@@ -19,10 +19,5 @@
   "option.handsonvr.right_stick": "Right stick: hotbar",
   "backpack.handsonvr.page": "Page %s/%s",
   "backpack.handsonvr.slots": "Slots %s/%s",
-  "backpack.handsonvr.drop": "Drop",
-  "backpack.handsonvr.armor.0": "Head",
-  "backpack.handsonvr.armor.1": "Chest",
-  "backpack.handsonvr.armor.2": "Legs",
-  "backpack.handsonvr.armor.3": "Feet",
   "radial.handsonvr.empty": "Empty hand"
 }

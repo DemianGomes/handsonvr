@@ -14,7 +14,8 @@ import java.util.List;
 /**
  * A mochila do ombro esquerdo (inspirada em The Walking Dead: Saints &amp; Sinners): um painel preso à mão que a
  * segura, virado para o rosto, com o crafting 2x2 + resultado e a armadura no topo, uma página de 3x3 do inventário
- * principal (3 páginas = os 27 espaços) e, embaixo, as setas de página e a zona de descarte.
+ * principal (3 páginas = os 27 espaços) e, embaixo, as setas de página e a zona de descarte. Os espaços são
+ * quadrados, no padrão do inventário do Minecraft.
  *
  * <p>Esta classe só cuida do estado (quem segura, página, para onde cada mão aponta) e do layout. O que os gestos fazem
  * fica no {@link com.handsonvr.hands.HandsController}.
@@ -25,8 +26,8 @@ import java.util.List;
 public final class Backpack {
     public enum Kind { SLOT, CRAFT_IN, CRAFT_OUT, ARMOR, DROP, PREV, NEXT }
 
-    /** Um alvo do painel: tipo, espaço do menu do jogador (-1 se não for espaço), centro (x, y) e raio. */
-    public record Element(Kind kind, int handler, double x, double y, double radius) {
+    /** Um alvo do painel: tipo, espaço do menu do jogador (-1 se não for espaço), centro (x, y) e meio lado (é quadrado). */
+    public record Element(Kind kind, int handler, double x, double y, double half) {
         public boolean isSlotLike() {
             return kind == Kind.SLOT || kind == Kind.CRAFT_IN || kind == Kind.ARMOR;
         }
@@ -38,11 +39,20 @@ public final class Backpack {
     public static final int PAGES = 3;
     /** Distância máxima da ponta da mão ao plano do painel para tocar (m). */
     private static final double TOUCH_DEPTH = 0.10;
-    /** Folga além do raio de cada alvo (m): o toque não precisa ser exato. */
-    private static final double TOUCH_SLACK = 0.025;
+    /** Folga além da borda de cada alvo (m): o toque não precisa ser exato. */
+    private static final double TOUCH_SLACK = 0.015;
 
-    public static final double GRID_SPACING = 0.11, GRID_TOP = -0.21, GRID_RADIUS = 0.042;
-    public static final double SMALL_RADIUS = 0.027, BOTTOM_Y = -0.50;
+    /**
+     * Medidas (m). Os espaços são quadrados como no inventário do Minecraft (18 pixels do jogo): os do crafting e da
+     * armadura menores, os da página 3x3 maiores (alvo confortável para a mão), lado a lado como no jogo.
+     */
+    public static final double SMALL_SLOT = 0.054, GRID_SLOT = 0.09, DROP_SLOT = 0.063;
+    /** Borda de tecido da mochila em volta da janela do inventário. */
+    public static final double FRAME = 0.012;
+    public static final double TOP_ROW_Y = -0.073, GRID_TOP = -0.17, BOTTOM_Y = -0.495;
+    /** Seta do crafting (centro) e o resultado. */
+    public static final double ARROW_X = -0.034, CRAFT_MID_Y = TOP_ROW_Y - SMALL_SLOT / 2;
+    public static final double PAGE_TEXT_X = -0.055;
 
     private int holder = -1;
     private int page = 0;
@@ -135,31 +145,33 @@ public final class Backpack {
     /** Todos os alvos da página atual. */
     public List<Element> layout() {
         List<Element> out = new ArrayList<>(24);
-        // Crafting 2x2 (topo à esquerda) e o resultado.
-        double[] cx = {-0.145, -0.085};
-        double[] cy = {-0.07, -0.13};
+        double small = SMALL_SLOT / 2;
+        // Crafting 2x2 (topo à esquerda), a seta e o resultado, como no inventário do jogo.
+        double[] cx = {-0.143, -0.089};
+        double[] cy = {TOP_ROW_Y, TOP_ROW_Y - SMALL_SLOT};
         for (int row = 0; row < 2; row++) {
             for (int col = 0; col < 2; col++) {
-                out.add(new Element(Kind.CRAFT_IN, InvOps.CRAFT_START + row * 2 + col, cx[col], cy[row], SMALL_RADIUS));
+                out.add(new Element(Kind.CRAFT_IN, InvOps.CRAFT_START + row * 2 + col, cx[col], cy[row], small));
             }
         }
-        out.add(new Element(Kind.CRAFT_OUT, InvOps.RESULT, 0.005, -0.10, 0.032));
+        out.add(new Element(Kind.CRAFT_OUT, InvOps.RESULT, 0.021, CRAFT_MID_Y, small));
         // Armadura (topo à direita): capacete, peitoral / calças, botas.
-        double[] ax = {0.095, 0.155};
+        double[] ax = {0.089, 0.143};
         for (int i = 0; i < 4; i++) {
-            out.add(new Element(Kind.ARMOR, InvOps.ARMOR_START + i, ax[i % 2], cy[i / 2], SMALL_RADIUS));
+            out.add(new Element(Kind.ARMOR, InvOps.ARMOR_START + i, ax[i % 2], cy[i / 2], small));
         }
-        // Grade 3x3 da página.
+        // Página 3x3, espaços lado a lado.
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
                 int handler = InvOps.MAIN_START + page * 9 + row * 3 + col;
-                out.add(new Element(Kind.SLOT, handler, (col - 1) * GRID_SPACING, GRID_TOP - row * 0.10, GRID_RADIUS));
+                out.add(new Element(Kind.SLOT, handler, (col - 1) * GRID_SLOT, GRID_TOP - GRID_SLOT / 2 - row * GRID_SLOT,
+                        GRID_SLOT / 2));
             }
         }
-        // Barra de baixo: setas e descarte (canto inferior direito).
-        out.add(new Element(Kind.PREV, -1, -0.14, BOTTOM_Y, 0.028));
-        out.add(new Element(Kind.NEXT, -1, 0.07, BOTTOM_Y, 0.028));
-        out.add(new Element(Kind.DROP, -1, 0.15, BOTTOM_Y, 0.032));
+        // Barra de baixo: setas de página e o descarte (canto inferior direito).
+        out.add(new Element(Kind.PREV, -1, -0.150, BOTTOM_Y, 0.03));
+        out.add(new Element(Kind.NEXT, -1, 0.040, BOTTOM_Y, 0.03));
+        out.add(new Element(Kind.DROP, -1, 0.140, BOTTOM_Y, DROP_SLOT / 2));
         return Collections.unmodifiableList(out);
     }
 
@@ -192,19 +204,26 @@ public final class Backpack {
         return Math.abs(l.z) <= TOUCH_DEPTH && Math.abs(l.x) <= WIDTH / 2 + 0.03 && l.y <= 0.03 && l.y >= -HEIGHT - 0.03;
     }
 
-    /** O alvo sob a ponta da mão (o mais próximo, com folga), ou null. */
+    /**
+     * O alvo sob a ponta da mão, ou null. Os alvos são quadrados: vale o que contém o ponto (com uma folga na borda);
+     * entre vizinhos, o que tem o ponto mais para dentro.
+     */
     public Element elementAt(Vec3 point) {
         if (!onPanel(point)) {
             return null;
         }
         Vec3 l = panel.local(point);
         Element best = null;
-        double bestDistance = Double.MAX_VALUE;
+        double bestScore = Double.MAX_VALUE;
         for (Element e : layout()) {
-            double d = Math.hypot(l.x - e.x(), l.y - e.y());
-            if (d <= e.radius() + TOUCH_SLACK && d < bestDistance) {
+            double dx = Math.abs(l.x - e.x()), dy = Math.abs(l.y - e.y());
+            if (dx > e.half() + TOUCH_SLACK || dy > e.half() + TOUCH_SLACK) {
+                continue;
+            }
+            double score = Math.max(dx, dy) / e.half(); // <= 1 dentro do quadrado
+            if (score < bestScore) {
                 best = e;
-                bestDistance = d;
+                bestScore = score;
             }
         }
         return best;

@@ -35,13 +35,14 @@ dependencies {
 
 // Mods do jogo de teste. Com -Pmodpack=<pasta "mods" de um perfil> (ex.: o Fabulously Optimized do Modrinth), o teste
 // roda com os mods desse perfil (Sodium, Iris, Vivecraft...) no lugar de só Fabric API + Vivecraft — o ambiente real.
-// Ficam de fora o HandsOn do perfil (o testado é o recém-compilado) e o Essential (pede conta da Microsoft).
+// Ficam de fora o HandsOn do perfil (o testado é o recém-compilado), o Essential (pede conta da Microsoft) e o
+// Crash Assistant (abre um programa à parte quando o jogo cai e trava arquivos da pasta do teste).
 def testMods = { task ->
     task.mods.from(tasks.named("jar"))
     if (project.hasProperty("modpack")) {
         task.mods.from(fileTree(project.property("modpack").toString()) {
             include "*.jar"
-            exclude "handsonvr*", "Essential*", "essential*"
+            exclude "handsonvr*", "Essential*", "essential*", "CrashAssistant*"
         })
     } else {
         task.mods.from(configurations.productionMods)
