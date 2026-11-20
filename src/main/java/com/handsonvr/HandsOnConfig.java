@@ -34,6 +34,14 @@ public final class HandsOnConfig {
     public double shoulderHeightOffset = 0.0;
     public double hipHeightOffset = 0.0;
 
+    // ---- mochila e menu radial
+    /** Mochila no ombro esquerdo (inventário, crafting 2x2, armadura e descarte sem tela). */
+    public boolean backpack = true;
+    /** B (mão direita) e X (mão esquerda) abrem o menu radial da hotbar no lugar do radial do Vivecraft/inventário. */
+    public boolean radialMenu = true;
+    /** Fora dos coldres, o grip troca a hotbar como no Vivecraft (desligado: o radial cuida da hotbar). */
+    public boolean gripScrollsHotbar = false;
+
     // ---- controles
     /** Gatilho esquerdo usa o item da mão esquerda (coloca tocha/bloco, usa) em vez do teleporte. */
     public boolean leftTriggerOffhandUse = true;
