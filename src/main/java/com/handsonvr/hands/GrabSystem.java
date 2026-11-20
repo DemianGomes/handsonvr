@@ -22,7 +22,8 @@ import net.minecraft.world.entity.player.Inventory;
 public final class GrabSystem {
     public enum Mode { NONE, SELECTED, SWAPPED }
 
-    public enum Origin { HOLSTER, BACKPACK, RADIAL }
+    /** De onde o item veio. {@code HAND}: o item que a mão já segurava (o grip só o "segura" para guardar). */
+    public enum Origin { HOLSTER, BACKPACK, RADIAL, HAND }
 
     public record Grab(int hand, int source, Mode mode, int previousSelected, Origin origin, Holster holster) {}
 
@@ -34,6 +35,11 @@ public final class GrabSystem {
 
     public Grab get(int hand) {
         return grabs[hand];
+    }
+
+    /** Algum item pego agora saiu deste espaço? (Ele fica reservado até o grip soltar.) */
+    public boolean isSource(int slot) {
+        return (grabs[0] != null && grabs[0].source() == slot) || (grabs[1] != null && grabs[1].source() == slot);
     }
 
     /** Pega o item do espaço {@code source} com a mão. Retorna false se não deu (já pegando, espaço vazio...). */

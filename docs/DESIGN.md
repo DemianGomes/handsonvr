@@ -17,15 +17,15 @@ O objetivo é deixar o inventário do Minecraft com cara de jogo nativo de VR: o
 
 | Botão | Ação |
 |---|---|
-| Grip (dedo do meio) | Pegar algo enquanto estiver apertado: item de um coldre, a mochila ou um item da mochila ou do radial. |
-| Soltar o grip | Devolve o item ao lugar de onde veio. Se a mão estiver sobre um espaço, coloca a pilha inteira nele. |
+| Grip (dedo do meio) | Pegar algo enquanto estiver apertado: item de um coldre, a mochila ou um item da mochila ou do radial. Em qualquer outro lugar, **segura o item da própria mão**. |
+| Soltar o grip | Devolve o item ao lugar de onde veio. Se a mão estiver sobre um espaço, coloca a pilha inteira nele. Num coldre, guarda o item ali; no ombro esquerdo, guarda na mochila. |
 | Gatilho (indicador), com o grip apertado sobre um espaço | Coloca **um** item no espaço. Na zona de descarte, solta **um** item no chão. |
 | B (mão direita) | Enquanto estiver apertado, mostra o menu radial da mão direita. |
 | X (mão esquerda) | Enquanto estiver apertado, mostra o menu radial da mão esquerda. |
 
 O B substitui o menu radial do Vivecraft e o X substitui a tela de inventário. Os dois podem voltar ao comportamento original nos ajustes.
 
-Fora dos coldres e da mochila, o grip não troca mais o item da hotbar (o Vivecraft fazia isso). Isso também pode voltar nos ajustes.
+Fora dos coldres e da mochila, o grip não troca mais o item da hotbar (o Vivecraft fazia isso): ele segura o item da mão, para levá-lo a um coldre ou à mochila. Isso também pode voltar nos ajustes ("grip troca a hotbar"); com a opção ligada, o grip só segura o item dentro das zonas do corpo.
 
 ## Inventário: por que nunca falta espaço
 
@@ -59,10 +59,13 @@ Os coldres ficam no **ombro direito**, no **quadril direito** e no **quadril esq
 - **Saída com folga:** a área de saída é maior que a de entrada (histerese), para a vibração não ficar piscando na borda.
 - **Tronco:** o tronco só gira quando a cabeça vira além de 35°. Olhar para o lado não leva os coldres junto.
 - **Sacar:** mão no coldre + grip. O item vai para a mão. O que estava na mão fica guardado até o grip ser solto.
-- **Guardar o item da mão:** coldre vazio + item na mão + grip. O item sai da mão e o coldre lembra dele.
+- **Guardar o item da mão:** feche a mão no item (grip) em qualquer lugar, leve-o até o coldre e solte o grip, como nos jogos de VR. Apertar e soltar o grip com a mão já dentro do coldre também guarda.
+  - Se o item estava na hotbar ou na mão esquerda e há espaço livre no inventário principal, ele vai para lá e a mão fica vazia, como a espada na bainha. Sem espaço livre, o item fica onde está, e o coldre lembra dele assim mesmo.
+  - Num coldre **ocupado**, o coldre passa a lembrar do item novo. O antigo continua no inventário.
+  - Enquanto o grip estiver apertado, nada muda: soltar longe dos coldres deixa o item na mão.
 - **Guardar um item pego de outro lugar:** pegue um item da mochila ou do radial com o grip e solte o grip dentro do coldre. O coldre passa a lembrar desse item.
 - **Qualquer item:** o coldre lembra o item (id e nome) e o espaço do inventário onde ele está. O item não precisa estar na hotbar.
-- **Resposta:** o controle vibra ao entrar num coldre onde o grip faz algo, e o item desenhado no corpo cresce um pouco.
+- **Resposta:** o controle vibra ao entrar num coldre onde o grip faz algo (inclusive com um item seguro, onde soltar o guarda), e o item desenhado no corpo cresce um pouco.
 
 ## 2. Mochila (ombro esquerdo)
 
@@ -103,6 +106,8 @@ A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é 
 | Gesto | Resultado |
 |---|---|
 | Grip sobre um espaço com item | Pega o item: ele fica na mão e pode ser usado na hora. |
+| Grip sobre um espaço vazio, o fundo do painel ou o descarte, com um item na mão | Segura o item da própria mão (ele continua na mão). |
+| Soltar o item da mão sobre um espaço | Guarda o item ali: num espaço vazio, ocupa; sobre uma pilha igual, junta; sobre outro item, troca (o outro vai para a mão). |
 | Soltar o grip sobre outro espaço | Coloca a pilha toda nesse espaço. Pilhas iguais se juntam; diferentes trocam de lugar. |
 | Soltar o grip longe da mochila | O item volta para o espaço de onde veio. |
 | Gatilho com o grip apertado sobre um espaço | Coloca um item por vez (por exemplo, uma tábua em cada espaço do crafting). |
@@ -135,7 +140,13 @@ O item vai para aquele espaço da hotbar, e o que estava lá vai para o lugar de
 
 ### Levar um item da hotbar para a mochila
 
-Com o radial aberto, aperte o grip sobre um item do radial para pegá-lo. Depois solte o grip sobre um espaço da mochila.
+São três jeitos:
+
+- **Por cima do ombro** (como no *Saints & Sinners*): feche a mão no item (grip), leve a mão ao ombro esquerdo e solte. O item vai para a mochila: primeiro junta com pilhas iguais, depois ocupa o primeiro espaço livre. Armaduras não são vestidas. Com a mochila cheia, o controle vibra e o item fica na mão.
+- **Com a mochila aberta:** grip num espaço vazio (ou no fundo do painel) com o item na mão, e solte o grip sobre o espaço onde ele deve ficar.
+- **Pelo radial:** com o radial aberto, aperte o grip sobre um item do radial para pegá-lo e solte o grip sobre um espaço da mochila.
+
+Apertar o grip no ombro esquerdo **sem** um item seguro abre a mochila. Com um item seguro, soltar ali o guarda.
 
 ## 4. Regra das mãos
 
@@ -143,6 +154,7 @@ Com o radial aberto, aperte o grip sobre um item do radial para pegá-lo. Depois
 |---|---|
 | Pelo radial ou pela hotbar | Nada: o item continua na mão (sem grip). |
 | Pegado com o grip (coldre, mochila ou radial) | O item volta para o lugar dele e a mão volta a segurar o que tinha antes. |
+| O item da própria mão, seguro com o grip | Num coldre, no ombro da mochila ou num espaço, é guardado ali. Em qualquer outro lugar, continua na mão. Trocar de item no analógico com o grip apertado solta o item antigo. |
 
 Exemplo com as duas mãos:
 
@@ -162,7 +174,8 @@ Ele confere:
 - sacar e guardar;
 - abrir a mochila, pegar, mover, juntar pilhas, colocar um item, descartar tudo, descartar um, crafting, armadura e páginas;
 - o radial: equipar nas duas mãos, mão vazia, mão vazia com o inventário cheio e levar itens da mochila para a hotbar;
-- o caso do inventário 100% cheio.
+- o caso do inventário 100% cheio;
+- guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 

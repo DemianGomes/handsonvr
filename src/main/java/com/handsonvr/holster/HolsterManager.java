@@ -23,8 +23,8 @@ import java.util.EnumMap;
  *
  * <ul>
  *   <li><b>Sacar</b>: mão no coldre + grip — o item vai para a mão; o que estava na mão vai para o lugar dele.</li>
- *   <li><b>Guardar o item da mão</b>: coldre vazio + item na mão + grip.</li>
- *   <li><b>Guardar um item pego</b> (da mochila/radial): soltar o grip dentro do coldre ({@link #assign}).</li>
+ *   <li><b>Guardar</b>: segurar o item com o grip (o da mão, ou um pego da mochila/radial) e soltar o grip dentro do
+ *       coldre ({@link #store}). Num coldre ocupado, o coldre passa a lembrar do item novo.</li>
  * </ul>
  *
  * Também acompanha em que zona cada mão está (inclusive a da mochila, no ombro esquerdo). Mão: 0 = principal,
@@ -100,14 +100,18 @@ public final class HolsterManager {
         return best;
     }
 
-    /** O grip faz algo nesta zona: abrir a mochila, sacar o item guardado, guardar o item da mão ou o item pego. */
+    /**
+     * O grip faz algo nesta zona: abrir a mochila, sacar o item guardado ou segurar o item da mão; com um item seguro,
+     * soltar aqui o guarda (no coldre, ou na mochila por cima do ombro).
+     */
     private boolean actionable(LocalPlayer player, Holster h, int hand) {
         HandsOnConfig config = HandsOnConfig.get();
+        GrabSystem.Grab g = grabs.get(hand);
         if (h.isBackpack(config)) {
-            return !grabs.isGrabbing(hand);
+            return g == null || g.source() >= InvOps.HOTBAR_START; // abrir, ou guardar na mochila o item seguro
         }
-        if (grabs.isGrabbing(hand)) {
-            return true; // soltar aqui guarda o item pego
+        if (g != null) {
+            return g.holster() != h; // soltar aqui guarda o item seguro
         }
         return findBound(player, h, hand) >= 0 || !held(player, hand).isEmpty();
     }
@@ -128,7 +132,9 @@ public final class HolsterManager {
     // ------------------------------------------------------------------ grip
 
     /**
-     * Grip apertado num coldre (não na mochila): saca o item guardado ou guarda o item da mão. Retorna true se agiu.
+     * Grip apertado num coldre (não na mochila) que tem um item: saca o item (pegar emprestado). Retorna true se sacou.
+     * Coldre vazio não faz nada aqui: o {@link com.handsonvr.hands.HandsController} segura o item da mão, e soltar o
+     * grip no coldre o guarda ({@link #store}).
      */
     public boolean press(Minecraft client, int hand) {
         LocalPlayer player = client.player;
@@ -142,38 +148,45 @@ public final class HolsterManager {
             return false;
         }
         int slot = findBound(player, h, hand);
-        if (slot >= 0) {
-            return grabs.begin(client, hand, InvOps.fromInventory(slot), GrabSystem.Origin.HOLSTER, h);
-        }
-        ItemStack inHand = held(player, hand);
-        if (!inHand.isEmpty()) {
-            store(client, player, hand, h, inHand);
-            return true;
-        }
-        return false;
-    }
-
-    private void store(Minecraft client, LocalPlayer player, int hand, Holster h, ItemStack stack) {
-        Inventory inv = player.getInventory();
-        int from = hand == 0 ? inv.getSelectedSlot() : Inventory.SLOT_OFFHAND;
-        HolsterStorage.Binding binding = bindingOf(stack, from);
-        // Tira da mão: para um espaço livre do inventário principal (fora da hotbar). Sem espaço, fica onde está.
-        int empty = InvOps.firstEmpty(player, InvOps.MAIN_START, InvOps.HOTBAR_START);
-        if (empty >= 0) {
-            InvOps.swapWithHand(client, empty, hand);
-            binding = bindingOf(stack, empty);
-        }
-        bindings.put(h, binding);
-        HolsterStorage.save(worldKey, bindings);
-        VrBridge.pulse(hand, 0.05f);
-        HandsOnVR.LOGGER.info("[HandsOn VR] {} guardado em {}", binding.item(), h);
+        return slot >= 0 && grabs.begin(client, hand, InvOps.fromInventory(slot), GrabSystem.Origin.HOLSTER, h);
     }
 
     /**
-     * Guarda no coldre o item que está no espaço {@code handlerSlot} (um item pego da mochila/radial e solto aqui). O
-     * item continua onde está; o coldre só passa a lembrar dele.
+     * Guarda no coldre o item do espaço {@code handlerSlot} (o item que a mão segurava com o grip, solto aqui). Se ele
+     * está na hotbar ou na mão secundária e há espaço livre no inventário principal, vai para lá: a mão fica vazia,
+     * como ao pôr a espada na bainha. Sem espaço livre, o item fica onde está e o coldre lembra dele assim mesmo. Se o
+     * coldre já tinha um item, passa a lembrar do novo; o antigo continua no inventário.
      */
-    public boolean assign(LocalPlayer player, Holster h, int handlerSlot) {
+    public boolean store(Minecraft client, Holster h, int handlerSlot) {
+        LocalPlayer player = client.player;
+        if (player == null || InvOps.stack(player, handlerSlot).isEmpty() || !h.enabled(HandsOnConfig.get())) {
+            return false;
+        }
+        int slot = handlerSlot;
+        if (handlerSlot >= InvOps.HOTBAR_START) {
+            int empty = freeMainSlot(player);
+            if (empty >= 0 && InvOps.moveStack(client, handlerSlot, empty)) {
+                slot = empty;
+            }
+        }
+        return assign(player, h, slot);
+    }
+
+    /** Primeiro espaço vazio do inventário principal que não é a origem de um item pego agora, ou -1. */
+    private int freeMainSlot(LocalPlayer player) {
+        for (int i = InvOps.MAIN_START; i < InvOps.HOTBAR_START; i++) {
+            if (InvOps.stack(player, i).isEmpty() && !grabs.isSource(i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * O coldre passa a lembrar do item que está no espaço {@code handlerSlot}, sem mexer nele (um item pego da
+     * mochila já está no inventário principal).
+     */
+    private boolean assign(LocalPlayer player, Holster h, int handlerSlot) {
         int invSlot = InvOps.toInventory(handlerSlot);
         ItemStack stack = InvOps.stack(player, handlerSlot);
         if (invSlot < 0 || stack.isEmpty() || !h.enabled(HandsOnConfig.get())) {
