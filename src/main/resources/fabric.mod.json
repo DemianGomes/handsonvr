@@ -3,7 +3,7 @@
   "id": "handsonvr",
   "version": "${version}",
   "name": "HandsOn VR",
-  "description": "Add-on for Vivecraft: physical holsters on your shoulders and hips (hand on the holster + grip draws the item, releasing the grip puts it back) and better Quest 2 controls (left trigger uses your left hand, right stick switches the hotbar).",
+  "description": "Add-on for Vivecraft that makes the inventory feel like a native VR game: physical holsters (right shoulder and hips), a backpack on your left shoulder (inventory pages, 2x2 crafting, armor and a drop zone, no screen), a radial hotbar on B/X, and grip-to-borrow items that return when you let go. Client-side only.",
   "authors": [
     "Antigravity Pair"
   ],
@@ -19,12 +19,12 @@
     "handsonvr.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.16.0",
-    "minecraft": "~1.21.1",
-    "java": ">=21",
+    "fabricloader": ">=0.20.1",
+    "minecraft": "~26.3",
+    "java": ">=25",
     "fabric-api": "*"
   },
   "suggests": {
-    "vivecraft": ">=1.21.1"
+    "vivecraft": ">=26.3-1.3.18"
   }
 }
