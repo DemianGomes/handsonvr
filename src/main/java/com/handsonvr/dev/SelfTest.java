@@ -3,6 +3,7 @@ package com.handsonvr.dev;
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
 import com.handsonvr.backpack.Backpack;
+import com.handsonvr.hands.GrabSystem;
 import com.handsonvr.hands.HandsController;
 import com.handsonvr.holster.BodyFrame;
 import com.handsonvr.holster.Holster;
@@ -61,7 +62,8 @@ import java.util.stream.Stream;
  * mundo plano, finge o VR (mãos e botões posicionados/apertados pelo teste) e confere de ponta a ponta:
  * coldres (zonas amplas, guardar, sacar, soltar, mão esquerda), mochila (abrir, pegar, mover, juntar, um por vez,
  * descartar, crafting, armadura, páginas), menu radial (equipar e esvaziar as duas mãos, mochila &lt;-&gt; hotbar),
- * o inventário 100% cheio, persistência, mixins e desenho. Relatório em run-prod/handsonvr-selftest.txt e fotos em
+ * o inventário 100% cheio, guardar o item da mão (na mochila, por cima do ombro, nos coldres), persistência,
+ * mixins e desenho. Relatório em run-prod/handsonvr-selftest.txt e fotos em
  * run-prod/screenshots/.
  */
 public final class SelfTest {
@@ -394,7 +396,8 @@ public final class SelfTest {
             case 14 -> radialWithBackpack(client);
             case 15 -> fullInventory(client);
             case 16 -> photos(client);
-            case 17 -> persistenceAndMisc(client);
+            case 17 -> handItemStore(client);
+            case 18 -> persistenceAndMisc(client);
             default -> { }
         }
     }
@@ -1198,6 +1201,313 @@ public final class SelfTest {
     }
 
     // ------------------------------------------------------------------ resto
+
+    // ------------------------------------------------------------------ guardar o item da mão (issues #8 e #9)
+
+    /** Ponta da mão sobre o fundo da mochila aberta (acima do crafting, sem nenhum alvo embaixo). */
+    private static void pointBackpackBackground(int hand) {
+        pointPanel(hand, hands().backpack().computePanel(), 0.0, -0.030);
+    }
+
+    private static void handItemStore(Minecraft client) {
+        Inventory inv = client.player.getInventory();
+        LocalPlayer p = client.player;
+        HandsController hc = hands();
+        HolsterManager hm = holsters();
+        Backpack bp = hc.backpack();
+        if (at(1)) {
+            section("Guardar o item da mão (mochila e coldres)");
+            HandsOnConfig.get().gripScrollsHotbar = false;
+            clearDrops(client);
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(1, new ItemStack(Items.OAK_PLANKS, 16));
+                pinv.setItem(2, new ItemStack(Items.IRON_HELMET));
+                pinv.setItem(3, new ItemStack(Items.OAK_PLANKS, 10));
+                pinv.setItem(4, new ItemStack(Items.COBBLESTONE, 20));
+                pinv.setItem(5, new ItemStack(Items.IRON_PICKAXE));
+                pinv.setItem(9, new ItemStack(Items.OAK_PLANKS, 5));
+                pinv.setItem(40, new ItemStack(Items.TORCH, 8));
+            });
+            handAway(0);
+            handAway(1);
+        }
+        // --- mochila aberta: grip num espaço vazio com a espada na mão, soltar no mesmo espaço
+        if (at(15)) {
+            inv.setSelectedSlot(0);
+            check(openBackpack(client, 1), "mochila aberta na mão esquerda (mundo novo: inventário quase vazio)");
+            pointBackpackSlot(0, 12); // vazio
+        }
+        if (at(18)) {
+            check(grip(client, 0, true), "mochila: grip num espaço vazio com a espada na mão é aceito");
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && g.origin() == GrabSystem.Origin.HAND && p.getMainHandItem().is(Items.IRON_SWORD),
+                    "mochila: o grip segura a espada da própria mão (ela continua na mão)");
+        }
+        if (at(21)) {
+            grip(client, 0, false);
+        }
+        if (at(24)) {
+            check(slot(p, 12).is(Items.IRON_SWORD) && p.getMainHandItem().isEmpty(),
+                    "mochila: soltar no espaço vazio guardou a espada ali e a mão ficou vazia (" + hc.lastAction() + ")");
+        }
+        // --- mochila aberta: grip no fundo do painel com as tábuas, arrastar e soltar sobre as tábuas da mochila
+        if (at(27)) {
+            inv.setSelectedSlot(1);
+            pointBackpackBackground(0);
+        }
+        if (at(30)) {
+            check(bp.elementAt(VrBridge.pointer(0)) == null && bp.onPanel(VrBridge.pointer(0)),
+                    "mochila: a mão está no fundo do painel (fora dos espaços)");
+            check(grip(client, 0, true) && hc.grabs().get(0) != null, "mochila: grip no fundo segura o item da mão");
+            pointBackpackSlot(0, 9); // 5 tábuas
+        }
+        if (at(33)) {
+            grip(client, 0, false);
+        }
+        if (at(36)) {
+            check(slot(p, 9).is(Items.OAK_PLANKS) && slot(p, 9).getCount() == 21 && p.getMainHandItem().isEmpty(),
+                    "mochila: soltar sobre as tábuas juntou a pilha (5 + 16 = " + slot(p, 9).getCount() + ")");
+        }
+        // --- o item da mão no descarte: grip no descarte e soltar joga a pilha no chão
+        if (at(39)) {
+            inv.setSelectedSlot(4); // pedregulho
+            pointBackpack(0, bp.element(Backpack.Kind.DROP));
+        }
+        if (at(42)) {
+            grip(client, 0, true);
+        }
+        if (at(45)) {
+            grip(client, 0, false);
+        }
+        if (at(55)) {
+            check(p.getMainHandItem().isEmpty() && droppedNearby(client, Items.COBBLESTONE) == 20,
+                    "mochila: o item da mão solto no descarte foi jogado no chão (20 pedregulhos)");
+            clearDrops(client);
+            grip(client, 1, false); // fecha a mochila
+        }
+        // --- por cima do ombro: segurar o capacete na frente, levar ao ombro esquerdo e soltar
+        if (at(60)) {
+            check(!bp.isOpen(), "mochila fechada");
+            inv.setSelectedSlot(2); // capacete de ferro
+            pointAway(client, 0);
+        }
+        if (at(63)) {
+            check(grip(client, 0, true) && hc.grabs().get(0) != null && p.getMainHandItem().is(Items.IRON_HELMET),
+                    "fora das zonas: o grip segura o capacete da mão");
+            handAt(0, Holster.LEFT_SHOULDER);
+        }
+        if (at(66)) {
+            check(!bp.isOpen(), "levar o item seguro ao ombro esquerdo não abre a mochila");
+            grip(client, 0, false);
+        }
+        if (at(69)) {
+            int helmet = find(inv, Items.IRON_HELMET);
+            check(helmet >= 9 && helmet < 36 && p.getMainHandItem().isEmpty(),
+                    "por cima do ombro: o capacete foi para a mochila (espaço " + helmet + ") e a mão ficou vazia");
+            check(slot(p, InvOps.ARMOR_START).isEmpty(), "por cima do ombro: o capacete não foi vestido");
+            handAway(0);
+        }
+        // --- por cima do ombro: tábuas juntam com a pilha da mochila
+        if (at(72)) {
+            inv.setSelectedSlot(3); // 10 tábuas
+            pointAway(client, 0);
+        }
+        if (at(75)) {
+            grip(client, 0, true);
+            handAt(0, Holster.LEFT_SHOULDER);
+        }
+        if (at(78)) {
+            grip(client, 0, false);
+        }
+        if (at(81)) {
+            check(slot(p, 9).getCount() == 31 && total(inv, Items.OAK_PLANKS) == 31 && p.getMainHandItem().isEmpty(),
+                    "por cima do ombro: as tábuas juntaram com a pilha da mochila (21 + 10 = " + slot(p, 9).getCount() + ")");
+            handAway(0);
+        }
+        // --- por cima do ombro com a mochila cheia: vibra e o item fica na mão
+        if (at(84)) {
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                for (int i = 9; i < 36; i++) {
+                    if (pinv.getItem(i).isEmpty()) {
+                        pinv.setItem(i, new ItemStack(Items.DIRT, 64));
+                    }
+                }
+                pinv.setItem(6, new ItemStack(Items.GLASS, 3));
+            });
+        }
+        if (at(94)) {
+            inv.setSelectedSlot(6);
+            pointAway(client, 0);
+        }
+        if (at(97)) {
+            grip(client, 0, true);
+            handAt(0, Holster.LEFT_SHOULDER);
+        }
+        if (at(100)) {
+            counted = SimulatedVr.pulseCount(0);
+            grip(client, 0, false);
+        }
+        if (at(103)) {
+            check(p.getMainHandItem().is(Items.GLASS) && p.getMainHandItem().getCount() == 3,
+                    "mochila cheia: o vidro continua na mão (" + hc.lastAction() + ")");
+            check(hc.lastAction().contains("cheia") && SimulatedVr.pulseCount(0) > counted,
+                    "mochila cheia: o controle vibrou em sinal de \"negado\"");
+            handAway(0);
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                for (int i = 9; i < 36; i++) {
+                    if (pinv.getItem(i).is(Items.DIRT)) {
+                        pinv.setItem(i, ItemStack.EMPTY);
+                    }
+                }
+                pinv.setItem(6, ItemStack.EMPTY);
+            });
+        }
+        // --- coldre: segurar a picareta na frente, levar ao quadril direito e soltar
+        if (at(113)) {
+            for (Holster h : Holster.values()) {
+                hm.clear(h);
+            }
+            inv.setSelectedSlot(5); // picareta de ferro
+            pointAway(client, 0);
+        }
+        if (at(116)) {
+            check(grip(client, 0, true) && hc.grabs().get(0) != null, "coldre: o grip segura a picareta na frente do corpo");
+            handAt(0, Holster.RIGHT_HIP);
+        }
+        if (at(119)) {
+            check(hm.zoneOf(0) == Holster.RIGHT_HIP, "coldre: a mão (com a picareta segura) chegou ao quadril direito");
+            grip(client, 0, false);
+        }
+        if (at(122)) {
+            HolsterStorage.Binding b = hm.binding(Holster.RIGHT_HIP);
+            int pick = find(inv, Items.IRON_PICKAXE);
+            check(b != null && "minecraft:iron_pickaxe".equals(b.item()), "coldre: soltar no quadril guardou a picareta");
+            check(p.getMainHandItem().isEmpty() && pick >= 9 && pick < 36,
+                    "coldre: a picareta saiu da hotbar (espaço " + pick + ") e a mão ficou vazia");
+            handAway(0);
+        }
+        // --- coldre ocupado: soltar outro item ali troca o item do coldre
+        if (at(125)) {
+            int sword = find(inv, Items.IRON_SWORD);
+            if (sword >= 9) {
+                onServer(client, player -> {
+                    Inventory pinv = player.getInventory();
+                    pinv.setItem(7, pinv.getItem(sword).copy());
+                    pinv.setItem(sword, ItemStack.EMPTY);
+                });
+            }
+        }
+        if (at(135)) {
+            inv.setSelectedSlot(7); // espada de ferro
+            pointAway(client, 0);
+        }
+        if (at(138)) {
+            grip(client, 0, true);
+            handAt(0, Holster.RIGHT_HIP);
+        }
+        if (at(141)) {
+            grip(client, 0, false);
+        }
+        if (at(144)) {
+            HolsterStorage.Binding b = hm.binding(Holster.RIGHT_HIP);
+            check(b != null && "minecraft:iron_sword".equals(b.item()) && p.getMainHandItem().isEmpty(),
+                    "coldre ocupado: soltar a espada ali trocou o item do coldre");
+            check(find(inv, Items.IRON_PICKAXE) >= 0, "coldre ocupado: a picareta antiga continua no inventário");
+            handAway(0);
+        }
+        // --- coldre: grip e soltar dentro do coldre vazio (o gesto antigo) ainda guarda
+        if (at(147)) {
+            onServer(client, player -> player.getInventory().setItem(8, new ItemStack(Items.SHEARS)));
+        }
+        if (at(157)) {
+            inv.setSelectedSlot(8);
+            handAt(0, Holster.RIGHT_SHOULDER);
+        }
+        if (at(160)) {
+            check(grip(client, 0, true), "coldre vazio: grip com a tesoura na mão dentro do coldre");
+            check(hm.binding(Holster.RIGHT_SHOULDER) == null, "coldre vazio: segurando o grip, ainda não guardou");
+        }
+        if (at(163)) {
+            grip(client, 0, false);
+        }
+        if (at(166)) {
+            HolsterStorage.Binding b = hm.binding(Holster.RIGHT_SHOULDER);
+            check(b != null && "minecraft:shears".equals(b.item()) && p.getMainHandItem().isEmpty(),
+                    "coldre vazio: soltar o grip ali guardou a tesoura");
+            handAway(0);
+        }
+        // --- mão esquerda: tochas da mão secundária para o quadril esquerdo
+        if (at(169)) {
+            pointAway(client, 1);
+        }
+        if (at(172)) {
+            check(grip(client, 1, true) && hc.grabs().get(1) != null, "mão esquerda: o grip segura as tochas");
+            handAt(1, Holster.LEFT_HIP);
+        }
+        if (at(175)) {
+            grip(client, 1, false);
+        }
+        if (at(178)) {
+            HolsterStorage.Binding b = hm.binding(Holster.LEFT_HIP);
+            check(b != null && "minecraft:torch".equals(b.item()) && p.getOffhandItem().isEmpty(),
+                    "mão esquerda: soltar no quadril esquerdo guardou as tochas");
+            handAway(1);
+        }
+        // --- soltar fora de qualquer zona: nada muda
+        if (at(181)) {
+            onServer(client, player -> player.getInventory().setItem(0, new ItemStack(Items.APPLE, 4)));
+        }
+        if (at(191)) {
+            inv.setSelectedSlot(0);
+            pointAway(client, 0);
+        }
+        if (at(194)) {
+            grip(client, 0, true);
+        }
+        if (at(197)) {
+            grip(client, 0, false);
+        }
+        if (at(200)) {
+            check(p.getMainHandItem().is(Items.APPLE) && p.getMainHandItem().getCount() == 4 && inv.getSelectedSlot() == 0,
+                    "soltar fora das zonas: a maçã continua na mão");
+        }
+        // --- trocar de item (analógico) segurando o grip: o item antigo não é guardado depois
+        if (at(203)) {
+            grip(client, 0, true);
+            HotbarScroll.scroll(client, 1);
+        }
+        if (at(206)) {
+            check(hc.grabs().get(0) == null, "trocar de item com o grip apertado: o grip solta o item antigo");
+            handAt(0, Holster.RIGHT_HIP);
+            grip(client, 0, false);
+        }
+        if (at(209)) {
+            check(find(inv, Items.APPLE) == 0 && "minecraft:iron_sword".equals(hm.binding(Holster.RIGHT_HIP).item()),
+                    "trocar de item com o grip apertado: nada foi guardado ao soltar no coldre");
+            inv.setSelectedSlot(0);
+            handAway(0);
+        }
+        // --- a opção "grip troca a hotbar" ligada: fora das zonas o grip volta a ser do Vivecraft
+        if (at(212)) {
+            HandsOnConfig.get().gripScrollsHotbar = true;
+            pointAway(client, 0);
+        }
+        if (at(215)) {
+            check(!grip(client, 0, true) && hc.grabs().get(0) == null,
+                    "com \"grip troca a hotbar\" ligado, o grip fora das zonas fica com o Vivecraft");
+            SimulatedVr.setGrip(0, false);
+            HandsOnConfig.get().gripScrollsHotbar = false;
+            handAway(0);
+        }
+        if (at(225)) {
+            next();
+        }
+    }
 
     private static void persistenceAndMisc(Minecraft client) throws Exception {
         Inventory inv = client.player.getInventory();
