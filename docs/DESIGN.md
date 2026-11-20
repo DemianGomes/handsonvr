@@ -72,25 +72,31 @@ O item que essa mão segurava (por exemplo, uma tocha) **some** enquanto ela seg
 
 ### Layout
 
-O layout lembra a mochila de *The Walking Dead: Saints & Sinners*.
+A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é o do **inventário do Minecraft**. Dentro da borda de lona da mochila há uma janela cinza com relevo, e todos os espaços são quadrados como no jogo (fundo cinza, linha escura em cima e à esquerda, clara embaixo e à direita).
 
 ```
-┌──────────────────────────────────┐
-│ [c][c]          [cap.][peito]    │  crafting 2x2 + resultado
-│ [c][c]  →[r]    [pern][botas]    │  armadura
-│                                  │
-│      [ ]   [ ]   [ ]             │
-│      [ ]   [ ]   [ ]             │  grid 3x3 (página atual)
-│      [ ]   [ ]   [ ]             │
-│                                  │
-│  ◀   Página 1/3   ▶        [⤓]   │  páginas + zona de descarte
-└──────────────────────────────────┘
+┌──────────────────────────────────────┐
+│ Fabricação                           │
+│ [c][c]            [cap.][peito]      │  crafting 2x2 + resultado
+│ [c][c]  ──▶ [r]   [pern][botas]      │  armadura (ícones do jogo)
+│                                      │
+│        [   ][   ][   ]               │
+│        [   ][   ][   ]               │  página 3x3 (espaços maiores)
+│        [   ][   ][   ]               │
+│                                      │
+│  ◀   Página 1/3   ▶         [⤓]      │  páginas + descarte
+│      Espaços 5/27                    │
+└──────────────────────────────────────┘
 ```
 
-- **3 páginas de 3x3:** 27 espaços, exatamente o inventário principal do Minecraft. A hotbar fica no radial.
-- **Crafting 2x2:** o mesmo do inventário do jogador. Ao fechar a mochila, o que sobrou na grade volta para o inventário, como na tela original.
-- **Armadura:** capacete, peitoral, calças e botas.
-- **Zona de descarte:** no canto inferior direito.
+- **3 páginas de 3x3:** 27 espaços, exatamente o inventário principal do Minecraft. A hotbar fica no radial. Os espaços da página são maiores que os do crafting (cerca de 9 cm), para a mão acertar com folga. Lado a lado, como no jogo, o toque vale no quadrado inteiro.
+- **Crafting 2x2:** o mesmo do inventário do jogador, com o título "Fabricação" e a seta cinza do jogo. Ao fechar a mochila, o que sobrou na grade volta para o inventário, como na tela original.
+- **Armadura:** capacete, peitoral, calças e botas. O espaço vazio mostra o ícone do próprio jogo.
+- **Zona de descarte:** um espaço no canto inferior direito, com uma seta para o chão.
+- **Setas de página:** as do livro de receitas do jogo. Elas acendem com a mão em cima.
+- **Mão em cima de um espaço:** o espaço clareia, como o cursor no inventário, e o controle vibra.
+- **Ícones do jogo:** armadura e setas são lidas das texturas carregadas. Um resource pack que as mude também muda a mochila.
+- **Desenho opaco:** o painel é desenhado opaco, inclusive os ícones (pixel a pixel). O translúcido do Minecraft 26 (OIT) mistura camadas a milímetros umas das outras.
 
 ### Interação com a outra mão
 

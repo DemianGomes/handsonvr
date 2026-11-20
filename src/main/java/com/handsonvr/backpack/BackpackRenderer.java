@@ -6,6 +6,7 @@ import com.handsonvr.holster.BodyFrame;
 import com.handsonvr.holster.Holster;
 import com.handsonvr.inv.InvOps;
 import com.handsonvr.render.Draw;
+import com.handsonvr.render.Sprite;
 import com.handsonvr.vr.Panel;
 import com.handsonvr.vr.VrBridge;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -18,17 +19,70 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
+import java.util.Map;
+
 /**
- * Desenha a mochila: fechada, uma bolsa simples nas costas (ombro esquerdo); aberta, o painel na mão — tecido verde
- * oliva com alça, crafting 2x2 + resultado e armadura no topo, a página 3x3, setas, "Página X/3 · Espaços N/27" e a
- * zona de descarte. O alvo sob a outra mão fica amarelo.
+ * Desenha a mochila. Fechada: uma bolsa de lona nas costas, atrás do ombro esquerdo. Aberta: o painel na mão, uma
+ * janela no padrão do inventário do Minecraft (cinza, com relevo) dentro da borda de lona da mochila, com a alça em
+ * cima. Os espaços são quadrados como no jogo; a armadura vazia mostra o ícone do jogo (capacete, peitoral...), o
+ * crafting tem a seta cinza do inventário e as setas de página são as do livro de receitas. O espaço sob a outra mão
+ * clareia, como o cursor no inventário.
+ *
+ * <p>Tudo é desenhado opaco (inclusive os ícones, pixel a pixel): o translúcido do Minecraft 26 mistura camadas a
+ * milímetros umas das outras.
  */
 public final class BackpackRenderer {
     private BackpackRenderer() {}
 
-    private static final int CLOTH = 0xF0353D27, CLOTH_DARK = 0xF0262C1B, TRIM = 0xF04A5436, STRAP = 0xFF1C2114;
-    private static final int SLOT_BG = 0x9010120C, RING = 0xE6E8E8E0, RING_DIM = 0x70E8E8E0;
-    private static final int HOVER = 0xFFFFD34D, HOVER_BG = 0x50FFD34D, DROP_BG = 0xB0902A22, DROP_RING = 0xFFE05A4A;
+    // Lona e couro da mochila.
+    private static final int CANVAS = 0xFF46512F, CANVAS_SIDE = 0xFF38412A, CANVAS_TOP = 0xFF55623A,
+            CANVAS_DARK = 0xFF2E3521, STITCH = 0xFF65744A;
+    private static final int LEATHER = 0xFF6B4423, LEATHER_DARK = 0xFF4A2E17, BUCKLE = 0xFFD2AE4C;
+
+    /** Um pixel do jogo na moldura da janela e na seta do crafting (m). */
+    private static final float WINDOW_PX = 0.003f;
+
+    /** Ícones dos espaços de armadura vazios (os do jogo): cabeça, peito, pernas, pés. */
+    private static final String[] ARMOR_ICONS = {
+            "container/slot/helmet", "container/slot/chestplate", "container/slot/leggings", "container/slot/boots"
+    };
+
+    /** A seta cinza do crafting do inventário (16x13, recortada de inventory.png). */
+    private static final Sprite CRAFT_ARROW = Sprite.of(new String[] {
+            "         #      ",
+            "         ##     ",
+            "         ###    ",
+            "         ####   ",
+            "         #####  ",
+            "############### ",
+            "################",
+            "############### ",
+            "         #####  ",
+            "         ####   ",
+            "         ###    ",
+            "         ##     ",
+            "         #      ",
+    }, Map.of('#', Draw.MC_SLOT));
+
+    /** Ícone do descarte (16x16): seta para baixo sobre o chão, no traço dos ícones do jogo. */
+    private static final Sprite DROP_ICON = Sprite.of(new String[] {
+            "                ",
+            "      oooo      ",
+            "      orro      ",
+            "      orro      ",
+            "      orro      ",
+            "   ooooRRoooo   ",
+            "   orrrRRrrro   ",
+            "    orrRRrro    ",
+            "     orRRro     ",
+            "      orro      ",
+            "       oo       ",
+            "                ",
+            "  gggggggggggg  ",
+            "  dddddddddddd  ",
+            "  dddddddddddd  ",
+            "                ",
+    }, Map.of('o', 0xFF3B1212, 'r', 0xFFD9443A, 'R', 0xFFF06A55, 'g', 0xFF5B8C33, 'd', 0xFF79553A));
 
     public static void render(LevelRenderContext context, HandsController hands) {
         Minecraft client = Minecraft.getInstance();
@@ -40,7 +94,7 @@ public final class BackpackRenderer {
         if (ms == null || context.submitNodeCollector() == null) {
             return;
         }
-        Draw d = new Draw(ms, context.submitNodeCollector(), CLOTH);
+        Draw d = new Draw(ms, context.submitNodeCollector(), Draw.MC_PANEL);
         Vec3 camera = context.levelState().cameraRenderState.pos;
         Backpack bp = hands.backpack();
         if (bp.isOpen()) {
@@ -49,6 +103,8 @@ public final class BackpackRenderer {
             renderOnBack(hands, d, camera, config);
         }
     }
+
+    // ------------------------------------------------------------------ aberta (painel na mão)
 
     private static void renderOpen(LocalPlayer p, HandsController hands, Backpack bp, Draw d, Vec3 camera) {
         Panel panel = bp.computePanel();
@@ -62,15 +118,20 @@ public final class BackpackRenderer {
         ms.rotate(panel.rotation());
         float s = (float) panel.scale();
         ms.scale(s, s, s);
-        float w = (float) (Backpack.WIDTH / 2), h = (float) Backpack.HEIGHT;
+        float w = (float) (Backpack.WIDTH / 2), h = (float) Backpack.HEIGHT, f = (float) Backpack.FRAME;
 
-        // Corpo, bordas e alça.
-        d.rect(-w, -h, w, 0, 0f, CLOTH);
-        d.frame(-w, -h, w, 0, 0.012f, 0.001f, TRIM);
-        d.rect(-w + 0.02f, -0.172f, w - 0.02f, -0.166f, 0.001f, CLOTH_DARK);
-        d.rect(-w + 0.02f, -0.462f, w - 0.02f, -0.456f, 0.001f, CLOTH_DARK);
-        d.rect(-0.07f, 0f, 0.07f, (float) Backpack.HANDLE + 0.012f, 0f, STRAP);
-        d.rect(-0.05f, 0.01f, 0.05f, (float) Backpack.HANDLE, 0.001f, CLOTH_DARK);
+        // A mochila aberta: borda de lona com costura, a alça de couro e, dentro, a janela do inventário.
+        d.rect(-w, -h, w, 0, 0f, CANVAS);
+        d.frame(-w + 0.004f, -h + 0.004f, w - 0.004f, -0.004f, 0.0015f, 0.0005f, STITCH);
+        // Alça de couro em arco, onde a mão segura: dois pés presos na lona e a barra em cima.
+        float handle = (float) Backpack.HANDLE, barTop = handle + 0.014f, barBottom = handle - 0.004f;
+        for (float sx : new float[] {-1f, 1f}) {
+            d.rect(sx * 0.055f, -0.008f, sx * 0.073f, barTop, 0.0005f, LEATHER);
+            d.rect(sx * 0.058f, -0.005f, sx * 0.070f, 0.007f, 0.001f, BUCKLE); // rebite
+        }
+        d.rect(-0.073f, barBottom, 0.073f, barTop, 0.0008f, LEATHER);
+        d.frame(-0.073f, barBottom, 0.073f, barTop, 0.002f, 0.0012f, LEATHER_DARK);
+        d.mcWindow(-w + f, -h + f, w - f, -f, WINDOW_PX, 0.001f);
 
         int free = 1 - bp.holder();
         Backpack.Element hover = bp.hover(free);
@@ -79,74 +140,69 @@ public final class BackpackRenderer {
             drawElement(p, hands, d, e, hovered);
         }
 
-        // Rodapé: "Página X/3" e "Espaços N/27" (como no Saints & Sinners).
+        // "Fabricação" acima do crafting (o mesmo texto do inventário do jogo).
+        d.text(Component.translatable("container.crafting").getString(), -0.170f, -0.034f, 0.002f, 0.011f,
+                Draw.MC_LABEL, false);
+        // A seta do crafting para o resultado.
+        float arrowPx = WINDOW_PX;
+        d.spriteCentered(CRAFT_ARROW, (float) Backpack.ARROW_X, (float) Backpack.CRAFT_MID_Y, 16 * arrowPx, 0.002f,
+                Draw.MC_PANEL);
+
+        // Entre as setas: "Página X/3" e "Espaços N/27".
         int used = 0;
         for (int i = InvOps.MAIN_START; i < InvOps.HOTBAR_START; i++) {
             if (!hands.displayStack(p, i).isEmpty()) {
                 used++;
             }
         }
-        float labelX = -0.035f, by = (float) Backpack.BOTTOM_Y;
-        d.rect(labelX - 0.06f, by - 0.026f, labelX + 0.06f, by + 0.026f, 0.002f, 0xC0101010);
+        float tx = (float) Backpack.PAGE_TEXT_X, by = (float) Backpack.BOTTOM_Y;
         d.text(Component.translatable("backpack.handsonvr.page", bp.page() + 1, Backpack.PAGES).getString(),
-                labelX, by + 0.010f, 0.006f, 0.014f, 0xFFFFFFFF, true);
+                tx, by + 0.010f, 0.002f, 0.014f, Draw.MC_LABEL, true);
         d.text(Component.translatable("backpack.handsonvr.slots", used, 27).getString(),
-                labelX, by - 0.010f, 0.006f, 0.012f, 0xFFD8D8D0, true);
-        // Seta do crafting para o resultado (desenhada: haste + ponta).
-        d.rect(-0.054f, -0.1025f, -0.036f, -0.0975f, 0.004f, 0xFFE8E8E0);
-        d.quad(new Vector3f(-0.037f, -0.111f, 0.004f), new Vector3f(-0.024f, -0.100f, 0.004f),
-                new Vector3f(-0.024f, -0.100f, 0.004f), new Vector3f(-0.037f, -0.089f, 0.004f), 0xFFE8E8E0);
+                tx, by - 0.011f, 0.002f, 0.011f, 0xFF5A5A5A, true);
         ms.popPose();
     }
 
     private static void drawElement(LocalPlayer p, HandsController hands, Draw d, Backpack.Element e, boolean hovered) {
-        float x = (float) e.x(), y = (float) e.y(), r = (float) e.radius();
+        float x = (float) e.x(), y = (float) e.y(), size = (float) e.half() * 2f;
         switch (e.kind()) {
-            case SLOT, CRAFT_OUT -> {
-                d.disc(x, y, r, 0.002f, hovered ? HOVER_BG : SLOT_BG);
-                boolean locked = e.handler() >= 0 && hands.isLocked(p, e.handler());
-                d.ring(x, y, r - (hovered ? 0.006f : 0.0035f), r, 0.003f, hovered ? HOVER : locked ? RING_DIM : RING);
-                ItemStack stack = hands.displayStack(p, e.handler());
-                d.item(stack, x, y, 0.02f, r * 1.25f);
-                d.count(stack, x, y, r, 0.032f);
-            }
-            case CRAFT_IN, ARMOR -> {
-                float t = r * 0.95f;
-                d.rect(x - t, y - t, x + t, y + t, 0.002f, hovered ? HOVER_BG : SLOT_BG);
-                d.frame(x - t, y - t, x + t, y + t, hovered ? 0.004f : 0.0025f, 0.003f, hovered ? HOVER : RING);
+            case SLOT, CRAFT_IN, CRAFT_OUT, ARMOR -> {
+                d.mcSlot(x, y, size, 0.002f, hovered);
                 ItemStack stack = hands.displayStack(p, e.handler());
                 if (stack.isEmpty() && e.kind() == Backpack.Kind.ARMOR) {
-                    String key = "backpack.handsonvr.armor." + (e.handler() - InvOps.ARMOR_START);
-                    d.text(Component.translatable(key).getString(), x, y, 0.004f, r * 0.36f, 0xA0E8E8E0, true);
+                    // O ícone do espaço vazio, como no inventário (16 pixels dentro dos 18 do espaço).
+                    Sprite icon = Sprite.gui(ARMOR_ICONS[e.handler() - InvOps.ARMOR_START]);
+                    d.spriteCentered(icon, x, y, size * 16f / 18f, 0.003f, hovered ? Draw.MC_SLOT_HOVER : Draw.MC_SLOT);
                 }
-                d.item(stack, x, y, 0.016f, r * 1.25f);
-                d.count(stack, x, y, r, 0.03f);
+                float itemSize = size * 0.85f;
+                // O item é achatado (profundidade x0,2): um bloco 3D vai de z - 0,1 a z + 0,1 do tamanho. A quantidade
+                // fica logo à frente dele, como no jogo (senão a quina do bloco cobre os números).
+                float itemZ = 0.004f + itemSize * 0.1f;
+                d.item(stack, x, y, itemZ, itemSize);
+                d.mcCount(stack, x, y, size, itemZ + itemSize * 0.13f);
             }
             case DROP -> {
-                d.disc(x, y, r, 0.002f, hovered ? 0xE0C03A2E : DROP_BG);
-                d.ring(x, y, r - (hovered ? 0.006f : 0.0035f), r, 0.003f, hovered ? HOVER : DROP_RING);
-                // Seta para baixo sobre o "chão": soltar no mundo.
-                float a = r * 0.55f;
-                d.rect(x - a * 0.18f, y - a * 0.05f, x + a * 0.18f, y + a * 0.75f, 0.005f, 0xFFFFFFFF);
-                d.quad(new Vector3f(x - a * 0.55f, y, 0.005f), new Vector3f(x + a * 0.55f, y, 0.005f),
-                        new Vector3f(x, y - a * 0.6f, 0.005f), new Vector3f(x, y - a * 0.6f, 0.005f), 0xFFFFFFFF);
-                d.rect(x - a * 0.7f, y - a * 0.85f, x + a * 0.7f, y - a * 0.72f, 0.005f, 0xFFFFFFFF);
-                d.text(Component.translatable("backpack.handsonvr.drop").getString(), x, y - r - 0.012f, 0.006f,
-                        0.011f, 0xFFE8C0B8, true);
+                d.mcSlot(x, y, size, 0.002f, hovered);
+                d.spriteCentered(DROP_ICON, x, y, size * 16f / 18f, 0.003f, hovered ? Draw.MC_SLOT_HOVER : Draw.MC_SLOT);
             }
             case PREV, NEXT -> {
-                if (hovered) {
-                    d.disc(x, y, r, 0.002f, HOVER_BG);
+                // As setas de página do livro de receitas (12x17); destacadas sob a mão.
+                String name = e.kind() == Backpack.Kind.PREV ? "recipe_book/page_backward" : "recipe_book/page_forward";
+                Sprite arrow = Sprite.gui(hovered ? name + "_highlighted" : name);
+                if (arrow == null) {
+                    arrow = Sprite.gui(name);
                 }
-                float a = r * 0.6f, dir = e.kind() == Backpack.Kind.PREV ? -1f : 1f;
-                d.quad(new Vector3f(x - dir * a * 0.6f, y + a, 0.005f), new Vector3f(x + dir * a * 0.8f, y, 0.005f),
-                        new Vector3f(x + dir * a * 0.8f, y, 0.005f), new Vector3f(x - dir * a * 0.6f, y - a, 0.005f),
-                        hovered ? HOVER : 0xFFE8E8E0);
+                if (arrow != null) {
+                    float px = 0.0035f;
+                    d.spriteCentered(arrow, x, y, arrow.width() * px, 0.003f, Draw.MC_PANEL);
+                }
             }
         }
     }
 
-    /** Fechada: uma bolsa nas costas, atrás do ombro esquerdo (fica mais clara com a mão na zona). */
+    // ------------------------------------------------------------------ fechada (nas costas)
+
+    /** Fechada: uma bolsa de lona nas costas, atrás do ombro esquerdo (fica mais clara com a mão na zona). */
     private static void renderOnBack(HandsController hands, Draw d, Vec3 camera, HandsOnConfig config) {
         BodyFrame.Frame frame = hands.holsters().body().compute();
         if (frame == null) {
@@ -163,25 +219,47 @@ public final class BackpackRenderer {
         ms.rotate(Axis.YP.rotationDegrees(-frame.yaw()));
         float s = (float) frame.scale();
         ms.scale(s, s, s);
-        int body = hover ? 0xFF4F5A39 : 0xFF3A4329, side = hover ? 0xFF434D30 : 0xFF2E3521;
-        box(d, 0.12f, 0.15f, 0.05f, body, side);
-        // Aba e alça.
-        d.rect(-0.12f, 0.06f, 0.12f, 0.15f, -0.0505f, side);
-        d.rect(-0.03f, -0.15f, 0.03f, 0.18f, 0.0505f, STRAP);
+        float k = hover ? 1.22f : 1f;
+        // -Z: o lado de fora (aba, bolso, fivela); +Z: o lado das costas (alças).
+        box(d, 0, 0, 0, 0.12f, 0.15f, 0.05f, shade(CANVAS, k), shade(CANVAS_SIDE, k), shade(CANVAS_TOP, k));
+        // Tampa por cima, um pouco maior que o corpo.
+        box(d, 0, 0.135f, 0, 0.125f, 0.03f, 0.056f, shade(CANVAS_SIDE, k), shade(CANVAS_DARK, k), shade(CANVAS, k));
+        // Lingueta de couro da tampa com a fivela.
+        box(d, 0, 0.075f, -0.058f, 0.028f, 0.045f, 0.003f, shade(LEATHER, k), shade(LEATHER_DARK, k), shade(LEATHER, k));
+        box(d, 0, 0.045f, -0.062f, 0.018f, 0.012f, 0.002f, shade(BUCKLE, k), shade(BUCKLE, k * 0.8f), shade(BUCKLE, k));
+        // Bolso da frente com costura.
+        box(d, 0, -0.065f, -0.058f, 0.085f, 0.055f, 0.008f, shade(CANVAS_SIDE, k), shade(CANVAS_DARK, k), shade(CANVAS, k));
+        d.frame(-0.08f, -0.115f, 0.08f, -0.015f, 0.003f, -0.0665f, shade(STITCH, k));
+        // Alça de mão em cima e as alças dos ombros atrás.
+        box(d, 0, 0.175f, 0, 0.04f, 0.007f, 0.008f, shade(LEATHER, k), shade(LEATHER_DARK, k), shade(LEATHER, k));
+        for (float sx : new float[] {-0.065f, 0.065f}) {
+            box(d, sx, 0.0f, 0.054f, 0.014f, 0.16f, 0.004f, shade(LEATHER, k), shade(LEATHER_DARK, k), shade(LEATHER, k));
+        }
         ms.popPose();
     }
 
-    /** Caixa centrada na origem com meias-medidas (x, y, z). Frente (+Z) e trás com {@code front}, lados com {@code side}. */
-    private static void box(Draw d, float hx, float hy, float hz, int front, int side) {
+    /** Cor mais clara ({@code k} > 1) ou mais escura. */
+    private static int shade(int argb, float k) {
+        int r = Math.min(255, Math.round(((argb >> 16) & 0xFF) * k));
+        int g = Math.min(255, Math.round(((argb >> 8) & 0xFF) * k));
+        int b = Math.min(255, Math.round((argb & 0xFF) * k));
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * Caixa com centro (cx, cy, cz) e meias-medidas (hx, hy, hz): frente e trás com {@code face}, lados e baixo com
+     * {@code side}, e o topo com {@code top} (luz de cima, como os blocos do jogo).
+     */
+    private static void box(Draw d, float cx, float cy, float cz, float hx, float hy, float hz, int face, int side, int top) {
         Vector3f[] c = new Vector3f[8];
         for (int i = 0; i < 8; i++) {
-            c[i] = new Vector3f((i & 1) == 0 ? -hx : hx, (i & 2) == 0 ? -hy : hy, (i & 4) == 0 ? -hz : hz);
+            c[i] = new Vector3f(cx + ((i & 1) == 0 ? -hx : hx), cy + ((i & 2) == 0 ? -hy : hy), cz + ((i & 4) == 0 ? -hz : hz));
         }
-        d.quad(c[4], c[5], c[7], c[6], front); // +Z
-        d.quad(c[0], c[2], c[3], c[1], front); // -Z
-        d.quad(c[1], c[3], c[7], c[5], side);  // +X
-        d.quad(c[0], c[4], c[6], c[2], side);  // -X
-        d.quad(c[2], c[6], c[7], c[3], side);  // +Y
-        d.quad(c[0], c[1], c[5], c[4], side);  // -Y
+        d.quad(c[4], c[5], c[7], c[6], face); // +Z
+        d.quad(c[0], c[2], c[3], c[1], face); // -Z
+        d.quad(c[1], c[3], c[7], c[5], side); // +X
+        d.quad(c[0], c[4], c[6], c[2], side); // -X
+        d.quad(c[2], c[6], c[7], c[3], top);  // +Y
+        d.quad(c[0], c[1], c[5], c[4], shade(side, 0.8f)); // -Y
     }
 }

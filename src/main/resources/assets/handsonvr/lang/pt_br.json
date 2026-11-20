@@ -19,10 +19,5 @@
   "option.handsonvr.right_stick": "Analógico dir.: hotbar",
   "backpack.handsonvr.page": "Página %s/%s",
   "backpack.handsonvr.slots": "Espaços %s/%s",
-  "backpack.handsonvr.drop": "Soltar",
-  "backpack.handsonvr.armor.0": "Cabeça",
-  "backpack.handsonvr.armor.1": "Peito",
-  "backpack.handsonvr.armor.2": "Pernas",
-  "backpack.handsonvr.armor.3": "Pés",
   "radial.handsonvr.empty": "Mão vazia"
 }

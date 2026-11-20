@@ -52,7 +52,10 @@ public class HandsOnVR implements ClientModInitializer {
                 InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), category));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
-                guard("entrar no mundo", () -> HANDS.onJoin(client)));
+                guard("entrar no mundo", () -> {
+                    com.handsonvr.render.Sprite.clearCache(); // ícones do jogo: relidos (o resource pack pode ter mudado)
+                    HANDS.onJoin(client);
+                }));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> HANDS.onLeave());
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
