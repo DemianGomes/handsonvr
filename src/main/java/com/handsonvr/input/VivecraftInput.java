@@ -2,7 +2,7 @@ package com.handsonvr.input;
 
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import org.joml.Vector2fc;
 import org.vivecraft.client.VivecraftVRMod;
 import org.vivecraft.client_vr.provider.ControllerType;
@@ -13,9 +13,11 @@ import org.vivecraft.client_vr.provider.openvr_lwjgl.VRInputAction;
  * Os botões do controle chegam ao Minecraft só pelas "ações" do SteamVR que o Vivecraft cria (não há leitura direta
  * do botão). Aqui escutamos as ações padrão do Quest 2 (API interna do Vivecraft, com proteção contra erro):
  * <ul>
- *   <li>grip direito/esquerdo = "próximo/anterior da hotbar": numa zona de coldre, o grip saca/guarda e a hotbar não
- *       muda;</li>
- *   <li>gatilho esquerdo = "teleporte": usa o item da mão esquerda;</li>
+ *   <li>grip direito/esquerdo = "próximo/anterior da hotbar": mochila, coldres e itens pegos;</li>
+ *   <li>gatilho direito = "atacar" e esquerdo = "teleporte": um item por vez na mochila/radial; o esquerdo usa a mão
+ *       esquerda;</li>
+ *   <li>B = "menu radial" do Vivecraft e X = "inventário": o menu radial da hotbar de cada mão;</li>
+ *   <li>A = "usar": bloqueado só na mão que segura a mochila;</li>
  *   <li>analógico direito para os lados = "girar" (em saltos): troca o item da hotbar.</li>
  * </ul>
  * Um "ouvinte" que responde true consome o aperto: a ação original do Vivecraft não acontece. As ações são recriadas
@@ -24,14 +26,14 @@ import org.vivecraft.client_vr.provider.openvr_lwjgl.VRInputAction;
 public final class VivecraftInput {
     private VivecraftInput() {}
 
-    private static VRInputAction gripMain, gripOff, teleport, rotate;
+    private static VRInputAction gripMain, gripOff, teleport, rotate, attack, use, radialMain, radialOff;
     private static boolean warned = false;
 
-    public static void tick(MinecraftClient client) {
+    public static void tick(Minecraft client) {
         try {
             MCVR mcvr = MCVR.get();
             if (mcvr == null) {
-                gripMain = gripOff = teleport = rotate = null;
+                gripMain = gripOff = teleport = rotate = attack = use = radialMain = radialOff = null;
                 return;
             }
             VivecraftVRMod mod = VivecraftVRMod.INSTANCE;
@@ -39,6 +41,10 @@ public final class VivecraftInput {
             gripOff = ensure(mcvr.getInputAction(mod.keyHotbarPrev), gripOff, new GripListener(1));
             teleport = ensure(mcvr.getInputAction(mod.keyTeleport), teleport, new LeftTriggerListener());
             rotate = ensure(mcvr.getInputAction(mod.keyRotateAxis), rotate, new RightStickListener());
+            attack = ensure(mcvr.getInputAction(client.options.keyAttack), attack, new RightTriggerListener());
+            use = ensure(mcvr.getInputAction(client.options.keyUse), use, new UseListener());
+            radialMain = ensure(mcvr.getInputAction(mod.keyRadialMenu), radialMain, new MenuButtonListener(0));
+            radialOff = ensure(mcvr.getInputAction(client.options.keyInventory), radialOff, new MenuButtonListener(1));
         } catch (Throwable t) {
             if (!warned) {
                 warned = true;
@@ -55,21 +61,29 @@ public final class VivecraftInput {
         return current;
     }
 
-    /** Teste automático (VR nulo do Vivecraft): quantas das 4 ações estão sendo escutadas. */
+    /** Teste automático (VR nulo do Vivecraft): quantas das 8 ações estão sendo escutadas. */
     public static int debugListening() {
-        return (gripMain != null ? 1 : 0) + (gripOff != null ? 1 : 0) + (teleport != null ? 1 : 0) + (rotate != null ? 1 : 0);
+        int n = 0;
+        for (VRInputAction a : new VRInputAction[] {gripMain, gripOff, teleport, rotate, attack, use, radialMain, radialOff}) {
+            n += a != null ? 1 : 0;
+        }
+        return n;
     }
 
     /**
      * Teste automático: o Vivecraft avisando os ouvintes de um aperto/soltura, como faz com o controle de verdade.
-     * {@code which}: gripMain, gripOff, teleport ou rotate; {@code axisX}: posição do analógico (só para rotate).
-     * Retorna true se algum ouvinte consumiu (a ação original do Vivecraft não aconteceria).
+     * {@code which}: gripMain, gripOff, teleport, rotate, attack, use, radialMain ou radialOff; {@code axisX}: posição
+     * do analógico (só para rotate). Retorna true se algum ouvinte consumiu (a ação original não aconteceria).
      */
     public static boolean debugNotify(String which, boolean pressed, float axisX) {
         VRInputAction action = switch (which) {
             case "gripMain" -> gripMain;
             case "gripOff" -> gripOff;
             case "teleport" -> teleport;
+            case "attack" -> attack;
+            case "use" -> use;
+            case "radialMain" -> radialMain;
+            case "radialOff" -> radialOff;
             default -> rotate;
         };
         if (action == null) {
@@ -78,18 +92,41 @@ public final class VivecraftInput {
         if (axisX != 0f && action.analogData.length > 0) {
             action.analogData[0].x = axisX;
         }
-        ControllerType hand = which.equals("gripOff") || which.equals("teleport") ? ControllerType.LEFT : ControllerType.RIGHT;
-        return action.notifyListeners(pressed, hand);
+        boolean left = which.equals("gripOff") || which.equals("teleport") || which.equals("radialOff");
+        return action.notifyListeners(pressed, left ? ControllerType.LEFT : ControllerType.RIGHT);
     }
 
-    /** O grip da mão está apertado (dado cru da ação, lido pelo Vivecraft a cada quadro mesmo quando desativada). */
-    public static boolean isGripHeld(int hand) {
-        VRInputAction action = hand == 0 ? gripMain : gripOff;
+    /** Nome da ação (para o relatório do teste). */
+    public static String debugName(String which) {
+        VRInputAction a = switch (which) {
+            case "radialMain" -> radialMain;
+            case "radialOff" -> radialOff;
+            case "attack" -> attack;
+            default -> null;
+        };
+        return a == null ? "-" : a.name;
+    }
+
+    private static boolean held(VRInputAction action) {
         try {
             return action != null && action.digitalData.length > 0 && action.digitalData[0].state;
         } catch (Throwable t) {
             return false;
         }
+    }
+
+    /** O grip da mão está apertado (dado cru da ação, lido pelo Vivecraft a cada quadro mesmo quando desativada). */
+    public static boolean isGripHeld(int hand) {
+        return held(hand == 0 ? gripMain : gripOff);
+    }
+
+    /** O botão do radial da mão (B principal, X secundária) está apertado. */
+    public static boolean isMenuButtonHeld(int hand) {
+        return held(hand == 0 ? radialMain : radialOff);
+    }
+
+    private static Minecraft mc() {
+        return Minecraft.getInstance();
     }
 
     private record GripListener(int hand) implements VRInputAction.KeyListener {
@@ -109,13 +146,77 @@ public final class VivecraftInput {
         }
     }
 
+    private record MenuButtonListener(int hand) implements VRInputAction.KeyListener {
+        @Override
+        public boolean onPressed(ControllerType controller) {
+            return HandsOnVR.call("botão do radial", () -> HandsOnVR.hands().onMenuButton(mc(), hand, true));
+        }
+
+        @Override
+        public boolean onUnpressed(ControllerType controller) {
+            return HandsOnVR.call("botão do radial (soltar)", () -> HandsOnVR.hands().onMenuButton(mc(), hand, false));
+        }
+
+        @Override
+        public int getPriority() {
+            return 50;
+        }
+    }
+
+    private static final class RightTriggerListener implements VRInputAction.KeyListener {
+        private boolean consumed = false;
+
+        @Override
+        public boolean onPressed(ControllerType controller) {
+            consumed = HandsOnVR.call("gatilho direito", () -> HandsOnVR.hands().onTrigger(mc(), 0));
+            return consumed;
+        }
+
+        @Override
+        public boolean onUnpressed(ControllerType controller) {
+            boolean was = consumed;
+            consumed = false;
+            return was;
+        }
+
+        @Override
+        public int getPriority() {
+            return 50;
+        }
+    }
+
+    private static final class UseListener implements VRInputAction.KeyListener {
+        private boolean consumed = false;
+
+        @Override
+        public boolean onPressed(ControllerType controller) {
+            consumed = HandsOnVR.call("usar (A)", () -> HandsOnVR.hands().onUse(mc()));
+            return consumed;
+        }
+
+        @Override
+        public boolean onUnpressed(ControllerType controller) {
+            boolean was = consumed;
+            consumed = false;
+            return was;
+        }
+
+        @Override
+        public int getPriority() {
+            return 50;
+        }
+    }
+
     private static final class LeftTriggerListener implements VRInputAction.KeyListener {
         @Override
         public boolean onPressed(ControllerType controller) {
+            if (HandsOnVR.call("gatilho esquerdo", () -> HandsOnVR.hands().onTrigger(mc(), 1))) {
+                return true;
+            }
             if (!HandsOnConfig.get().leftTriggerOffhandUse) {
                 return false;
             }
-            HandsOnVR.guard("gatilho esquerdo", () -> OffhandUse.use(MinecraftClient.getInstance()));
+            HandsOnVR.guard("gatilho esquerdo", () -> OffhandUse.use(mc()));
             return true;
         }
 
@@ -144,7 +245,7 @@ public final class VivecraftInput {
             }
             if (Math.abs(x) >= 0.3f) {
                 int direction = x > 0 ? 1 : -1;
-                HandsOnVR.guard("analógico direito", () -> HotbarScroll.scroll(MinecraftClient.getInstance(), direction));
+                HandsOnVR.guard("analógico direito", () -> HotbarScroll.scroll(mc(), direction));
             }
             return true; // sem girar a câmera
         }
