@@ -23,6 +23,8 @@ import net.minecraft.world.phys.Vec3;
  *       que a mão está, ou descarta na zona de descarte;</li>
  *   <li>o que o radial escolhe fica na mão (mão principal: seleção da hotbar; mão secundária: troca com a hotbar,
  *       lembrando de onde veio);</li>
+ *   <li>o item da própria mão também pode ser seguro com o grip: soltar num coldre, no ombro da mochila ou num
+ *       espaço o guarda ali; soltar em outro lugar não muda nada;</li>
  *   <li>gatilho com o grip apertado sobre um espaço/descarte = UM item.</li>
  * </ul>
  * Mão: 0 = principal (B, gatilho direito), 1 = secundária (X, gatilho esquerdo).
@@ -176,18 +178,20 @@ public final class HandsController {
                 return true;
             }
         }
-        // 2) Mochila aberta (na outra mão): o alvo sob a mão.
+        // 2) Mochila aberta (na outra mão): o alvo sob a mão. Num espaço vazio, no descarte ou no fundo do painel, o
+        //    grip segura o item da própria mão (soltar num espaço o guarda ali).
         if (backpack.isOpen()) {
             Backpack.Element e = backpack.elementAt(tip);
-            if (e != null) {
+            if (e != null && !takesOwnItem(p, hand, e)) {
                 backpackGrip(client, hand, e);
                 return true;
             }
-            if (backpack.onPanel(tip)) {
+            if (e != null || backpack.onPanel(tip)) {
+                holdOwnItem(client, hand);
                 return true;
             }
         }
-        // 3) Zonas do corpo: mochila (ombro esquerdo) ou coldres.
+        // 3) Zonas do corpo: mochila (ombro esquerdo) ou um coldre com item (sacar).
         Holster zone = holsters.refreshZone(hand);
         if (zone != null && zone.isBackpack(config) && !backpack.isOpen() && InvOps.ready(client)) {
             backpack.open(hand);
@@ -195,10 +199,40 @@ public final class HandsController {
             return true;
         }
         if (holsters.press(client, hand)) {
-            action("coldre " + zone + " (mão " + hand + ")");
+            action("sacou do coldre " + zone + " (mão " + hand + ")");
             return true;
         }
-        return !config.gripScrollsHotbar;
+        // 4) Em qualquer outro lugar (ou num coldre vazio): segura o item da mão. Soltar num coldre, no ombro da
+        //    mochila ou num espaço o guarda; soltar em outro lugar não muda nada.
+        if (zone == null && config.gripScrollsHotbar) {
+            return false;
+        }
+        holdOwnItem(client, hand);
+        return true;
+    }
+
+    /** Com a mochila aberta, o grip sobre este alvo segura o item da mão (em vez de pegar o que está no alvo)? */
+    private boolean takesOwnItem(LocalPlayer p, int hand, Backpack.Element e) {
+        if (InvOps.stack(p, InvOps.handSlot(p, hand)).isEmpty()) {
+            return false;
+        }
+        return switch (e.kind()) {
+            case SLOT, CRAFT_IN, ARMOR -> displayStack(p, e.handler()).isEmpty() && !isLocked(p, e.handler());
+            case DROP -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * Segura com o grip o item que a mão já tem: nada muda na hora (ele continua na mão). Ao soltar, o lugar sob a mão
+     * decide: um coldre, o ombro da mochila ou um espaço guardam o item; qualquer outro lugar o deixa na mão.
+     */
+    private void holdOwnItem(Minecraft client, int hand) {
+        LocalPlayer p = client.player;
+        int slot = InvOps.handSlot(p, hand);
+        if (!InvOps.stack(p, slot).isEmpty() && grabs.begin(client, hand, slot, GrabSystem.Origin.HAND, null)) {
+            action("segurou o item da mão " + hand);
+        }
     }
 
     /** Grip solto. Retorna true se foi nosso. */
@@ -319,8 +353,19 @@ public final class HandsController {
         }
         Holster zone = holsters.refreshZone(hand);
         grabs.end(client, hand);
+        // Por cima do ombro, como no Saints & Sinners: soltar no ombro da mochila guarda o item nela.
+        if (zone != null && zone.isBackpack(config) && !backpack.isOpen() && g.source() >= InvOps.HOTBAR_START) {
+            if (storeInBackpack(client, g.source())) {
+                VrBridge.pulse(hand, 0.05f);
+                action("guardou na mochila (por cima do ombro)");
+            } else {
+                refuse(hand);
+                action("mochila cheia: o item ficou na mão");
+            }
+            return;
+        }
         if (zone != null && zone.enabled(config) && zone != g.holster()) {
-            if (holsters.assign(p, zone, g.source())) {
+            if (holsters.store(client, zone, g.source())) {
                 if (g.origin() == GrabSystem.Origin.HOLSTER && g.holster() != null) {
                     holsters.clear(g.holster());
                 }
@@ -329,7 +374,31 @@ public final class HandsController {
                 return;
             }
         }
-        action("devolveu ao lugar");
+        action(g.origin() == GrabSystem.Origin.HAND ? "soltou: o item continua na mão" : "devolveu ao lugar");
+    }
+
+    /**
+     * Guarda a pilha do espaço {@code from} na mochila (o inventário principal): primeiro junta com pilhas iguais,
+     * depois ocupa o primeiro espaço vazio. Não usa o Shift+clique, que vestiria uma armadura. Retorna true se algo
+     * entrou (o que não couber fica onde estava).
+     */
+    private boolean storeInBackpack(Minecraft client, int from) {
+        LocalPlayer p = client.player;
+        int before = InvOps.stack(p, from).getCount();
+        for (int i = InvOps.MAIN_START; i < InvOps.HOTBAR_START && !InvOps.stack(p, from).isEmpty(); i++) {
+            ItemStack s = InvOps.stack(p, i);
+            if (!isLocked(p, i) && !s.isEmpty() && ItemStack.isSameItemSameComponents(s, InvOps.stack(p, from))
+                    && s.getCount() < s.getMaxStackSize()) {
+                InvOps.moveStack(client, from, i);
+            }
+        }
+        for (int i = InvOps.MAIN_START; i < InvOps.HOTBAR_START && !InvOps.stack(p, from).isEmpty(); i++) {
+            if (!isLocked(p, i) && InvOps.stack(p, i).isEmpty()) {
+                InvOps.moveStack(client, from, i);
+            }
+        }
+        ItemStack left = InvOps.stack(p, from);
+        return left.isEmpty() || left.getCount() < before;
     }
 
     // ------------------------------------------------------------------ gatilho
@@ -454,6 +523,10 @@ public final class HandsController {
         int target = hand < 0 ? RadialMenu.NONE : radial.targetAt(VrBridge.pointer(hand));
         boolean assigned = radial.wasAssigned();
         radial.close();
+        GrabSystem.Grab held = hand < 0 ? null : grabs.get(hand);
+        if (!assigned && target != RadialMenu.NONE && held != null && held.origin() == GrabSystem.Origin.HAND) {
+            grabs.end(client, hand); // segurava o próprio item com o grip: escolher outro no radial vale normalmente
+        }
         if (assigned || target == RadialMenu.NONE || hand < 0 || grabs.isGrabbing(hand) || backpack.holder() == hand
                 || !InvOps.ready(client)) {
             return;
@@ -593,6 +666,15 @@ public final class HandsController {
             radial.close();
             if (backpack.isOpen()) {
                 backpack.close(client);
+            }
+        }
+        // O item da mão seguro com o grip mudou (analógico trocou a hotbar, o item acabou): solta, sem guardar nada.
+        for (int hand = 0; hand < 2; hand++) {
+            GrabSystem.Grab g = grabs.get(hand);
+            if (g != null && g.origin() == GrabSystem.Origin.HAND
+                    && (InvOps.handSlot(p, hand) != g.source() || InvOps.stack(p, g.source()).isEmpty())) {
+                grabs.end(client, hand);
+                action("soltou o item da mão " + hand + " (ele mudou)");
             }
         }
         // Itens pegos: soltar o grip (ou sair do VR) devolve/coloca. Com uma tela aberta, espera ela fechar.
