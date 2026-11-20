@@ -1,6 +1,6 @@
 package com.handsonvr.vr;
 
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -12,8 +12,8 @@ public final class SimulatedVr {
     private SimulatedVr() {}
 
     private static volatile boolean enabled = false;
-    private static final Vec3d[] handPos = new Vec3d[2];
-    private static final Vec3d[] handDir = new Vec3d[2];
+    private static final Vec3[] handPos = new Vec3[2];
+    private static final Vec3[] handDir = new Vec3[2];
     /** Quantas vibrações cada mão recebeu (o teste confere a resposta tátil). */
     private static final int[] pulses = new int[2];
 
@@ -26,13 +26,13 @@ public final class SimulatedVr {
     }
 
     /** Coloca a mão (0 = principal, 1 = secundária) num ponto, apontando para uma direção (null tira a mão). */
-    public static void setHand(int hand, Vec3d position, Vec3d direction) {
+    public static void setHand(int hand, Vec3 position, Vec3 direction) {
         handPos[hand] = position;
-        handDir[hand] = direction == null || direction.lengthSquared() < 1.0e-6 ? new Vec3d(0, 0, 1) : direction.normalize();
+        handDir[hand] = direction == null || direction.lengthSqr() < 1.0e-6 ? new Vec3(0, 0, 1) : direction.normalize();
     }
 
     static VrBridge.Pose handPose(int hand) {
-        Vec3d pos = handPos[hand], dir = handDir[hand];
+        Vec3 pos = handPos[hand], dir = handDir[hand];
         if (pos == null || dir == null) {
             return null;
         }
@@ -51,6 +51,17 @@ public final class SimulatedVr {
 
     public static boolean gripHeld(int hand) {
         return grip[hand];
+    }
+
+    private static final boolean[] menuButton = new boolean[2];
+
+    /** Finge o botão do menu radial da mão (B = principal, X = secundária) apertado/solto. */
+    public static void setMenuButton(int hand, boolean pressed) {
+        menuButton[hand] = pressed;
+    }
+
+    public static boolean menuButtonHeld(int hand) {
+        return menuButton[hand];
     }
 
     static void recordPulse(int hand, float seconds) {

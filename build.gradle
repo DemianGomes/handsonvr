@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.11-SNAPSHOT'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
 version = project.mod_version
@@ -9,19 +9,12 @@ base {
     archivesName = project.archives_base_name
 }
 
-repositories {
-    mavenCentral()
-    maven {
-        name = 'Fabric'
-        url = 'https://maven.fabricmc.net/'
-    }
-}
-
-// Os jars locais (Vivecraft, e para o teste conjunto o CobbleVR/Cobblemon) ficam na pasta libs/ do CobbleVR.
+// Jars locais (Vivecraft) ficam na pasta libs/ ao lado do projeto (o mesmo jar do perfil Fabulously Optimized).
 def sharedLibs = rootProject.file("../libs")
+def vivecraftJar = "${sharedLibs}/vivecraft-${project.vivecraft_version}-fabric.jar"
 
 configurations {
-    // Mods usados só no teste de produção (prodClient), sem conversão de nomes — como no modpack.
+    // Mods usados só no teste de produção (prodClient), como no modpack.
     productionMods {
         canBeConsumed = false
         transitive = false
@@ -29,70 +22,78 @@ configurations {
 }
 
 dependencies {
+    // Minecraft 26.x não é ofuscado: sem "mappings", tudo com os nomes oficiais da Mojang.
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
     // Vivecraft (o mesmo jar do modpack). Só para compilar: no jogo quem fornece é o próprio Vivecraft.
-    modCompileOnly files("${sharedLibs}/vivecraft-1.21.1-1.3.15-fabric.jar")
-    modLocalRuntime files("${sharedLibs}/vivecraft-1.21.1-1.3.15-fabric.jar")
+    compileOnly files(vivecraftJar)
 
     productionMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
-// Teste automático (dev.SelfTest): "gradlew prodClient" abre o jogo como no modpack (Vivecraft + Fabric API + o
-// .jar final do mod), roda o roteiro com o VR simulado e fecha sozinho. Relatório em run-prod/handsonvr-selftest.txt
-// e prints em run-prod/screenshots/.
+// Mods do jogo de teste. Com -Pmodpack=<pasta "mods" de um perfil> (ex.: o Fabulously Optimized do Modrinth), o teste
+// roda com os mods desse perfil (Sodium, Iris, Vivecraft...) no lugar de só Fabric API + Vivecraft — o ambiente real.
+// Ficam de fora o HandsOn do perfil (o testado é o recém-compilado) e o Essential (pede conta da Microsoft).
+def testMods = { task ->
+    task.mods.from(tasks.named("jar"))
+    if (project.hasProperty("modpack")) {
+        task.mods.from(fileTree(project.property("modpack").toString()) {
+            include "*.jar"
+            exclude "handsonvr*", "Essential*", "essential*"
+        })
+    } else {
+        task.mods.from(configurations.productionMods)
+        task.mods.from(files(vivecraftJar))
+    }
+}
+
+// Teste automático (dev.SelfTest): "gradlew prodClient" abre o jogo, roda o roteiro com o VR simulado e fecha
+// sozinho. Relatório em run-prod/handsonvr-selftest.txt e prints em run-prod/screenshots/.
 tasks.register("prodClient", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
-    mods.from(tasks.named("remapJar"))
-    mods.from(configurations.productionMods)
-    mods.from(files("${sharedLibs}/vivecraft-1.21.1-1.3.15-fabric.jar"))
-    jvmArgs.add("-Dhandsonvr.selftest=true")
+    testMods(it)
+    jvmArgs.addAll("-Dhandsonvr.selftest=true", "-Xmx4G")
     programArgs.addAll("--width", "1280", "--height", "720")
     runDir = layout.projectDirectory.dir("run-prod")
 }
 
 // Ligação com os controles do Vivecraft: o Vivecraft roda o VR de verdade com o "VR nulo" (sem óculos; ver
-// run-prod-nullvr/config/vivecraft-client-config.json) e o teste dispara os avisos de grip/gatilho/analógico.
+// run-prod-nullvr/config/vivecraft-client-config.json) e o teste dispara os avisos de grip/gatilho/botões.
 tasks.register("prodClientNullVr", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
-    mods.from(tasks.named("remapJar"))
-    mods.from(configurations.productionMods)
-    mods.from(files("${sharedLibs}/vivecraft-1.21.1-1.3.15-fabric.jar"))
-    jvmArgs.addAll("-Dhandsonvr.selftest=true", "-Dhandsonvr.selftest.nullvr=true")
+    testMods(it)
+    jvmArgs.addAll("-Dhandsonvr.selftest=true", "-Dhandsonvr.selftest.nullvr=true", "-Xmx4G")
     programArgs.addAll("--width", "1280", "--height", "720")
     runDir = layout.projectDirectory.dir("run-prod-nullvr")
 }
 
-// O mesmo teste junto com o CobbleVR (cinto de Pokébolas na cintura) e o Cobblemon: os coldres não podem brigar com
-// o cinto pelo grip.
-tasks.register("prodClientCobbleVR", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
-    mods.from(tasks.named("remapJar"))
-    mods.from(configurations.productionMods)
-    mods.from(files(
-            "${sharedLibs}/vivecraft-1.21.1-1.3.15-fabric.jar",
-            "${sharedLibs}/Cobblemon-fabric-1.7.3+1.21.1.jar",
-            "${sharedLibs}/fabric-language-kotlin-1.13.13+kotlin.2.4.10.jar",
-            rootProject.file("../build/libs/cobblevr-1.0.0-alpha.jar")))
-    jvmArgs.add("-Dhandsonvr.selftest=true")
-    programArgs.addAll("--width", "1280", "--height", "720")
-    runDir = layout.projectDirectory.dir("run-prod-cobblevr")
+// Opcional: rodar os testes com outro Java 25 (ex.: o Azul Zulu que o Modrinth usa no perfil):
+//   gradlew prodClient -PtestJavaVendor=Azul -Porg.gradle.java.installations.paths=<pasta do Java>
+if (project.hasProperty("testJavaVendor")) {
+    def vendorName = project.property("testJavaVendor").toString()
+    tasks.withType(net.fabricmc.loom.task.prod.ClientProductionRunTask).configureEach {
+        javaLauncher = javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(25)
+            vendor = JvmVendorSpec.matching(vendorName)
+        }
+    }
 }
 
 processResources {
-    inputs.property "version", project.version
+    def version = project.version
+    inputs.property "version", version
     filesMatching("fabric.mod.json") {
-        expand "version": project.version
+        expand "version": version
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = 25
     it.options.encoding = "UTF-8"
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
 }

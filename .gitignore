@@ -4,6 +4,8 @@ build/
 run/
 run-prod/
 run-prod-nullvr/
+run-prod*/
+run-prod-*-1.21.1/
 run-*.log
 *.log
 libs/

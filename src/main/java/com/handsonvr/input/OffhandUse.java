@@ -1,17 +1,17 @@
 package com.handsonvr.input;
 
 import com.handsonvr.vr.VrBridge;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.projectile.ProjectileUtil;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Usar o item da mão ESQUERDA, mirando com o controle esquerdo (o Vivecraft mira o "usar" normal com o controle
@@ -28,9 +28,9 @@ public final class OffhandUse {
         return last;
     }
 
-    public static void use(MinecraftClient client) {
-        ClientPlayerEntity player = client.player;
-        if (player == null || client.interactionManager == null || client.currentScreen != null || player.isSpectator()) {
+    public static void use(Minecraft client) {
+        LocalPlayer player = client.player;
+        if (player == null || client.gameMode == null || client.gui.screen() != null || player.isSpectator()) {
             last = "sem jogador/tela aberta";
             return;
         }
@@ -39,40 +39,37 @@ public final class OffhandUse {
             last = "sem a mão esquerda";
             return;
         }
-        Vec3d from = hand.position();
-        double reach = player.getBlockInteractionRange();
-        Vec3d to = from.add(hand.direction().multiply(reach));
+        Vec3 from = hand.position();
+        double reach = player.blockInteractionRange();
+        Vec3 to = from.add(hand.direction().scale(reach));
 
-        BlockHitResult block = player.getWorld().raycast(new RaycastContext(from, to, RaycastContext.ShapeType.OUTLINE,
-                RaycastContext.FluidHandling.NONE, player));
-        double blockDistance = block.getType() == HitResult.Type.MISS ? Double.MAX_VALUE : from.squaredDistanceTo(block.getPos());
-        double entityReach = Math.min(player.getEntityInteractionRange(), reach);
-        Vec3d entityTo = from.add(hand.direction().multiply(entityReach));
-        EntityHitResult entity = ProjectileUtil.raycast(player, from, entityTo, new Box(from, entityTo).expand(1.0),
-                e -> !e.isSpectator() && e.canHit() && e != player, entityReach * entityReach);
+        BlockHitResult block = player.level().clip(new ClipContext(from, to, ClipContext.Block.OUTLINE,
+                ClipContext.Fluid.NONE, player));
+        double blockDistance = block.getType() == HitResult.Type.MISS ? Double.MAX_VALUE : from.distanceToSqr(block.getLocation());
+        double entityReach = Math.min(player.entityInteractionRange(), reach);
+        Vec3 entityTo = from.add(hand.direction().scale(entityReach));
+        EntityHitResult entity = ProjectileUtil.getEntityHitResult(player, from, entityTo, new AABB(from, entityTo).inflate(1.0),
+                e -> !e.isSpectator() && e.isPickable() && e != player, entityReach * entityReach);
 
-        if (entity != null && from.squaredDistanceTo(entity.getPos()) < blockDistance) {
-            ActionResult result = client.interactionManager.interactEntityAtLocation(player, entity.getEntity(), entity, Hand.OFF_HAND);
-            if (!result.isAccepted()) {
-                result = client.interactionManager.interactEntity(player, entity.getEntity(), Hand.OFF_HAND);
-            }
-            if (result.isAccepted()) {
+        if (entity != null && from.distanceToSqr(entity.getLocation()) < blockDistance) {
+            InteractionResult result = client.gameMode.interact(player, entity.getEntity(), entity, InteractionHand.OFF_HAND);
+            if (result.consumesAction()) {
                 swing(player, result);
                 last = "entidade";
                 return;
             }
         }
         if (block.getType() == HitResult.Type.BLOCK) {
-            ActionResult result = client.interactionManager.interactBlock(player, Hand.OFF_HAND, block);
-            if (result.isAccepted()) {
+            InteractionResult result = client.gameMode.useItemOn(player, InteractionHand.OFF_HAND, block);
+            if (result.consumesAction()) {
                 swing(player, result);
                 last = "bloco";
                 return;
             }
         }
-        if (!player.getOffHandStack().isEmpty()) {
-            ActionResult result = client.interactionManager.interactItem(player, Hand.OFF_HAND);
-            if (result.isAccepted()) {
+        if (!player.getOffhandItem().isEmpty()) {
+            InteractionResult result = client.gameMode.useItem(player, InteractionHand.OFF_HAND);
+            if (result.consumesAction()) {
                 swing(player, result);
                 last = "item";
                 return;
@@ -81,9 +78,9 @@ public final class OffhandUse {
         last = "nada";
     }
 
-    private static void swing(ClientPlayerEntity player, ActionResult result) {
-        if (result.shouldSwingHand()) {
-            player.swingHand(Hand.OFF_HAND);
+    private static void swing(LocalPlayer player, InteractionResult result) {
+        if (result instanceof InteractionResult.Success success && success.swingSource() == InteractionResult.SwingSource.PREDICTED) {
+            player.swing(InteractionHand.OFF_HAND, player.getOffhandItem().getInteractAnimation(), false);
         }
     }
 }

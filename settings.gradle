@@ -9,4 +9,9 @@ pluginManagement {
     }
 }
 
+plugins {
+    // Baixa o JDK 25 (exigido pelo Minecraft 26.x) para o cache do Gradle quando ele não está instalado.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
 rootProject.name = 'handsonvr'

@@ -1,9 +1,9 @@
 package com.handsonvr.vr;
 
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
 import org.vivecraft.api.client.VRClientAPI;
@@ -24,7 +24,7 @@ public final class VrBridge {
     private static final boolean VIVECRAFT = FabricLoader.getInstance().isModLoaded("vivecraft");
 
     /** Posição, direção para onde aponta e rotação completa (null quando não há). */
-    public record Pose(Vec3d position, Vec3d direction, Quaternionfc rotation) {}
+    public record Pose(Vec3 position, Vec3 direction, Quaternionfc rotation) {}
 
     public static boolean isVivecraftLoaded() {
         return VIVECRAFT;
@@ -53,9 +53,9 @@ public final class VrBridge {
     }
 
     private static Pose toPose(VRBodyPartData data) {
-        Vec3d dir = data.getDir();
-        if (dir == null || dir.lengthSquared() < 1.0e-6) {
-            dir = new Vec3d(0, 0, 1);
+        Vec3 dir = data.getDir();
+        if (dir == null || dir.lengthSqr() < 1.0e-6) {
+            dir = new Vec3(0, 0, 1);
         }
         Quaternionfc rotation = null;
         try {
@@ -71,8 +71,8 @@ public final class VrBridge {
     /** Cabeça (olhos) no mundo; null fora do VR. */
     public static Pose head() {
         if (SimulatedVr.isEnabled()) {
-            ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            return player == null ? null : new Pose(player.getEyePos(), player.getRotationVec(1f), null);
+            LocalPlayer player = Minecraft.getInstance().player;
+            return player == null ? null : new Pose(player.getEyePosition(), player.getViewVector(1f), null);
         }
         if (!isVRActive()) {
             return null;
@@ -101,6 +101,18 @@ public final class VrBridge {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /** Quanto à frente do controle fica a "ponta do dedo" usada para tocar a mochila e o radial (m). */
+    public static final double POINTER_OFFSET = 0.05;
+
+    /** Ponta da mão (um pouco à frente do controle), para tocar espaços da mochila e do radial; null sem mão. */
+    public static Vec3 pointer(int hand) {
+        Pose pose = hand(hand);
+        if (pose == null) {
+            return null;
+        }
+        return pose.position().add(pose.direction().scale(POINTER_OFFSET * worldScale()));
     }
 
     /** Escala do mundo do Vivecraft (1 = tamanho real). */

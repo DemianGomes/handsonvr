@@ -1,9 +1,12 @@
 {
-  "category.handsonvr": "HandsOn VR",
+  "key.category.handsonvr.main": "HandsOn VR",
   "key.handsonvr.settings": "HandsOn VR: settings",
   "button.handsonvr.settings": "VR Holsters",
-  "screen.handsonvr.title": "HandsOn VR — holsters and controls",
+  "screen.handsonvr.title": "HandsOn VR — holsters, backpack and controls",
   "option.handsonvr.holsters": "Physical holsters",
+  "option.handsonvr.backpack_on": "Backpack (left shoulder)",
+  "option.handsonvr.radial": "Radial hotbar (B/X)",
+  "option.handsonvr.grip_hotbar": "Grip scrolls hotbar",
   "holster.handsonvr.right_shoulder": "Right shoulder",
   "holster.handsonvr.left_shoulder": "Left shoulder",
   "holster.handsonvr.right_hip": "Right hip",
@@ -13,5 +16,13 @@
   "option.handsonvr.render": "Items on body",
   "option.handsonvr.backpack": "No backpack switch",
   "option.handsonvr.left_trigger": "Left trigger: left hand",
-  "option.handsonvr.right_stick": "Right stick: hotbar"
+  "option.handsonvr.right_stick": "Right stick: hotbar",
+  "backpack.handsonvr.page": "Page %s/%s",
+  "backpack.handsonvr.slots": "Slots %s/%s",
+  "backpack.handsonvr.drop": "Drop",
+  "backpack.handsonvr.armor.0": "Head",
+  "backpack.handsonvr.armor.1": "Chest",
+  "backpack.handsonvr.armor.2": "Legs",
+  "backpack.handsonvr.armor.3": "Feet",
+  "radial.handsonvr.empty": "Empty hand"
 }

@@ -1,18 +1,17 @@
 package com.handsonvr.holster;
 
 import com.handsonvr.HandsOnConfig;
+import com.handsonvr.render.Draw;
 import com.handsonvr.vr.VrBridge;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.client.render.model.json.ModelTransformationMode;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.RotationAxis;
-import net.minecraft.util.math.Vec3d;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.LightCoordsUtil;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Desenha os itens guardados presos ao corpo: nos ombros, atravessados nas costas (como uma espada na bainha); nos
@@ -27,20 +26,20 @@ public final class HolsterRenderer {
     /** Giro do item nas costas (graus): diagonal, o cabo perto do ombro. */
     private static final float SHOULDER_ROLL = 100f;
 
-    public static void render(WorldRenderContext context, HolsterManager manager) {
+    public static void render(LevelRenderContext context, HolsterManager manager) {
         HandsOnConfig config = HandsOnConfig.get();
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!config.holsters || !config.renderHolstered || client.player == null || client.world == null
+        Minecraft client = Minecraft.getInstance();
+        if (!config.holsters || !config.renderHolstered || client.player == null || client.level == null
                 || !VrBridge.isVRActive()) {
             return;
         }
-        MatrixStack matrices = context.matrixStack();
-        VertexConsumerProvider consumers = context.consumers();
+        PoseStack ms = context.poseStack();
         BodyFrame.Frame frame = manager.body().compute();
-        if (matrices == null || consumers == null || frame == null) {
+        if (ms == null || context.submitNodeCollector() == null || frame == null) {
             return;
         }
-        Vec3d camera = context.camera().getPos();
+        Draw d = new Draw(ms, context.submitNodeCollector());
+        Vec3 camera = context.levelState().cameraRenderState.pos;
         for (Holster h : Holster.values()) {
             if (!h.enabled(config)) {
                 continue;
@@ -53,30 +52,32 @@ public final class HolsterRenderer {
             float side = h.right > 0 ? 1f : -1f;
             // Desenhado um pouco para fora do corpo (a zona de pegar continua no lugar): nas costas, atrás do tronco;
             // nos quadris, para o lado.
-            Vec3d anchor = frame.anchor(h, config);
-            Vec3d drawAt = h.shoulder
-                    ? anchor.subtract(frame.forward().multiply(SHOULDER_BACK * frame.scale()))
-                    : anchor.add(frame.right().multiply(side * HIP_OUT * frame.scale()));
-            matrices.push();
-            matrices.translate(drawAt.x - camera.x, drawAt.y - camera.y, drawAt.z - camera.z);
+            Vec3 anchor = frame.anchor(h, config);
+            Vec3 drawAt = h.shoulder
+                    ? anchor.subtract(frame.forward().scale(SHOULDER_BACK * frame.scale()))
+                    : anchor.add(frame.right().scale(side * HIP_OUT * frame.scale()));
+            ms.pushPose();
+            ms.translate(drawAt.x - camera.x, drawAt.y - camera.y, drawAt.z - camera.z);
             // Referencial do tronco (+Z = frente, +Y = cima).
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-frame.yaw()));
+            rotate(ms, Axis.YP, -frame.yaw());
             if (h.shoulder) {
                 // Plano do item paralelo às costas, atravessado na diagonal: o cabo junto ao ombro.
-                matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * SHOULDER_ROLL));
+                rotate(ms, Axis.ZP, side * SHOULDER_ROLL);
             } else {
                 // Deitado ao lado do quadril, inclinado para fora e para cima (visível olhando para baixo), a ponta
                 // para a frente.
-                matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * 45f));
-                matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90f));
-                matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(180f));
+                rotate(ms, Axis.ZP, side * 45f);
+                rotate(ms, Axis.XP, -90f);
+                rotate(ms, Axis.ZP, 180f);
             }
             float scale = (h.shoulder ? SHOULDER_SCALE : HIP_SCALE) * (float) frame.scale() * (hover ? HOVER_SCALE : 1f);
-            matrices.scale(scale, scale, scale);
-            int light = WorldRenderer.getLightmapCoordinates(client.world, BlockPos.ofFloored(anchor));
-            client.getItemRenderer().renderItem(stack, ModelTransformationMode.FIXED, light, OverlayTexture.DEFAULT_UV,
-                    matrices, consumers, client.world, 0);
-            matrices.pop();
+            int light = LightCoordsUtil.getLightCoords(client.level, BlockPos.containing(anchor));
+            d.item(stack, ItemDisplayContext.FIXED, 0f, 0f, 0f, scale, light);
+            ms.popPose();
         }
+    }
+
+    private static void rotate(PoseStack ms, Axis axis, float degrees) {
+        ms.rotate(axis.rotationDegrees(degrees));
     }
 }

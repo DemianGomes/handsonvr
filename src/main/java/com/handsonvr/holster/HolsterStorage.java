@@ -5,9 +5,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.handsonvr.HandsOnVR;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.util.WorldSavePath;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.Reader;
 import java.io.Writer;
@@ -34,15 +34,15 @@ public final class HolsterStorage {
     private static final Type TYPE = new TypeToken<Map<String, Binding>>() {}.getType();
 
     /** Nome do arquivo deste mundo (null fora de um mundo). */
-    public static String worldKey(MinecraftClient client) {
+    public static String worldKey(Minecraft client) {
         try {
-            if (client.getServer() != null) {
-                Path root = client.getServer().getSavePath(WorldSavePath.ROOT).toAbsolutePath().normalize();
+            if (client.getSingleplayerServer() != null) {
+                Path root = client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
                 return "sp_" + sanitize(root.getFileName().toString());
             }
-            ServerInfo server = client.getCurrentServerEntry();
+            ServerData server = client.getCurrentServer();
             if (server != null) {
-                return "mp_" + sanitize(server.address);
+                return "mp_" + sanitize(server.ip);
             }
         } catch (Exception e) {
             HandsOnVR.LOGGER.debug("[HandsOn VR] mundo sem nome", e);
