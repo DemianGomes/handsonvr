@@ -2,8 +2,8 @@
 
 Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, Fabric) que deixa o inventário com cara de jogo nativo de VR. O jogador mexe nos itens com as mãos, sem telas que o deixam parado.
 
-- **Coldres físicos:** ombro direito e os dois quadris guardam qualquer item. Leve a mão ao coldre e segure o grip para pegar o item; solte o grip para guardá-lo.
-- **Mochila no ombro esquerdo:** grip no ombro abre a mochila na mão, no estilo de *Saints & Sinners*. Ela tem 3 páginas de 3x3, crafting 2x2, armadura e uma zona de descarte. A outra mão pega, move, junta e descarta itens.
+- **Coldres físicos:** ombro direito e os dois quadris guardam qualquer item. Leve a mão ao coldre e segure o grip para sacar o item; solte o grip para guardá-lo de volta. Para guardar o item da mão, feche a mão nele (grip), leve-o ao coldre e solte.
+- **Mochila no ombro esquerdo:** grip no ombro abre a mochila na mão, no estilo de *Saints & Sinners*. Ela tem 3 páginas de 3x3, crafting 2x2, armadura e uma zona de descarte. A outra mão pega, move, junta e descarta itens. Para guardar o item da mão, solte o grip **por cima do ombro esquerdo**, ou num espaço da mochila aberta.
 - **Menu radial da hotbar:** segure B (mão direita) ou X (mão esquerda). A hotbar aparece em círculo, com a mão vazia no centro; leve a mão até um item e solte o botão.
 - **Regra das mãos:**
   - O que você pega com o grip é emprestado: ao soltar, volta para o lugar.
@@ -18,7 +18,8 @@ O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O histórico de ver
 
 | Botão | Ação |
 |---|---|
-| Grip | Pegar (coldre, mochila, item da mochila ou do radial) enquanto estiver apertado. Soltar devolve o item ou coloca no espaço sob a mão. |
+| Grip | Pegar (coldre, mochila, item da mochila ou do radial) enquanto estiver apertado. Em qualquer outro lugar, segura o item da própria mão. |
+| Soltar o grip | Devolve o item ao lugar dele. Sobre um espaço da mochila, coloca ali; num coldre, guarda ali; no ombro esquerdo, guarda na mochila. |
 | Gatilho com o grip apertado | Coloca um item por vez num espaço ou na zona de descarte. |
 | B / X | Menu radial da hotbar da mão direita / esquerda. |
 | Gatilho esquerdo | Usa o item da mão esquerda. |
