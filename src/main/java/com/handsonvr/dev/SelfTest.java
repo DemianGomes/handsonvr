@@ -2,36 +2,46 @@ package com.handsonvr.dev;
 
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
+import com.handsonvr.backpack.Backpack;
+import com.handsonvr.hands.HandsController;
 import com.handsonvr.holster.BodyFrame;
 import com.handsonvr.holster.Holster;
 import com.handsonvr.holster.HolsterManager;
 import com.handsonvr.holster.HolsterStorage;
 import com.handsonvr.input.HotbarScroll;
 import com.handsonvr.input.OffhandUse;
+import com.handsonvr.input.VivecraftInput;
+import com.handsonvr.inv.InvOps;
+import com.handsonvr.radial.RadialMenu;
+import com.handsonvr.vr.Panel;
 import com.handsonvr.vr.SimulatedVr;
 import com.handsonvr.vr.VrBridge;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.block.Blocks;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.TitleScreen;
-import net.minecraft.client.option.Perspective;
-import net.minecraft.client.util.ScreenshotRecorder;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.resource.DataConfiguration;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.CameraType;
+import net.minecraft.client.Screenshot;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.WorldDataConfiguration;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.Difficulty;
-import net.minecraft.world.GameMode;
-import net.minecraft.world.GameRules;
-import net.minecraft.world.gen.GeneratorOptions;
-import net.minecraft.world.gen.WorldPresets;
-import net.minecraft.world.level.LevelInfo;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.levelgen.WorldOptions;
+import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.world.level.LevelSettings;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -41,27 +51,30 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 /**
  * Teste automático de DESENVOLVIMENTO (só com -Dhandsonvr.selftest=true, usado pelo "gradlew prodClient"): cria um
- * mundo plano, finge o VR (mãos posicionadas pelo teste) e confere os coldres de ponta a ponta — guardar, sacar,
- * soltar, mão esquerda, persistência, desenho —, a mão esquerda usando o item e a hotbar pelo analógico. Relatório
- * em run-prod/handsonvr-selftest.txt e fotos em run-prod/screenshots/.
+ * mundo plano, finge o VR (mãos e botões posicionados/apertados pelo teste) e confere de ponta a ponta:
+ * coldres (zonas amplas, guardar, sacar, soltar, mão esquerda), mochila (abrir, pegar, mover, juntar, um por vez,
+ * descartar, crafting, armadura, páginas), menu radial (equipar e esvaziar as duas mãos, mochila &lt;-&gt; hotbar),
+ * o inventário 100% cheio, persistência, mixins e desenho. Relatório em run-prod/handsonvr-selftest.txt e fotos em
+ * run-prod/screenshots/.
  */
 public final class SelfTest {
     private SelfTest() {}
 
     private static final boolean ENABLED = Boolean.getBoolean("handsonvr.selftest");
     private static final String WORLD = "handsonvr-selftest";
-    private static final int TIMEOUT_TICKS = 20 * 60 * 6;
+    private static final int TIMEOUT_TICKS = 20 * 60 * 10;
 
     private static int step = 0, stepTicks = 0, totalTicks = 0;
     private static boolean finished = false;
     private static final List<String> report = new ArrayList<>();
-    private static int swordSlot = -1;
+    private static int swordSlot = -1, counted = 0, emptySelected = -1;
     private static BlockPos torchAt;
 
     public static void register() {
@@ -94,6 +107,11 @@ public final class SelfTest {
         HandsOnVR.LOGGER.info("[SELFTEST] {}", what);
     }
 
+    private static void section(String what) {
+        report.add("");
+        report.add("== " + what);
+    }
+
     private static void check(boolean ok, String what) {
         if (ok) {
             pass(what);
@@ -102,7 +120,11 @@ public final class SelfTest {
         }
     }
 
-    private static void tick(MinecraftClient client) {
+    private static boolean at(int t) {
+        return stepTicks == t;
+    }
+
+    private static void tick(Minecraft client) {
         if (finished) {
             return;
         }
@@ -116,94 +138,215 @@ public final class SelfTest {
         try {
             runStep(client);
         } catch (Throwable t) {
-            fail("exceção no passo " + step + ": " + t);
+            fail("exceção no passo " + step + " (tick " + stepTicks + "): " + t);
             HandsOnVR.LOGGER.error("[SELFTEST] exceção", t);
             finish(client);
         }
     }
 
-    private static void finish(MinecraftClient client) {
+    private static void finish(Minecraft client) {
         finished = true;
         SimulatedVr.setEnabled(false);
         long fails = report.stream().filter(s -> s.startsWith("FAIL")).count();
-        report.add(0, "HandsOn VR self-test: " + (fails == 0 ? "TUDO OK" : fails + " falha(s)"));
+        long passes = report.stream().filter(s -> s.startsWith("PASS")).count();
+        report.add(0, "HandsOn VR self-test: " + (fails == 0 ? "TUDO OK" : fails + " falha(s)") + " (" + passes + " verificações OK)");
         try {
-            Files.write(client.runDirectory.toPath().resolve("handsonvr-selftest.txt"), report, StandardCharsets.UTF_8);
+            Files.write(client.gameDirectory.toPath().resolve("handsonvr-selftest.txt"), report, StandardCharsets.UTF_8);
         } catch (IOException e) {
             HandsOnVR.LOGGER.error("[SELFTEST] não consegui gravar o relatório", e);
         }
         HandsOnVR.LOGGER.info("[SELFTEST] FIM ({} falhas)", fails);
-        client.scheduleStop();
+        client.stop();
     }
 
-    private static void screenshot(MinecraftClient client, String name) {
-        ScreenshotRecorder.saveScreenshot(client.runDirectory, name + ".png", client.getFramebuffer(), text -> { });
+    private static void screenshot(Minecraft client, String name) {
+        Screenshot.grab(client.gameDirectory, name + ".png", client.gameRenderer.mainRenderTarget(), 1, text -> { });
         info("print " + name);
     }
 
-    private static void onServer(MinecraftClient client, Consumer<ServerPlayerEntity> action) {
-        var server = client.getServer();
-        UUID id = client.player.getUuid();
+    private static void onServer(Minecraft client, Consumer<ServerPlayer> action) {
+        var server = client.getSingleplayerServer();
+        UUID id = client.player.getUUID();
         server.execute(() -> {
-            ServerPlayerEntity player = server.getPlayerManager().getPlayer(id);
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player != null) {
                 action.accept(player);
             }
         });
     }
 
+    /** Some com os itens jogados no chão (para não voltarem ao inventário e bagunçar o próximo passo). */
+    private static void clearDrops(Minecraft client) {
+        onServer(client, player -> player.level()
+                .getEntitiesOfClass(ItemEntity.class, player.getBoundingBox().inflate(16), e -> true)
+                .forEach(ItemEntity::discard));
+    }
+
+    private static HandsController hands() {
+        return HandsOnVR.hands();
+    }
+
     private static HolsterManager holsters() {
         return HandsOnVR.holsters();
     }
 
+    // ------------------------------------------------------------------ mãos e botões simulados
+
+    /** Grip apertado/solto, como o Vivecraft avisaria. Retorna se foi consumido. */
+    private static boolean grip(Minecraft client, int hand, boolean pressed) {
+        SimulatedVr.setGrip(hand, pressed);
+        return pressed ? hands().onGripPressed(client, hand) : hands().onGripReleased(client, hand);
+    }
+
+    /** Botão do radial (B = 0, X = 1) apertado/solto. Retorna se foi consumido. */
+    private static boolean menuButton(Minecraft client, int hand, boolean pressed) {
+        SimulatedVr.setMenuButton(hand, pressed);
+        return hands().onMenuButton(client, hand, pressed);
+    }
+
     /** Põe a mão (0/1) bem no ponto do coldre, apontando para a frente do corpo. */
-    private static Vec3d handAt(MinecraftClient client, int hand, Holster h) {
+    private static Vec3 handAt(int hand, Holster h) {
         BodyFrame.Frame frame = holsters().body().compute();
-        Vec3d at = frame.anchor(h, HandsOnConfig.get());
+        Vec3 at = frame.anchor(h, HandsOnConfig.get());
         SimulatedVr.setHand(hand, at, frame.forward());
         return at;
+    }
+
+    /** Mão no coldre deslocada no referencial do tronco (direita, cima, frente), em metros. */
+    private static void handNear(int hand, Holster h, double right, double up, double forward) {
+        BodyFrame.Frame frame = holsters().body().compute();
+        Vec3 at = frame.anchor(h, HandsOnConfig.get()).add(frame.right().scale(right)).add(0, up, 0)
+                .add(frame.forward().scale(forward));
+        SimulatedVr.setHand(hand, at, frame.forward());
     }
 
     private static void handAway(int hand) {
         SimulatedVr.setHand(hand, null, null);
     }
 
+    /** Põe a PONTA da mão no ponto, entrando na direção {@code into}. */
+    private static void pointAt(int hand, Vec3 point, Vec3 into) {
+        Vec3 dir = into.normalize();
+        SimulatedVr.setHand(hand, point.subtract(dir.scale(VrBridge.POINTER_OFFSET)), dir);
+    }
+
+    private static void pointPanel(int hand, Panel panel, double x, double y) {
+        pointAt(hand, panel.world(x, y, 0.01), panel.normal().reverse());
+    }
+
+    /** Ponta da mão sobre um alvo da mochila aberta. */
+    private static void pointBackpack(int hand, Backpack.Element e) {
+        pointPanel(hand, hands().backpack().computePanel(), e.x(), e.y());
+    }
+
+    private static void pointBackpackSlot(int hand, int handler) {
+        pointBackpack(hand, hands().backpack().elementFor(handler));
+    }
+
+    /** Ponta da mão sobre um espaço do radial (ou o centro). */
+    private static void pointRadial(int hand, int index) {
+        double[] c = RadialMenu.position(index);
+        pointPanel(hand, hands().radial().panel(), c[0], c[1]);
+    }
+
+    /** Mão segurando a mochila na frente do rosto (a mochila pendura dela, virada para o rosto). */
+    private static void holdBackpackInFront(Minecraft client, int hand) {
+        Vec3 eye = client.player.getEyePosition();
+        SimulatedVr.setHand(hand, eye.add(0.03, -0.08, 0.42), new Vec3(0, 0, 1));
+    }
+
+    /** Mão longe de tudo (na frente, à direita): soltar aqui devolve o item. */
+    private static void pointAway(Minecraft client, int hand) {
+        Vec3 eye = client.player.getEyePosition();
+        SimulatedVr.setHand(hand, eye.add(-0.45, -0.25, 0.55), new Vec3(0, 0, 1));
+    }
+
+    /** Abre a mochila com a mão (mão no ombro esquerdo + grip) e a traz para a frente. */
+    private static boolean openBackpack(Minecraft client, int hand) {
+        handAt(hand, Holster.LEFT_SHOULDER);
+        holsters().refreshZone(hand);
+        boolean consumed = grip(client, hand, true);
+        holdBackpackInFront(client, hand);
+        hands().backpack().computePanel();
+        return consumed && hands().backpack().isOpen();
+    }
+
     private static String describe(ItemStack stack) {
         if (stack.isEmpty()) {
             return "vazio";
         }
-        Text name = stack.get(DataComponentTypes.CUSTOM_NAME);
+        Component name = stack.get(DataComponents.CUSTOM_NAME);
         return stack.getCount() + "x " + stack.getItem() + (name == null ? "" : " \"" + name.getString() + "\"");
     }
 
-    private static int find(PlayerInventory inv, net.minecraft.item.Item item) {
-        for (int i = 0; i < inv.size(); i++) {
-            if (inv.getStack(i).isOf(item)) {
+    private static int find(Inventory inv, Item item) {
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (inv.getItem(i).is(item)) {
                 return i;
             }
         }
         return -1;
     }
 
+    private static int total(Inventory inv, Item item) {
+        int n = 0;
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (inv.getItem(i).is(item)) {
+                n += inv.getItem(i).getCount();
+            }
+        }
+        return n;
+    }
+
+    private static ItemStack slot(LocalPlayer p, int handler) {
+        return InvOps.stack(p, handler);
+    }
+
+    private static int droppedNearby(Minecraft client, Item item) {
+        AABB box = client.player.getBoundingBox().inflate(12);
+        return client.level.getEntitiesOfClass(ItemEntity.class, box, e -> e.getItem().is(item)).stream()
+                .mapToInt(e -> e.getItem().getCount()).sum();
+    }
+
     // ------------------------------------------------------------------ roteiro
 
     /**
      * Com -Dhandsonvr.selftest.nullvr=true o Vivecraft roda o VR de verdade com o "VR nulo" (sem óculos): as ações dos
-     * controles existem, e o teste dispara os avisos de aperto que o controle dispararia (grip, gatilho esquerdo,
+     * controles existem, e o teste dispara os avisos de aperto que o controle dispararia (grips, gatilhos, A, B, X,
      * analógico direito) para conferir a ligação com o Vivecraft.
      */
     private static final boolean NULL_VR = Boolean.getBoolean("handsonvr.selftest.nullvr");
 
-    private static void runStep(MinecraftClient client) throws Exception {
+    /** Telas que mods do modpack abrem sozinhas (boas-vindas, configuração inicial...) já registradas. */
+    private static final java.util.Set<String> strayScreens = new java.util.HashSet<>();
+
+    /**
+     * Com o modpack inteiro, algum mod pode abrir uma tela por cima do jogo (boas-vindas, configuração inicial). O
+     * HandsOn ignora as mãos com tela aberta (como deve), então o teste fecha essas telas como o jogador faria —
+     * menos as que o próprio teste abre (menu de pausa e ajustes, no último passo).
+     */
+    private static void closeStrayScreen(Minecraft client) {
+        var screen = client.gui.screen();
+        if (screen == null || client.player == null || step < 2
+                || screen instanceof net.minecraft.client.gui.screens.PauseScreen
+                || screen instanceof com.handsonvr.screen.HandsOnScreen) {
+            return;
+        }
+        if (strayScreens.add(screen.getClass().getName())) {
+            info("tela aberta por outro mod fechada para o teste: " + screen.getClass().getName());
+        }
+        client.gui.setScreen(null);
+    }
+
+    private static void runStep(Minecraft client) throws Exception {
+        closeStrayScreen(client);
         if (NULL_VR && step >= 2) {
             runNullVr(client);
             return;
         }
-        HolsterManager hm = holsters();
-        PlayerInventory inv = client.player == null ? null : client.player.getInventory();
         switch (step) {
             case 0 -> { // tela inicial: mundo plano novo
-                if ((client.currentScreen instanceof TitleScreen && client.getOverlay() == null && stepTicks > 40)
+                if ((client.gui.screen() instanceof TitleScreen && client.gui.overlay() == null && stepTicks > 40)
                         || stepTicks > 600) {
                     deleteWorld(client);
                     createWorld(client);
@@ -212,385 +355,1066 @@ public final class SelfTest {
                 }
             }
             case 1 -> {
-                if (client.world == null || client.player == null) {
+                if (client.level == null || client.player == null) {
                     stepTicks = 0;
                 } else if (stepTicks > 60) {
                     pass("mod carregou e o mundo abriu (mixins aplicados)");
                     next();
                 }
             }
-            case 2 -> { // inventário de teste e VR simulado
-                if (stepTicks == 1) {
-                    onServer(client, player -> {
-                        player.changeGameMode(GameMode.SURVIVAL);
-                        PlayerInventory pinv = player.getInventory();
-                        pinv.clear();
-                        pinv.setStack(0, new ItemStack(Items.STONE_PICKAXE));
-                        ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
-                        sword.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Excalibur"));
-                        pinv.setStack(4, sword);
-                        pinv.setStack(2, new ItemStack(Items.BREAD, 8));
-                        pinv.setStack(40, new ItemStack(Items.TORCH, 16));
-                        player.getServerWorld().setTimeOfDay(1000);
-                    });
-                    SimulatedVr.setEnabled(true);
-                    client.player.setYaw(0);
-                    client.player.setPitch(0);
-                    handAway(0);
-                    handAway(1);
-                }
-                if (stepTicks == 20) {
-                    inv.selectedSlot = 4;
-                }
-                if (stepTicks == 30) {
-                    info("inventário: mão " + describe(client.player.getMainHandStack()) + ", esquerda "
-                            + describe(client.player.getOffHandStack()));
-                    next();
-                }
-            }
-            case 3 -> { // GUARDAR: espada na mão + grip no ombro direito
-                if (stepTicks == 1) {
-                    handAt(client, 0, Holster.RIGHT_SHOULDER);
-                }
-                if (stepTicks == 5) {
-                    check(hm.zoneOf(0) == Holster.RIGHT_SHOULDER, "mão no ombro direito: está na zona do coldre");
-                    check(hm.press(client, 0), "grip no ombro direito com a espada na mão: guardou");
-                }
-                if (stepTicks == 25) {
-                    swordSlot = find(inv, Items.DIAMOND_SWORD);
-                    HolsterStorage.Binding b = hm.binding(Holster.RIGHT_SHOULDER);
-                    info("depois de guardar: mão " + describe(client.player.getMainHandStack()) + ", espada no espaço " + swordSlot);
-                    check(client.player.getMainHandStack().isEmpty(), "guardar: a espada saiu da mão");
-                    check(swordSlot >= 9 && swordSlot < 36, "guardar: a espada foi para o inventário (fora da hotbar)");
-                    check(b != null && "minecraft:diamond_sword".equals(b.item()) && "Excalibur".equals(b.name()),
-                            "guardar: o coldre do ombro direito lembra a espada \"Excalibur\"");
-                    handAway(0);
-                    next();
-                }
-            }
-            case 4 -> { // SACAR com a picareta na mão; soltar devolve tudo
-                if (stepTicks == 1) {
-                    inv.selectedSlot = 0;
-                }
-                if (stepTicks == 5) {
-                    handAt(client, 0, Holster.RIGHT_SHOULDER);
-                }
-                if (stepTicks == 8) {
-                    SimulatedVr.setGrip(0, true);
-                    check(hm.press(client, 0), "grip no ombro direito: sacou a espada");
-                }
-                if (stepTicks == 25) {
-                    ItemStack hand = client.player.getMainHandStack();
-                    info("sacada: mão " + describe(hand) + "; picareta no espaço " + find(inv, Items.STONE_PICKAXE));
-                    check(hand.isOf(Items.DIAMOND_SWORD) && "Excalibur".equals(hand.getName().getString()),
-                            "sacar: a espada está na mão (no espaço selecionado da hotbar)");
-                    check(find(inv, Items.STONE_PICKAXE) == swordSlot, "sacar: a picareta foi para o lugar da espada");
-                    check(hm.isDrawing(0), "sacar: segurando o grip, a espada continua na mão");
-                    // A mão pode ir para qualquer lugar enquanto segura o grip.
-                    SimulatedVr.setHand(0, client.player.getEyePos().add(0.3, -0.3, 0.5), new Vec3d(0, 0, 1));
-                }
-                if (stepTicks == 40) {
-                    check(hm.isDrawing(0) && client.player.getMainHandStack().isOf(Items.DIAMOND_SWORD),
-                            "sacar: com a mão longe do ombro (grip ainda apertado), a espada continua na mão");
-                    SimulatedVr.setGrip(0, false);
-                }
-                if (stepTicks == 60) {
-                    info("soltou: mão " + describe(client.player.getMainHandStack()) + ", espada no espaço "
-                            + find(inv, Items.DIAMOND_SWORD));
-                    check(!hm.isDrawing(0), "soltar o grip: a espada voltou para o coldre");
-                    check(client.player.getMainHandStack().isOf(Items.STONE_PICKAXE) && inv.selectedSlot == 0,
-                            "soltar o grip: a mão voltou a segurar a picareta");
-                    check(find(inv, Items.DIAMOND_SWORD) == swordSlot, "soltar o grip: a espada voltou para o mesmo lugar");
-                    handAway(0);
-                    next();
-                }
-            }
-            case 5 -> { // GUARDAR com a mão esquerda: tochas no quadril esquerdo
-                if (stepTicks == 1) {
-                    handAt(client, 1, Holster.LEFT_HIP);
-                }
-                if (stepTicks == 5) {
-                    check(hm.zoneOf(1) == Holster.LEFT_HIP, "mão esquerda no quadril esquerdo: está na zona do coldre");
-                    check(hm.press(client, 1), "grip no quadril esquerdo com as tochas na mão esquerda: guardou");
-                }
-                if (stepTicks == 25) {
-                    HolsterStorage.Binding b = hm.binding(Holster.LEFT_HIP);
-                    int torches = find(inv, Items.TORCH);
-                    info("tochas guardadas no espaço " + torches + "; mão esquerda " + describe(client.player.getOffHandStack()));
-                    check(client.player.getOffHandStack().isEmpty() && torches >= 9 && torches < 36,
-                            "guardar (mão esquerda): as tochas saíram da mão e foram para o inventário");
-                    check(b != null && "minecraft:torch".equals(b.item()), "guardar (mão esquerda): o quadril esquerdo lembra as tochas");
-                    handAway(1);
-                    next();
-                }
-            }
-            case 6 -> { // SACAR na mão esquerda e colocar uma tocha com o gatilho esquerdo
-                if (stepTicks == 1) {
-                    handAt(client, 1, Holster.LEFT_HIP);
-                }
-                if (stepTicks == 5) {
-                    SimulatedVr.setGrip(1, true);
-                    check(hm.press(client, 1), "grip no quadril esquerdo: sacou as tochas");
-                }
-                if (stepTicks == 20) {
-                    check(client.player.getOffHandStack().isOf(Items.TORCH),
-                            "sacar (mão esquerda): as tochas estão na mão esquerda");
-                    // Mão esquerda apontando para o chão 2 blocos à frente.
-                    Vec3d feet = client.player.getPos();
-                    torchAt = BlockPos.ofFloored(feet.x, feet.y, feet.z + 2);
-                    Vec3d hand = client.player.getEyePos().add(-0.2, -0.5, 0.3);
-                    Vec3d target = new Vec3d(torchAt.getX() + 0.5, feet.y - 0.001, torchAt.getZ() + 0.5);
-                    SimulatedVr.setHand(1, hand, target.subtract(hand));
-                }
-                if (stepTicks == 22) {
-                    OffhandUse.use(client); // o mesmo que o gatilho esquerdo faz
-                    info("gatilho esquerdo: " + OffhandUse.debugLast());
-                }
-                if (stepTicks == 40) {
-                    boolean placed = client.world.getBlockState(torchAt).isOf(Blocks.TORCH);
-                    info("tocha em " + torchAt.toShortString() + ": " + client.world.getBlockState(torchAt).getBlock()
-                            + "; mão esquerda " + describe(client.player.getOffHandStack()));
-                    check(placed, "gatilho esquerdo: colocou a tocha onde a mão esquerda aponta");
-                    check(client.player.getOffHandStack().getCount() == 15, "gatilho esquerdo: gastou uma tocha (16 -> 15)");
-                    SimulatedVr.setGrip(1, false);
-                }
-                if (stepTicks == 60) {
-                    int torches = find(inv, Items.TORCH);
-                    check(client.player.getOffHandStack().isEmpty() && torches >= 9 && torches < 36
-                                    && inv.getStack(torches).getCount() == 15,
-                            "soltar o grip esquerdo: as tochas (15) voltaram para o coldre");
-                    handAway(1);
-                    next();
-                }
-            }
-            case 7 -> { // GUARDAR o pão no quadril direito
-                if (stepTicks == 1) {
-                    inv.selectedSlot = 2;
-                }
-                if (stepTicks == 5) {
-                    handAt(client, 0, Holster.RIGHT_HIP);
-                }
-                if (stepTicks == 8) {
-                    check(hm.press(client, 0), "grip no quadril direito com o pão na mão: guardou");
-                }
-                if (stepTicks == 25) {
-                    HolsterStorage.Binding b = hm.binding(Holster.RIGHT_HIP);
-                    check(b != null && "minecraft:bread".equals(b.item()) && client.player.getMainHandStack().isEmpty(),
-                            "guardar: o pão saiu da mão e o quadril direito lembra dele");
-                    handAway(0);
-                    inv.selectedSlot = 0;
-                    next();
-                }
-            }
-            case 8 -> { // ZONAS: cada coldre no lugar certo, sem misturar; virar só a cabeça não leva os coldres
-                Holster[] all = Holster.values();
-                int i = (stepTicks - 1) / 4;
-                if (i < all.length && (stepTicks - 1) % 4 == 0) {
-                    handAt(client, 0, all[i]);
-                }
-                if (i < all.length && (stepTicks - 1) % 4 == 3) {
-                    check(hm.zoneOf(0) == all[i], "zona: mão no " + all[i] + " -> " + hm.zoneOf(0));
-                }
-                if (stepTicks == all.length * 4 + 1) {
-                    SimulatedVr.setHand(0, client.player.getEyePos().add(0, -0.3, 0.6), new Vec3d(0, 0, 1));
-                }
-                if (stepTicks == all.length * 4 + 4) {
-                    check(hm.zoneOf(0) == null, "zona: mão na frente do corpo -> fora dos coldres");
-                    BodyFrame.Frame before = hm.body().compute();
-                    client.player.setYaw(20); // só a cabeça (dentro da zona morta do tronco)
-                    BodyFrame.Frame after = hm.body().compute();
-                    double moved = before.anchor(Holster.RIGHT_HIP, HandsOnConfig.get())
-                            .distanceTo(after.anchor(Holster.RIGHT_HIP, HandsOnConfig.get()));
-                    info(String.format(java.util.Locale.ROOT, "virando a cabeça 20°: o quadril direito andou %.3f m", moved));
-                    check(moved < 0.06, "virar só a cabeça um pouco não leva os coldres junto");
-                    client.player.setYaw(0);
-                    handAway(0);
-                    next();
-                }
-            }
-            case 9 -> { // FOTOS dos itens no corpo
-                if (stepTicks == 1) {
-                    client.options.setPerspective(Perspective.THIRD_PERSON_FRONT);
-                    client.player.setPitch(0);
-                }
-                if (stepTicks == 25) {
-                    screenshot(client, "01-coldres-frente");
-                    client.options.setPerspective(Perspective.THIRD_PERSON_BACK);
-                }
-                if (stepTicks == 50) {
-                    screenshot(client, "02-coldres-costas");
-                    client.options.setPerspective(Perspective.FIRST_PERSON);
-                    client.player.setPitch(70);
-                }
-                if (stepTicks == 75) {
-                    screenshot(client, "03-olhando-para-baixo");
-                    // Mão no quadril direito: o pão fica um pouco maior (sinal de "pode pegar").
-                    handAt(client, 0, Holster.RIGHT_HIP);
-                }
-                if (stepTicks == 95) {
-                    screenshot(client, "04-mao-no-quadril");
-                    handAway(0);
-                    client.player.setPitch(0);
-                    next();
-                }
-            }
-            case 10 -> { // persistência, mixin do Vivecraft, hotbar pelo analógico, vibração
-                if (stepTicks == 5) {
-                    EnumMap<Holster, HolsterStorage.Binding> saved = HolsterStorage.load(HolsterStorage.worldKey(client));
-                    info("salvo em disco: " + saved);
-                    check(saved.size() == 3 && saved.containsKey(Holster.RIGHT_SHOULDER) && saved.containsKey(Holster.LEFT_HIP)
-                            && saved.containsKey(Holster.RIGHT_HIP), "os coldres ficam salvos para este mundo");
-                    if (VrBridge.isVivecraftLoaded()) {
-                        Class<?> backpack = Class.forName("org.vivecraft.client_vr.gameplay.trackers.BackpackTracker");
-                        boolean mixed = Stream.of(backpack.getDeclaredMethods()).anyMatch(m -> m.getName().contains("handsonvr$"));
-                        check(mixed, "Vivecraft: a troca pelas costas fica desligada com coldres nos ombros (mixin aplicado)");
-                    } else {
-                        info("Vivecraft ausente: mixin da troca pelas costas não conferido");
-                    }
-                    inv.selectedSlot = 0;
-                    HotbarScroll.scroll(client, 1);
-                    boolean forward = inv.selectedSlot == 1;
-                    HotbarScroll.scroll(client, -1);
-                    HotbarScroll.scroll(client, -1);
-                    check(forward && inv.selectedSlot == 8, "analógico direito: próximo/anterior da hotbar (dando a volta)");
-                    inv.selectedSlot = 0;
-                    check(SimulatedVr.pulseCount(0) > 0 && SimulatedVr.pulseCount(1) > 0,
-                            "vibração nas duas mãos ao guardar/sacar (" + SimulatedVr.pulseCount(0) + "/" + SimulatedVr.pulseCount(1) + ")");
-                }
-                if (stepTicks == 10) {
-                    client.setScreen(new net.minecraft.client.gui.screen.GameMenuScreen(true));
-                }
-                if (stepTicks == 20) {
-                    // O botão "Coldres VR" no menu de pausa abre os ajustes.
-                    var button = client.currentScreen == null ? null : client.currentScreen.children().stream()
-                            .filter(e -> e instanceof net.minecraft.client.gui.widget.ButtonWidget b
-                                    && b.getMessage().getString().equals(Text.translatable("button.handsonvr.settings").getString()))
-                            .map(e -> (net.minecraft.client.gui.widget.ButtonWidget) e).findFirst().orElse(null);
-                    check(button != null, "menu de pausa: tem o botão dos coldres");
-                    if (button != null) {
-                        button.onPress();
-                    }
-                }
-                if (stepTicks == 30) {
-                    check(client.currentScreen instanceof com.handsonvr.screen.HandsOnScreen,
-                            "o botão do menu de pausa abre os ajustes dos coldres");
-                    screenshot(client, "05-ajustes");
-                }
-                if (stepTicks == 40) {
-                    client.setScreen(null);
-                }
-                if (stepTicks == 50) {
-                    finish(client);
-                }
-            }
+            case 2 -> setupHolsterInventory(client);
+            case 3 -> holsterStoreSword(client);
+            case 4 -> holsterDrawSword(client);
+            case 5 -> holsterStoreTorches(client);
+            case 6 -> holsterDrawTorchesAndPlace(client);
+            case 7 -> holsterStoreBread(client);
+            case 8 -> holsterZones(client);
+            case 9 -> holsterPhotos(client);
+            case 10 -> backpackBasics(client);
+            case 11 -> backpackStacksAndDrop(client);
+            case 12 -> backpackCraftingArmorPages(client);
+            case 13 -> radialEquip(client);
+            case 14 -> radialWithBackpack(client);
+            case 15 -> fullInventory(client);
+            case 16 -> photos(client);
+            case 17 -> persistenceAndMisc(client);
             default -> { }
         }
     }
 
+    // ------------------------------------------------------------------ coldres
+
+    private static void setupHolsterInventory(Minecraft client) {
+        Inventory inv = client.player.getInventory();
+        if (at(1)) {
+            section("Coldres");
+            onServer(client, player -> {
+                player.setGameMode(GameType.SURVIVAL);
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.STONE_PICKAXE));
+                ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+                sword.set(DataComponents.CUSTOM_NAME, Component.literal("Excalibur"));
+                pinv.setItem(4, sword);
+                pinv.setItem(2, new ItemStack(Items.BREAD, 8));
+                pinv.setItem(40, new ItemStack(Items.TORCH, 16));
+            });
+            SimulatedVr.setEnabled(true);
+            client.player.setYRot(0);
+            client.player.setXRot(0);
+            handAway(0);
+            handAway(1);
+        }
+        if (at(20)) {
+            inv.setSelectedSlot(4);
+        }
+        if (at(30)) {
+            info("inventário: mão " + describe(client.player.getMainHandItem()) + ", esquerda "
+                    + describe(client.player.getOffhandItem()));
+            next();
+        }
+    }
+
+    private static void holsterStoreSword(Minecraft client) { // GUARDAR: espada na mão + grip no ombro direito
+        Inventory inv = client.player.getInventory();
+        HolsterManager hm = holsters();
+        if (at(1)) {
+            handAt(0, Holster.RIGHT_SHOULDER);
+        }
+        if (at(5)) {
+            check(hm.zoneOf(0) == Holster.RIGHT_SHOULDER, "mão no ombro direito: está na zona do coldre");
+            check(grip(client, 0, true), "grip no ombro direito com a espada na mão: guardou");
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(25)) {
+            swordSlot = find(inv, Items.DIAMOND_SWORD);
+            HolsterStorage.Binding b = hm.binding(Holster.RIGHT_SHOULDER);
+            info("depois de guardar: mão " + describe(client.player.getMainHandItem()) + ", espada no espaço " + swordSlot);
+            check(client.player.getMainHandItem().isEmpty(), "guardar: a espada saiu da mão");
+            check(swordSlot >= 9 && swordSlot < 36, "guardar: a espada foi para o inventário (fora da hotbar)");
+            check(b != null && "minecraft:diamond_sword".equals(b.item()) && "Excalibur".equals(b.name()),
+                    "guardar: o coldre do ombro direito lembra a espada \"Excalibur\"");
+            handAway(0);
+            next();
+        }
+    }
+
+    private static void holsterDrawSword(Minecraft client) { // SACAR com a picareta na mão; soltar devolve tudo
+        Inventory inv = client.player.getInventory();
+        HolsterManager hm = holsters();
+        if (at(1)) {
+            inv.setSelectedSlot(0);
+        }
+        if (at(5)) {
+            handAt(0, Holster.RIGHT_SHOULDER);
+        }
+        if (at(8)) {
+            check(grip(client, 0, true) && hm.isDrawing(0), "grip no ombro direito: sacou a espada");
+        }
+        if (at(25)) {
+            ItemStack hand = client.player.getMainHandItem();
+            info("sacada: mão " + describe(hand) + "; picareta no espaço " + find(inv, Items.STONE_PICKAXE));
+            check(hand.is(Items.DIAMOND_SWORD) && "Excalibur".equals(hand.getHoverName().getString()),
+                    "sacar: a espada está na mão (no espaço selecionado da hotbar)");
+            check(find(inv, Items.STONE_PICKAXE) == swordSlot, "sacar: a picareta foi para o lugar da espada");
+            check(hm.isDrawing(0), "sacar: segurando o grip, a espada continua na mão");
+            SimulatedVr.setHand(0, client.player.getEyePosition().add(0.3, -0.3, 0.5), new Vec3(0, 0, 1));
+        }
+        if (at(40)) {
+            check(hm.isDrawing(0) && client.player.getMainHandItem().is(Items.DIAMOND_SWORD),
+                    "sacar: com a mão longe do ombro (grip ainda apertado), a espada continua na mão");
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(60)) {
+            info("soltou: mão " + describe(client.player.getMainHandItem()) + ", espada no espaço " + find(inv, Items.DIAMOND_SWORD));
+            check(!hm.isDrawing(0), "soltar o grip: a espada voltou para o coldre");
+            check(client.player.getMainHandItem().is(Items.STONE_PICKAXE) && inv.getSelectedSlot() == 0,
+                    "soltar o grip: a mão voltou a segurar a picareta");
+            check(find(inv, Items.DIAMOND_SWORD) == swordSlot, "soltar o grip: a espada voltou para o mesmo lugar");
+            handAway(0);
+            next();
+        }
+    }
+
+    private static void holsterStoreTorches(Minecraft client) { // GUARDAR com a mão esquerda: tochas no quadril esquerdo
+        Inventory inv = client.player.getInventory();
+        HolsterManager hm = holsters();
+        if (at(1)) {
+            handAt(1, Holster.LEFT_HIP);
+        }
+        if (at(5)) {
+            check(hm.zoneOf(1) == Holster.LEFT_HIP, "mão esquerda no quadril esquerdo: está na zona do coldre");
+            check(grip(client, 1, true), "grip no quadril esquerdo com as tochas na mão esquerda: guardou");
+            SimulatedVr.setGrip(1, false);
+        }
+        if (at(25)) {
+            HolsterStorage.Binding b = hm.binding(Holster.LEFT_HIP);
+            int torches = find(inv, Items.TORCH);
+            info("tochas guardadas no espaço " + torches + "; mão esquerda " + describe(client.player.getOffhandItem()));
+            check(client.player.getOffhandItem().isEmpty() && torches >= 9 && torches < 36,
+                    "guardar (mão esquerda): as tochas saíram da mão e foram para o inventário");
+            check(b != null && "minecraft:torch".equals(b.item()), "guardar (mão esquerda): o quadril esquerdo lembra as tochas");
+            handAway(1);
+            next();
+        }
+    }
+
+    private static void holsterDrawTorchesAndPlace(Minecraft client) { // SACAR na mão esquerda e colocar uma tocha
+        Inventory inv = client.player.getInventory();
+        if (at(1)) {
+            handAt(1, Holster.LEFT_HIP);
+        }
+        if (at(5)) {
+            check(grip(client, 1, true), "grip no quadril esquerdo: sacou as tochas");
+        }
+        if (at(20)) {
+            check(client.player.getOffhandItem().is(Items.TORCH), "sacar (mão esquerda): as tochas estão na mão esquerda");
+            Vec3 feet = client.player.position();
+            torchAt = BlockPos.containing(feet.x, feet.y, feet.z + 2);
+            Vec3 hand = client.player.getEyePosition().add(-0.2, -0.5, 0.3);
+            Vec3 target = new Vec3(torchAt.getX() + 0.5, feet.y - 0.001, torchAt.getZ() + 0.5);
+            SimulatedVr.setHand(1, hand, target.subtract(hand));
+        }
+        if (at(22)) {
+            check(!hands().onTrigger(client, 1), "gatilho esquerdo longe da mochila/radial não é do menu (usa o item)");
+            OffhandUse.use(client); // o mesmo que o gatilho esquerdo faz em seguida
+            info("gatilho esquerdo: " + OffhandUse.debugLast());
+        }
+        if (at(40)) {
+            boolean placed = client.level.getBlockState(torchAt).is(Blocks.TORCH);
+            info("tocha em " + torchAt.toShortString() + ": " + client.level.getBlockState(torchAt).getBlock()
+                    + "; mão esquerda " + describe(client.player.getOffhandItem()));
+            check(placed, "gatilho esquerdo: colocou a tocha onde a mão esquerda aponta");
+            check(client.player.getOffhandItem().getCount() == 15, "gatilho esquerdo: gastou uma tocha (16 -> 15)");
+            SimulatedVr.setGrip(1, false);
+        }
+        if (at(60)) {
+            int torches = find(inv, Items.TORCH);
+            check(client.player.getOffhandItem().isEmpty() && torches >= 9 && torches < 36
+                    && inv.getItem(torches).getCount() == 15, "soltar o grip esquerdo: as tochas (15) voltaram para o coldre");
+            handAway(1);
+            next();
+        }
+    }
+
+    private static void holsterStoreBread(Minecraft client) { // GUARDAR o pão no quadril direito
+        Inventory inv = client.player.getInventory();
+        if (at(1)) {
+            inv.setSelectedSlot(2);
+        }
+        if (at(5)) {
+            handAt(0, Holster.RIGHT_HIP);
+        }
+        if (at(8)) {
+            check(grip(client, 0, true), "grip no quadril direito com o pão na mão: guardou");
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(25)) {
+            HolsterStorage.Binding b = holsters().binding(Holster.RIGHT_HIP);
+            check(b != null && "minecraft:bread".equals(b.item()) && client.player.getMainHandItem().isEmpty(),
+                    "guardar: o pão saiu da mão e o quadril direito lembra dele");
+            handAway(0);
+            inv.setSelectedSlot(0);
+            next();
+        }
+    }
+
+    /** Pontos de borda de cada zona (fora da antiga esfera de 14-16 cm, dentro do novo elipsoide). */
+    private static final Object[][] WIDE = {
+            {Holster.RIGHT_SHOULDER, 0.0, 0.19, 0.0, "acima do ombro (19 cm)"},
+            {Holster.RIGHT_SHOULDER, 0.0, 0.0, -0.16, "atrás do ombro (16 cm)"},
+            {Holster.RIGHT_SHOULDER, 0.14, 0.0, 0.0, "por fora do ombro (14 cm)"},
+            {Holster.RIGHT_SHOULDER, 0.08, 0.12, -0.09, "na diagonal, por cima e por trás"},
+            {Holster.LEFT_SHOULDER, 0.0, 0.17, -0.08, "mochila: por cima e por trás do ombro esquerdo"},
+            {Holster.LEFT_SHOULDER, -0.13, 0.05, 0.0, "mochila: por fora do ombro esquerdo"},
+            {Holster.RIGHT_HIP, 0.0, -0.15, 0.0, "abaixo do quadril direito (15 cm)"},
+            {Holster.RIGHT_HIP, 0.0, 0.0, 0.13, "à frente do quadril direito (13 cm)"},
+            {Holster.RIGHT_HIP, 0.12, 0.0, 0.0, "por fora do quadril direito (12 cm)"},
+            {Holster.LEFT_HIP, -0.12, 0.0, 0.0, "por fora do quadril esquerdo (12 cm)"},
+            {Holster.LEFT_HIP, 0.0, 0.0, -0.14, "atrás do quadril esquerdo (14 cm)"},
+    };
+
+    private static void holsterZones(Minecraft client) { // ZONAS amplas, sem misturar; virar a cabeça não leva
+        HolsterManager hm = holsters();
+        Holster[] all = Holster.values();
+        int i = (stepTicks - 1) / 4;
+        if (at(1)) {
+            section("Zonas dos coldres e da mochila");
+        }
+        if (i < all.length && (stepTicks - 1) % 4 == 0) {
+            handAt(0, all[i]);
+        }
+        if (i < all.length && (stepTicks - 1) % 4 == 3) {
+            check(hm.zoneOf(0) == all[i], "zona: mão no centro do " + all[i] + " -> " + hm.zoneOf(0));
+            handAway(0);
+        }
+        int base = all.length * 4 + 1;
+        int j = (stepTicks - base) / 4;
+        if (stepTicks >= base && j < WIDE.length) {
+            Object[] w = WIDE[j];
+            Holster h = (Holster) w[0];
+            if ((stepTicks - base) % 4 == 0) {
+                handNear(0, h, (double) w[1], (double) w[2], (double) w[3]);
+            }
+            if ((stepTicks - base) % 4 == 3) {
+                check(hm.zoneOf(0) == h, "zona ampla: " + w[4] + " -> " + hm.zoneOf(0));
+                handAway(0);
+            }
+        }
+        int end = base + WIDE.length * 4;
+        if (at(end)) {
+            SimulatedVr.setHand(0, client.player.getEyePosition().add(0, -0.3, 0.6), new Vec3(0, 0, 1));
+        }
+        if (at(end + 3)) {
+            check(hm.zoneOf(0) == null, "zona: mão na frente do corpo -> fora de tudo");
+            BodyFrame.Frame before = hm.body().compute();
+            client.player.setYRot(20);
+            BodyFrame.Frame after = hm.body().compute();
+            double moved = before.anchor(Holster.RIGHT_HIP, HandsOnConfig.get()).distanceTo(after.anchor(Holster.RIGHT_HIP, HandsOnConfig.get()));
+            info(String.format(Locale.ROOT, "virando a cabeça 20°: o quadril direito andou %.3f m", moved));
+            check(moved < 0.06, "virar só a cabeça um pouco não leva os coldres junto");
+            client.player.setYRot(0);
+            handAway(0);
+            next();
+        }
+    }
+
+    private static void holsterPhotos(Minecraft client) {
+        if (at(1)) {
+            client.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+            client.player.setXRot(0);
+        }
+        if (at(25)) {
+            screenshot(client, "01-coldres-frente");
+            client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        }
+        if (at(50)) {
+            screenshot(client, "02-coldres-e-mochila-costas");
+            client.options.setCameraType(CameraType.FIRST_PERSON);
+            client.player.setXRot(70);
+        }
+        if (at(75)) {
+            screenshot(client, "03-olhando-para-baixo");
+            handAt(0, Holster.RIGHT_HIP);
+        }
+        if (at(95)) {
+            screenshot(client, "04-mao-no-quadril");
+            handAway(0);
+            client.player.setXRot(0);
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ mochila
+
+    /** Inventário da mochila: espada na mão (hotbar 0), tocha na esquerda, itens nas 2 primeiras páginas. */
+    private static void setupBackpackInventory(Minecraft client) {
+        onServer(client, player -> {
+            Inventory pinv = player.getInventory();
+            pinv.clearContent();
+            pinv.setItem(0, new ItemStack(Items.STONE_SWORD));
+            pinv.setItem(2, new ItemStack(Items.STONE_PICKAXE));
+            pinv.setItem(4, new ItemStack(Items.BREAD, 8));
+            pinv.setItem(40, new ItemStack(Items.TORCH, 16));
+            pinv.setItem(9, new ItemStack(Items.BOW));
+            pinv.setItem(10, new ItemStack(Items.SAND, 32));
+            pinv.setItem(11, new ItemStack(Items.OAK_PLANKS, 16));
+            pinv.setItem(12, new ItemStack(Items.IRON_HELMET));
+            pinv.setItem(13, new ItemStack(Items.SAND, 20));
+            pinv.setItem(14, new ItemStack(Items.DIRT, 64));
+            pinv.setItem(18, new ItemStack(Items.ARROW, 16));
+        });
+    }
+
+    private static void backpackBasics(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        Backpack bp = hc.backpack();
+        if (at(1)) {
+            section("Mochila: abrir, pegar e soltar");
+            setupBackpackInventory(client);
+        }
+        if (at(15)) {
+            inv.setSelectedSlot(0);
+            handAt(1, Holster.LEFT_SHOULDER);
+        }
+        if (at(19)) {
+            check(holsters().zoneOf(1) == Holster.LEFT_SHOULDER, "mão esquerda no ombro esquerdo: zona da mochila");
+            check(openBackpack(client, 1), "grip no ombro esquerdo: a mochila abriu na mão esquerda");
+            check(bp.holder() == 1 && hc.isHandHidden(1) && !hc.isHandHidden(0),
+                    "mochila na mão esquerda: a tocha some (só a mochila aparece nessa mão)");
+            check(HandsOnVR.blockSwing(), "mochila aberta: o golpe com o braço do Vivecraft fica desligado");
+            check(hc.onTrigger(client, 1), "gatilho da mão que segura a mochila não usa o item escondido");
+        }
+        if (at(22)) {
+            pointBackpackSlot(0, InvOps.MAIN_START); // o arco
+        }
+        if (at(25)) {
+            Backpack.Element h = bp.hover(0);
+            check(h != null && h.handler() == InvOps.MAIN_START, "mão direita sobre o 1º espaço: destacado (" + h + ")");
+            check(grip(client, 0, true), "grip no arco: pegou");
+        }
+        if (at(32)) {
+            info("pegou: mão " + describe(p.getMainHandItem()) + "; espaço 9 tem " + describe(slot(p, 9)));
+            check(p.getMainHandItem().is(Items.BOW), "o arco está na mão direita (a espada sumiu)");
+            check(hc.displayStack(p, 9).isEmpty(), "o espaço do arco aparece vazio na mochila (o arco está na mão)");
+            SimulatedVr.setGrip(1, false); // solta a mochila, continua com o arco
+        }
+        if (at(38)) {
+            check(!bp.isOpen() && !hc.isHandHidden(1), "soltar o grip esquerdo: a mochila some e a tocha volta");
+            check(p.getMainHandItem().is(Items.BOW) && p.getOffhandItem().is(Items.TORCH),
+                    "sem a mochila, o arco continua na mão direita (e a tocha na esquerda)");
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(45)) {
+            check(p.getMainHandItem().is(Items.STONE_SWORD) && slot(p, 9).is(Items.BOW),
+                    "soltar o grip direito: o arco volta para a mochila e a espada volta para a mão");
+            next();
+        }
+    }
+
+    private static void backpackStacksAndDrop(Minecraft client) {
+        LocalPlayer p = client.player;
+        HandsController hc = hands();
+        Backpack bp = hc.backpack();
+        if (at(1)) {
+            section("Mochila: mover, juntar, descartar");
+            check(openBackpack(client, 1), "abriu a mochila de novo");
+        }
+        if (at(4)) {
+            pointBackpackSlot(0, 10); // 32 areia
+        }
+        if (at(6)) {
+            grip(client, 0, true);
+        }
+        if (at(9)) {
+            check(p.getMainHandItem().is(Items.SAND) && p.getMainHandItem().getCount() == 32, "pegou 32 de areia");
+            pointBackpackSlot(0, 13); // 20 areia
+        }
+        if (at(12)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(20)) {
+            info("juntou: espaço 13 = " + describe(slot(p, 13)) + ", espaço 10 = " + describe(slot(p, 10)));
+            check(slot(p, 13).is(Items.SAND) && slot(p, 13).getCount() == 52 && slot(p, 10).isEmpty(),
+                    "soltar sobre a pilha igual: juntou (32 + 20 = 52)");
+            check(p.getMainHandItem().is(Items.STONE_SWORD), "depois de colocar, a espada volta para a mão");
+            pointBackpackSlot(0, 9); // o arco
+        }
+        if (at(22)) {
+            grip(client, 0, true);
+            pointBackpackSlot(0, 12); // o capacete: troca de lugar
+        }
+        if (at(25)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(32)) {
+            check(slot(p, 12).is(Items.BOW) && slot(p, 9).is(Items.IRON_HELMET),
+                    "soltar sobre um item diferente: os dois trocam de lugar (arco <-> capacete)");
+            pointBackpackSlot(0, 13);
+        }
+        if (at(34)) {
+            grip(client, 0, true); // 52 areia
+            pointBackpack(0, bp.element(Backpack.Kind.DROP));
+        }
+        if (at(37)) {
+            check(bp.hover(0) != null && bp.hover(0).kind() == Backpack.Kind.DROP, "mão sobre a zona de descarte: destacada");
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(50)) {
+            int dropped = droppedNearby(client, Items.SAND);
+            info("areia no chão: " + dropped);
+            check(slot(p, 13).isEmpty() && dropped == 52, "soltar na zona de descarte: a pilha inteira caiu no chão (52)");
+            check(p.getMainHandItem().is(Items.STONE_SWORD), "descartou e a mão voltou para a espada");
+            clearDrops(client);
+            pointBackpackSlot(0, 14); // 64 terra
+        }
+        if (at(53)) {
+            grip(client, 0, true);
+            pointBackpack(0, bp.element(Backpack.Kind.DROP));
+        }
+        if (at(55) || at(57) || at(59)) {
+            check(hc.onTrigger(client, 0), "gatilho com o grip na zona de descarte: um item (" + (stepTicks - 53) / 2 + "/3)");
+        }
+        if (at(66)) {
+            check(p.getMainHandItem().is(Items.DIRT) && p.getMainHandItem().getCount() == 61,
+                    "três gatilhos: soltou 3 de terra, 61 continuam na mão (" + describe(p.getMainHandItem()) + ")");
+            check(droppedNearby(client, Items.DIRT) == 3, "três itens de terra no chão");
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(74)) {
+            check(slot(p, 14).is(Items.DIRT) && slot(p, 14).getCount() == 61, "soltar longe: as 61 de terra voltaram para o lugar");
+            clearDrops(client);
+            SimulatedVr.setGrip(1, false);
+        }
+        if (at(80)) {
+            next();
+        }
+    }
+
+    private static void backpackCraftingArmorPages(Minecraft client) {
+        LocalPlayer p = client.player;
+        HandsController hc = hands();
+        Backpack bp = hc.backpack();
+        if (at(1)) {
+            section("Mochila: crafting, armadura e páginas");
+            openBackpack(client, 1);
+            pointBackpackSlot(0, 11); // 16 tábuas
+        }
+        if (at(3)) {
+            grip(client, 0, true);
+        }
+        for (int k = 0; k < 4; k++) { // uma tábua em cada espaço do crafting (gatilho com o grip)
+            if (at(6 + k * 4)) {
+                pointBackpackSlot(0, InvOps.CRAFT_START + k);
+            }
+            if (at(8 + k * 4)) {
+                check(hc.onTrigger(client, 0), "gatilho no crafting " + (k + 1) + ": colocou uma tábua");
+            }
+        }
+        if (at(24)) {
+            boolean oneEach = true;
+            for (int k = 0; k < 4; k++) {
+                oneEach &= slot(p, InvOps.CRAFT_START + k).is(Items.OAK_PLANKS) && slot(p, InvOps.CRAFT_START + k).getCount() == 1;
+            }
+            check(oneEach, "crafting 2x2: uma tábua em cada espaço");
+            check(p.getMainHandItem().getCount() == 12, "na mão ficaram 12 tábuas");
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(34)) {
+            check(slot(p, 11).getCount() == 12 && p.getMainHandItem().is(Items.STONE_SWORD), "soltar longe: as 12 tábuas voltaram");
+            check(slot(p, InvOps.RESULT).is(Items.CRAFTING_TABLE), "o resultado mostra a mesa de trabalho");
+            pointBackpack(0, bp.element(Backpack.Kind.CRAFT_OUT));
+        }
+        if (at(36)) {
+            grip(client, 0, true);
+            SimulatedVr.setGrip(0, false);
+            grip(client, 0, false);
+        }
+        if (at(46)) {
+            check(find(p.getInventory(), Items.CRAFTING_TABLE) >= 0, "grip no resultado: fabricou a mesa e ela foi para o inventário");
+            boolean emptyGrid = true;
+            for (int k = 0; k < 4; k++) {
+                emptyGrid &= slot(p, InvOps.CRAFT_START + k).isEmpty();
+            }
+            check(emptyGrid, "o crafting gastou as 4 tábuas");
+            pointBackpackSlot(0, 9); // capacete (trocado de lugar antes)
+        }
+        if (at(48)) {
+            grip(client, 0, true);
+            pointBackpackSlot(0, InvOps.ARMOR_START); // espaço do capacete
+        }
+        if (at(51)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(60)) {
+            check(p.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET) && slot(p, 9).isEmpty(),
+                    "soltar o capacete no espaço da cabeça: vestiu");
+            pointBackpack(0, bp.element(Backpack.Kind.NEXT));
+        }
+        if (at(62)) {
+            grip(client, 0, true);
+            SimulatedVr.setGrip(0, false);
+            grip(client, 0, false);
+            check(bp.page() == 1, "grip na seta: página 2");
+            check(bp.elementFor(18) != null, "página 2 mostra os espaços 18-26");
+        }
+        if (at(64)) {
+            pointBackpackSlot(0, 18); // flechas
+        }
+        if (at(66)) {
+            grip(client, 0, true);
+            pointBackpack(0, bp.element(Backpack.Kind.PREV)); // parado sobre a seta com o item
+        }
+        if (at(82)) {
+            check(bp.page() == 0, "segurando o item parado sobre a seta: voltou para a página 1");
+            pointBackpackSlot(0, 17);
+        }
+        if (at(85)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(92)) {
+            check(slot(p, 17).is(Items.ARROW) && slot(p, 18).isEmpty(), "levou as flechas da página 2 para a página 1");
+            pointBackpackSlot(0, 11);
+        }
+        if (at(94)) { // tábua no crafting e fecha: volta para o inventário
+            grip(client, 0, true);
+            pointBackpackSlot(0, InvOps.CRAFT_START);
+        }
+        if (at(97)) {
+            hc.onTrigger(client, 0);
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(103)) {
+            check(slot(p, InvOps.CRAFT_START).getCount() == 1, "uma tábua ficou no crafting");
+            SimulatedVr.setGrip(1, false);
+        }
+        if (at(112)) {
+            check(!bp.isOpen() && slot(p, InvOps.CRAFT_START).isEmpty() && total(p.getInventory(), Items.OAK_PLANKS) == 12,
+                    "fechar a mochila: a sobra do crafting voltou para o inventário (12 tábuas)");
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ radial
+
+    private static void handInFront(Minecraft client, int hand) {
+        Vec3 eye = client.player.getEyePosition();
+        SimulatedVr.setHand(hand, eye.add(hand == 0 ? -0.12 : 0.12, -0.18, 0.38), new Vec3(0, 0, 1));
+    }
+
+    private static void radialEquip(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        RadialMenu radial = hc.radial();
+        if (at(1)) {
+            section("Menu radial");
+            inv.setSelectedSlot(0);
+            handInFront(client, 0);
+            handInFront(client, 1);
+        }
+        if (at(3)) {
+            check(menuButton(client, 0, true) && radial.isOpen() && radial.opener() == 0, "B: o radial abriu na mão direita");
+            pointRadial(0, 2);
+        }
+        if (at(6)) {
+            check(radial.hover(0) == 2, "mão sobre o espaço 3 do radial: destacado");
+            int pulses = SimulatedVr.pulseCount(0);
+            menuButton(client, 0, false);
+            check(!radial.isOpen() && inv.getSelectedSlot() == 2 && p.getMainHandItem().is(Items.STONE_PICKAXE),
+                    "soltar o B: a picareta fica na mão direita (sem grip)");
+            check(SimulatedVr.pulseCount(0) > pulses, "escolher no radial vibra");
+        }
+        if (at(10)) {
+            menuButton(client, 0, true);
+            pointRadial(0, RadialMenu.CENTER);
+        }
+        if (at(13)) {
+            menuButton(client, 0, false);
+            emptySelected = inv.getSelectedSlot();
+            check(p.getMainHandItem().isEmpty(), "radial: mão vazia na direita (foi para um espaço vazio da hotbar " + (emptySelected + 1) + ")");
+        }
+        if (at(16)) {
+            check(menuButton(client, 1, true) && radial.opener() == 1, "X: o radial abriu na mão esquerda");
+            pointRadial(1, 0); // a espada
+        }
+        if (at(19)) {
+            menuButton(client, 1, false);
+            check(p.getOffhandItem().is(Items.STONE_SWORD) && hc.offSource() == 0,
+                    "radial esquerdo: a espada foi para a mão esquerda (lembra que veio do espaço 1)");
+            check(hc.displayStack(p, InvOps.HOTBAR_START).is(Items.STONE_SWORD),
+                    "o radial mostra a espada no espaço 1 (marcado como mão esquerda)");
+        }
+        if (at(22)) {
+            menuButton(client, 1, true);
+            pointRadial(1, 4); // o pão
+        }
+        if (at(25)) {
+            menuButton(client, 1, false);
+            check(p.getOffhandItem().is(Items.BREAD) && slot(p, InvOps.HOTBAR_START).is(Items.STONE_SWORD) && hc.offSource() == 4,
+                    "trocar o item da esquerda pelo radial: o pão vem, a espada volta para o espaço 1");
+        }
+        if (at(28)) {
+            menuButton(client, 1, true);
+            pointRadial(1, RadialMenu.CENTER);
+        }
+        if (at(31)) {
+            menuButton(client, 1, false);
+            check(p.getOffhandItem().isEmpty() && slot(p, InvOps.HOTBAR_START + 4).is(Items.BREAD)
+                            && find(inv, Items.TORCH) >= 0 && hc.offSource() == -1,
+                    "radial esquerdo, mão vazia: o pão volta para o espaço 5 e a tocha vai para o inventário");
+        }
+        if (at(34)) { // passar a picareta da direita para a esquerda e voltar
+            menuButton(client, 1, true);
+            pointRadial(1, 2);
+        }
+        if (at(37)) {
+            menuButton(client, 1, false);
+            check(p.getOffhandItem().is(Items.STONE_PICKAXE), "radial esquerdo no espaço 3: a picareta vai para a esquerda");
+            menuButton(client, 0, true);
+            pointRadial(0, 2);
+        }
+        if (at(40)) {
+            menuButton(client, 0, false);
+            check(p.getMainHandItem().is(Items.STONE_PICKAXE) && p.getOffhandItem().isEmpty() && hc.offSource() == -1,
+                    "radial direito no mesmo espaço: a picareta passa da esquerda para a direita");
+            next();
+        }
+    }
+
+    private static void radialWithBackpack(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        if (at(1)) {
+            section("Radial + mochila: levar itens para a hotbar e de volta");
+            inv.setSelectedSlot(0);
+            check(openBackpack(client, 1), "mochila aberta na mão esquerda");
+        }
+        if (at(3)) {
+            pointBackpackSlot(0, 12); // o arco
+        }
+        if (at(5)) {
+            grip(client, 0, true);
+            check(p.getMainHandItem().is(Items.BOW), "pegou o arco da mochila");
+            check(menuButton(client, 0, true) && hc.radial().isOpen(), "com o arco no grip, B abre o radial");
+            pointRadial(0, 6);
+        }
+        if (at(8)) {
+            SimulatedVr.setGrip(0, false); // solta o arco sobre o espaço 7 do radial
+        }
+        if (at(11)) {
+            menuButton(client, 0, false);
+            check(slot(p, InvOps.HOTBAR_START + 6).is(Items.BOW) && slot(p, 12).isEmpty(),
+                    "soltar o arco sobre o espaço 7 do radial: o arco foi para a hotbar");
+            check(inv.getSelectedSlot() == 0 && p.getMainHandItem().is(Items.STONE_SWORD),
+                    "soltar o B depois de pôr na hotbar não troca o item da mão (a espada continua)");
+        }
+        if (at(14)) {
+            handInFront(client, 0);
+            menuButton(client, 0, true);
+            pointRadial(0, 6);
+        }
+        if (at(17)) {
+            check(grip(client, 0, true) && p.getMainHandItem().is(Items.BOW), "grip no espaço 7 do radial: pegou o arco");
+            menuButton(client, 0, false);
+            check(!hc.radial().isOpen() && p.getMainHandItem().is(Items.BOW), "soltar o B com o arco no grip: radial fecha, arco na mão");
+            pointBackpackSlot(0, 12);
+        }
+        if (at(20)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(27)) {
+            check(slot(p, 12).is(Items.BOW) && slot(p, InvOps.HOTBAR_START + 6).isEmpty() && inv.getSelectedSlot() == 0,
+                    "soltar o arco na mochila: saiu da hotbar e voltou para a mochila");
+            SimulatedVr.setGrip(1, false);
+        }
+        if (at(33)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ inventário cheio
+
+    private static void fullInventory(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        if (at(1)) {
+            section("Inventário 100% cheio");
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                for (int i = 0; i < 36; i++) {
+                    pinv.setItem(i, new ItemStack(Items.DIRT, 64));
+                }
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(9, new ItemStack(Items.BOW));
+                pinv.setItem(40, new ItemStack(Items.DIRT, 64));
+            });
+        }
+        if (at(15)) {
+            inv.setSelectedSlot(0);
+            counted = total(inv, Items.DIRT);
+            info("terra no inventário: " + counted + " (todos os 37 espaços ocupados)");
+            check(!hc.canEmpty(p, 0) && !hc.canEmpty(p, 1), "sem espaço livre: a opção \"mão vazia\" fica apagada nas duas mãos");
+            handInFront(client, 0);
+            menuButton(client, 0, true);
+            pointRadial(0, RadialMenu.CENTER);
+        }
+        if (at(18)) {
+            int pulses = SimulatedVr.pulseCount(0);
+            menuButton(client, 0, false);
+            check(p.getMainHandItem().is(Items.IRON_SWORD) && inv.getSelectedSlot() == 0,
+                    "radial \"mão vazia\" sem espaço: recusado, a espada continua na mão");
+            check(SimulatedVr.pulseCount(0) > pulses, "recusa vibra o controle");
+            check(openBackpack(client, 1), "mochila abre com o inventário cheio");
+        }
+        if (at(21)) {
+            pointBackpackSlot(0, 9);
+        }
+        if (at(23)) {
+            check(grip(client, 0, true) && p.getMainHandItem().is(Items.BOW) && slot(p, 9).is(Items.IRON_SWORD),
+                    "inventário cheio: pegou o arco (troca com a espada, sem precisar de espaço)");
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(30)) {
+            check(p.getMainHandItem().is(Items.IRON_SWORD) && slot(p, 9).is(Items.BOW),
+                    "inventário cheio: soltou e tudo voltou para o lugar");
+            SimulatedVr.setGrip(1, false);
+        }
+        if (at(34)) { // coldre: guardar com o inventário cheio (fica no espaço) e sacar com terra na mão
+            handAt(0, Holster.RIGHT_HIP);
+        }
+        if (at(37)) {
+            grip(client, 0, true);
+            SimulatedVr.setGrip(0, false);
+            check("minecraft:iron_sword".equals(holsters().binding(Holster.RIGHT_HIP).item()),
+                    "inventário cheio: guardar no quadril direito lembra a espada (ela fica no mesmo espaço)");
+            inv.setSelectedSlot(1);
+        }
+        if (at(41)) {
+            check(grip(client, 0, true) && p.getMainHandItem().is(Items.IRON_SWORD) && inv.getSelectedSlot() == 0,
+                    "inventário cheio: sacou a espada do quadril com terra na mão");
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(48)) {
+            check(inv.getSelectedSlot() == 1 && p.getMainHandItem().is(Items.DIRT), "soltou: a terra voltou para a mão");
+            check(total(inv, Items.DIRT) == counted && total(inv, Items.IRON_SWORD) == 1 && total(inv, Items.BOW) == 1
+                            && droppedNearby(client, Items.DIRT) == 0,
+                    "inventário cheio: nada sumiu, nada duplicou, nada caiu no chão");
+            handAway(0);
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ fotos da mochila e do radial
+
+    private static void photos(Minecraft client) {
+        LocalPlayer p = client.player;
+        if (at(1)) {
+            section("Fotos");
+            setupBackpackInventory(client);
+            client.options.setCameraType(CameraType.FIRST_PERSON);
+            p.setXRot(32);
+        }
+        if (at(15)) {
+            p.getInventory().setSelectedSlot(0);
+            openBackpack(client, 1);
+        }
+        if (at(17)) {
+            pointBackpackSlot(0, 11); // tábuas: põe uma no crafting para a foto
+            grip(client, 0, true);
+        }
+        if (at(20)) {
+            pointBackpackSlot(0, InvOps.CRAFT_START);
+        }
+        if (at(22)) {
+            hands().onTrigger(client, 0);
+            pointBackpackSlot(0, InvOps.CRAFT_START + 1);
+        }
+        if (at(24)) {
+            hands().onTrigger(client, 0);
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(30)) {
+            pointBackpackSlot(0, 10); // mão sobre a areia (destacada)
+        }
+        if (at(45)) {
+            screenshot(client, "05-mochila-aberta");
+            pointBackpack(0, hands().backpack().element(Backpack.Kind.DROP));
+            p.setXRot(58); // a parte de baixo: setas, página e descarte
+        }
+        if (at(60)) {
+            screenshot(client, "06-mochila-descarte");
+            SimulatedVr.setGrip(1, false);
+            p.setXRot(18);
+            handInFront(client, 0);
+        }
+        if (at(66)) {
+            menuButton(client, 0, true);
+            pointRadial(0, 2);
+        }
+        if (at(80)) {
+            screenshot(client, "07-radial");
+            pointRadial(0, RadialMenu.CENTER);
+        }
+        if (at(92)) {
+            screenshot(client, "08-radial-mao-vazia");
+            menuButton(client, 0, false);
+            p.setXRot(0);
+            handAway(0);
+            handAway(1);
+        }
+        if (at(100)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ resto
+
+    private static void persistenceAndMisc(Minecraft client) throws Exception {
+        Inventory inv = client.player.getInventory();
+        if (at(5)) {
+            section("Persistência, Vivecraft, ajustes");
+            EnumMap<Holster, HolsterStorage.Binding> saved = HolsterStorage.load(HolsterStorage.worldKey(client));
+            info("salvo em disco: " + saved);
+            check(saved.containsKey(Holster.RIGHT_SHOULDER) && saved.containsKey(Holster.LEFT_HIP) && saved.containsKey(Holster.RIGHT_HIP),
+                    "os coldres ficam salvos para este mundo");
+            check(!saved.containsKey(Holster.LEFT_SHOULDER), "o ombro esquerdo não é coldre (é a mochila)");
+            if (VrBridge.isVivecraftLoaded()) {
+                check(hasMixin("org.vivecraft.client_vr.gameplay.trackers.BackpackTracker"),
+                        "Vivecraft: a troca pelas costas fica desligada (mixin aplicado)");
+                check(hasMixin("org.vivecraft.client_vr.gameplay.trackers.SwingTracker"),
+                        "Vivecraft: golpe com o braço desligável durante a mochila/radial (mixin aplicado)");
+                check(hasMixin("org.vivecraft.client_vr.render.helpers.VRArmHelper"),
+                        "Vivecraft: o item da mão que segura a mochila some (mixin aplicado)");
+            } else {
+                info("Vivecraft ausente: mixins do Vivecraft não conferidos");
+            }
+            inv.setSelectedSlot(0);
+            HotbarScroll.scroll(client, 1);
+            boolean forward = inv.getSelectedSlot() == 1;
+            HotbarScroll.scroll(client, -1);
+            HotbarScroll.scroll(client, -1);
+            check(forward && inv.getSelectedSlot() == 8, "analógico direito: próximo/anterior da hotbar (dando a volta)");
+            inv.setSelectedSlot(0);
+            check(SimulatedVr.pulseCount(0) > 0 && SimulatedVr.pulseCount(1) > 0,
+                    "vibração nas duas mãos (" + SimulatedVr.pulseCount(0) + "/" + SimulatedVr.pulseCount(1) + ")");
+        }
+        if (at(10)) {
+            client.gui.setScreen(new net.minecraft.client.gui.screens.PauseScreen(true));
+        }
+        if (at(20)) {
+            var button = client.gui.screen() == null ? null : client.gui.screen().children().stream()
+                    .filter(e -> e instanceof net.minecraft.client.gui.components.Button b
+                            && b.getMessage().getString().equals(Component.translatable("button.handsonvr.settings").getString()))
+                    .map(e -> (net.minecraft.client.gui.components.Button) e).findFirst().orElse(null);
+            check(button != null, "menu de pausa: tem o botão dos coldres");
+            if (button != null) {
+                button.onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
+            }
+        }
+        if (at(30)) {
+            check(client.gui.screen() instanceof com.handsonvr.screen.HandsOnScreen, "o botão do menu de pausa abre os ajustes");
+            screenshot(client, "09-ajustes");
+        }
+        if (at(40)) {
+            client.gui.setScreen(null);
+        }
+        if (at(50)) {
+            finish(client);
+        }
+    }
+
+    private static boolean hasMixin(String className) throws ClassNotFoundException {
+        Class<?> c = Class.forName(className);
+        return Stream.of(c.getDeclaredMethods()).anyMatch(m -> m.getName().contains("handsonvr$"));
+    }
+
     // ------------------------------------------------------------------ VR nulo: ligação com os controles do Vivecraft
 
-    private static void runNullVr(MinecraftClient client) {
+    private static void runNullVr(Minecraft client) {
         HolsterManager hm = holsters();
-        PlayerInventory inv = client.player.getInventory();
+        HandsController hc = hands();
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
         switch (step) {
-            case 2 -> { // o VR (nulo) ligou e as 4 ações estão sendo escutadas
-                int listening = com.handsonvr.input.VivecraftInput.debugListening();
-                if (listening == 4) {
-                    pass("VR nulo do Vivecraft ligado: escutando grip direito, grip esquerdo, gatilho esquerdo e analógico direito");
+            case 2 -> { // o VR (nulo) ligou e as 8 ações estão sendo escutadas
+                int listening = VivecraftInput.debugListening();
+                if (listening == 8) {
+                    pass("VR nulo do Vivecraft ligado: escutando grips, gatilhos, A, B, X e analógico direito (8 ações)");
+                    info("B = " + VivecraftInput.debugName("radialMain") + ", X = " + VivecraftInput.debugName("radialOff")
+                            + ", gatilho direito = " + VivecraftInput.debugName("attack"));
                     next();
                 } else if (stepTicks > 400) {
-                    fail("VR nulo: ações escutadas " + listening + "/4 (VR ativo: "
+                    fail("VR nulo: ações escutadas " + listening + "/8 (VR ativo: "
                             + org.vivecraft.api.client.VRClientAPI.instance().isVRActive() + ")");
                     finish(client);
                 }
             }
             case 3 -> {
-                if (stepTicks == 1) {
+                if (at(1)) {
                     onServer(client, player -> {
-                        player.changeGameMode(GameMode.SURVIVAL);
-                        PlayerInventory pinv = player.getInventory();
-                        pinv.clear();
-                        pinv.setStack(0, new ItemStack(Items.STONE_PICKAXE));
+                        player.setGameMode(GameType.SURVIVAL);
+                        Inventory pinv = player.getInventory();
+                        pinv.clearContent();
+                        pinv.setItem(0, new ItemStack(Items.STONE_PICKAXE));
                         ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
-                        sword.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Excalibur"));
-                        pinv.setStack(4, sword);
-                        pinv.setStack(40, new ItemStack(Items.TORCH, 16));
+                        sword.set(DataComponents.CUSTOM_NAME, Component.literal("Excalibur"));
+                        pinv.setItem(4, sword);
+                        pinv.setItem(9, new ItemStack(Items.BOW));
+                        pinv.setItem(40, new ItemStack(Items.TORCH, 16));
                     });
                     SimulatedVr.setEnabled(true); // poses das mãos pelo teste (o resto é o Vivecraft de verdade)
                 }
-                if (stepTicks == 20) {
-                    inv.selectedSlot = 4;
-                    handAt(client, 0, Holster.RIGHT_SHOULDER);
+                if (at(20)) {
+                    inv.setSelectedSlot(4);
+                    handAt(0, Holster.RIGHT_SHOULDER);
                 }
-                if (stepTicks == 25) {
-                    check(com.handsonvr.input.VivecraftInput.debugNotify("gripMain", true, 0f),
+                if (at(25)) {
+                    check(VivecraftInput.debugNotify("gripMain", true, 0f),
                             "Vivecraft: grip direito no ombro foi consumido pelo coldre (a hotbar não troca)");
-                    com.handsonvr.input.VivecraftInput.debugNotify("gripMain", false, 0f);
+                    VivecraftInput.debugNotify("gripMain", false, 0f);
                 }
-                if (stepTicks == 40) {
-                    check(client.player.getMainHandStack().isEmpty() && hm.binding(Holster.RIGHT_SHOULDER) != null,
+                if (at(40)) {
+                    check(p.getMainHandItem().isEmpty() && hm.binding(Holster.RIGHT_SHOULDER) != null,
                             "Vivecraft: o grip direito guardou a espada no ombro");
-                    inv.selectedSlot = 0;
+                    inv.setSelectedSlot(0);
                 }
-                if (stepTicks == 45) {
+                if (at(45)) {
                     SimulatedVr.setGrip(0, true);
-                    check(com.handsonvr.input.VivecraftInput.debugNotify("gripMain", true, 0f) && hm.isDrawing(0),
-                            "Vivecraft: grip direito no ombro sacou a espada");
+                    check(VivecraftInput.debugNotify("gripMain", true, 0f) && hm.isDrawing(0), "Vivecraft: grip direito no ombro sacou a espada");
                 }
-                if (stepTicks == 60) {
-                    check(client.player.getMainHandStack().isOf(Items.DIAMOND_SWORD), "Vivecraft: a espada está na mão");
+                if (at(60)) {
+                    check(p.getMainHandItem().is(Items.DIAMOND_SWORD), "Vivecraft: a espada está na mão");
                     SimulatedVr.setGrip(0, false);
-                    check(com.handsonvr.input.VivecraftInput.debugNotify("gripMain", false, 0f),
-                            "Vivecraft: soltar o grip direito devolve a espada");
+                    check(VivecraftInput.debugNotify("gripMain", false, 0f), "Vivecraft: soltar o grip direito devolve a espada");
                 }
-                if (stepTicks == 75) {
-                    check(client.player.getMainHandStack().isOf(Items.STONE_PICKAXE), "Vivecraft: a picareta voltou para a mão");
-                    // Fora dos coldres o grip continua sendo do Vivecraft (troca a hotbar).
-                    SimulatedVr.setHand(0, client.player.getEyePos().add(0, -0.3, 0.6), new Vec3d(0, 0, 1));
+                if (at(75)) {
+                    check(p.getMainHandItem().is(Items.STONE_PICKAXE), "Vivecraft: a picareta voltou para a mão");
+                    SimulatedVr.setHand(0, p.getEyePosition().add(0, -0.3, 0.6), new Vec3(0, 0, 1));
                 }
-                if (stepTicks == 80) {
-                    check(!com.handsonvr.input.VivecraftInput.debugNotify("gripMain", true, 0f),
-                            "Vivecraft: fora dos coldres o grip não é consumido (continua trocando a hotbar)");
-                    com.handsonvr.input.VivecraftInput.debugNotify("gripMain", false, 0f);
+                if (at(80)) {
+                    check(VivecraftInput.debugNotify("gripMain", true, 0f) && inv.getSelectedSlot() == 0,
+                            "Vivecraft: fora dos coldres o grip é consumido e não troca mais a hotbar (o radial cuida dela)");
+                    VivecraftInput.debugNotify("gripMain", false, 0f);
                     handAway(0);
                     next();
                 }
             }
             case 4 -> { // gatilho esquerdo: usa a mão esquerda
-                if (stepTicks == 1) {
-                    Vec3d feet = client.player.getPos();
-                    torchAt = BlockPos.ofFloored(feet.x, feet.y, feet.z + 2);
-                    Vec3d hand = client.player.getEyePos().add(-0.2, -0.5, 0.3);
-                    Vec3d target = new Vec3d(torchAt.getX() + 0.5, feet.y - 0.001, torchAt.getZ() + 0.5);
+                if (at(1)) {
+                    Vec3 feet = p.position();
+                    torchAt = BlockPos.containing(feet.x, feet.y, feet.z + 2);
+                    Vec3 hand = p.getEyePosition().add(-0.2, -0.5, 0.3);
+                    Vec3 target = new Vec3(torchAt.getX() + 0.5, feet.y - 0.001, torchAt.getZ() + 0.5);
                     SimulatedVr.setHand(1, hand, target.subtract(hand));
                 }
-                if (stepTicks == 5) {
-                    check(com.handsonvr.input.VivecraftInput.debugNotify("teleport", true, 0f),
-                            "Vivecraft: o gatilho esquerdo foi consumido (sem teleporte)");
-                    com.handsonvr.input.VivecraftInput.debugNotify("teleport", false, 0f);
+                if (at(5)) {
+                    check(VivecraftInput.debugNotify("teleport", true, 0f), "Vivecraft: o gatilho esquerdo foi consumido (sem teleporte)");
+                    VivecraftInput.debugNotify("teleport", false, 0f);
                 }
-                if (stepTicks == 25) {
-                    check(client.world.getBlockState(torchAt).isOf(Blocks.TORCH),
+                if (at(25)) {
+                    check(client.level.getBlockState(torchAt).is(Blocks.TORCH),
                             "Vivecraft: o gatilho esquerdo colocou a tocha com a mão esquerda (" + OffhandUse.debugLast() + ")");
                     handAway(1);
                     next();
                 }
             }
-            case 5 -> { // analógico direito: hotbar
-                if (stepTicks == 1) {
-                    inv.selectedSlot = 0;
-                    boolean consumed = com.handsonvr.input.VivecraftInput.debugNotify("rotate", true, 0.9f);
-                    com.handsonvr.input.VivecraftInput.debugNotify("rotate", false, 0.9f);
-                    check(consumed && inv.selectedSlot == 1,
-                            "Vivecraft: analógico direito para a direita = próximo da hotbar (sem girar a câmera)");
-                    com.handsonvr.input.VivecraftInput.debugNotify("rotate", true, -0.9f);
-                    com.handsonvr.input.VivecraftInput.debugNotify("rotate", false, -0.9f);
-                    check(inv.selectedSlot == 0, "Vivecraft: analógico direito para a esquerda = anterior da hotbar");
+            case 5 -> { // B e X: radial (sem o radial do Vivecraft nem a tela de inventário)
+                if (at(1)) {
+                    inv.setSelectedSlot(0);
+                    handInFront(client, 0);
+                    handInFront(client, 1);
+                    SimulatedVr.setMenuButton(0, true);
+                    check(VivecraftInput.debugNotify("radialMain", true, 0f) && hc.radial().isOpen() && hc.radial().opener() == 0,
+                            "Vivecraft: B foi consumido e abriu o radial da hotbar na mão direita");
+                    pointRadial(0, 4);
                 }
-                if (stepTicks == 5) {
-                    boolean backpack = org.vivecraft.client_vr.ClientDataHolderVR.getInstance().backpackTracker
-                            .isActive(client.player);
-                    check(!backpack, "Vivecraft: a troca pelas costas está desligada (coldres nos ombros)");
+                if (at(4)) {
+                    SimulatedVr.setMenuButton(0, false);
+                    VivecraftInput.debugNotify("radialMain", false, 0f);
+                    check(!hc.radial().isOpen() && inv.getSelectedSlot() == 4 && p.getMainHandItem().isEmpty(),
+                            "Vivecraft: soltar o B escolheu o espaço 5 (mão vazia, a espada está no coldre)");
+                }
+                if (at(8)) {
+                    SimulatedVr.setMenuButton(1, true);
+                    check(VivecraftInput.debugNotify("radialOff", true, 0f) && hc.radial().opener() == 1,
+                            "Vivecraft: X foi consumido e abriu o radial na mão esquerda");
+                    pointRadial(1, 0);
+                }
+                if (at(12)) {
+                    check(client.gui.screen() == null, "Vivecraft: o X não abriu a tela de inventário");
+                    SimulatedVr.setMenuButton(1, false);
+                    VivecraftInput.debugNotify("radialOff", false, 0f);
+                    check(p.getOffhandItem().is(Items.STONE_PICKAXE), "Vivecraft: soltar o X pôs a picareta na mão esquerda");
+                }
+                if (at(16)) {
+                    next();
+                }
+            }
+            case 6 -> { // grip esquerdo no ombro: mochila; gatilho direito no painel é da mochila
+                if (at(1)) {
+                    handAt(1, Holster.LEFT_SHOULDER);
+                }
+                if (at(4)) {
+                    SimulatedVr.setGrip(1, true);
+                    check(VivecraftInput.debugNotify("gripOff", true, 0f) && hc.backpack().isOpen(),
+                            "Vivecraft: grip esquerdo no ombro esquerdo abriu a mochila");
+                    holdBackpackInFront(client, 1);
+                }
+                if (at(7)) {
+                    check(VivecraftInput.debugNotify("teleport", true, 0f), "Vivecraft: gatilho esquerdo da mão da mochila consumido");
+                    VivecraftInput.debugNotify("teleport", false, 0f);
+                    pointBackpackSlot(0, 9);
+                }
+                if (at(10)) {
+                    SimulatedVr.setGrip(0, true);
+                    check(VivecraftInput.debugNotify("gripMain", true, 0f) && p.getMainHandItem().is(Items.BOW),
+                            "Vivecraft: grip direito no arco da mochila pegou o arco");
+                    pointBackpack(0, hc.backpack().element(Backpack.Kind.DROP));
+                }
+                if (at(13)) {
+                    check(VivecraftInput.debugNotify("attack", true, 0f), "Vivecraft: gatilho direito na zona de descarte é da mochila");
+                    VivecraftInput.debugNotify("attack", false, 0f);
+                    check(InvOps.stack(p, InvOps.handSlot(p, 0)).isEmpty(), "Vivecraft: soltou o arco (era 1)");
+                    SimulatedVr.setGrip(0, false);
+                    VivecraftInput.debugNotify("gripMain", false, 0f);
+                    SimulatedVr.setGrip(1, false);
+                    VivecraftInput.debugNotify("gripOff", false, 0f);
+                }
+                if (at(20)) {
+                    check(!hc.backpack().isOpen(), "Vivecraft: soltar o grip esquerdo fechou a mochila");
+                    pointAway(client, 0);
+                }
+                if (at(23)) {
+                    check(!VivecraftInput.debugNotify("attack", true, 0f), "Vivecraft: longe da mochila o gatilho direito ataca normalmente");
+                    VivecraftInput.debugNotify("attack", false, 0f);
+                    next();
+                }
+            }
+            case 7 -> { // analógico direito: hotbar
+                if (at(1)) {
+                    inv.setSelectedSlot(0);
+                    boolean consumed = VivecraftInput.debugNotify("rotate", true, 0.9f);
+                    VivecraftInput.debugNotify("rotate", false, 0.9f);
+                    check(consumed && inv.getSelectedSlot() == 1, "Vivecraft: analógico direito para a direita = próximo da hotbar");
+                    VivecraftInput.debugNotify("rotate", true, -0.9f);
+                    VivecraftInput.debugNotify("rotate", false, -0.9f);
+                    check(inv.getSelectedSlot() == 0, "Vivecraft: analógico direito para a esquerda = anterior da hotbar");
+                }
+                if (at(5)) {
+                    boolean backpack = org.vivecraft.client_vr.ClientDataHolderVR.getInstance().backpackTracker.isActive(p);
+                    check(!backpack, "Vivecraft: a troca pelas costas está desligada (a mochila usa o ombro esquerdo)");
                     next();
                 }
             }
@@ -600,8 +1424,8 @@ public final class SelfTest {
 
     // ------------------------------------------------------------------ mundo
 
-    private static void deleteWorld(MinecraftClient client) throws IOException {
-        Path dir = client.runDirectory.toPath().resolve("saves").resolve(WORLD);
+    private static void deleteWorld(Minecraft client) throws IOException {
+        Path dir = client.gameDirectory.toPath().resolve("saves").resolve(WORLD);
         if (Files.exists(dir)) {
             try (Stream<Path> paths = Files.walk(dir)) {
                 for (Path p : paths.sorted(Comparator.reverseOrder()).toList()) {
@@ -609,19 +1433,18 @@ public final class SelfTest {
                 }
             }
         }
-        // E os coldres salvos do teste anterior.
         Path saved = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("handsonvr")
                 .resolve("holsters").resolve("sp_" + WORLD + ".json");
         Files.deleteIfExists(saved);
     }
 
-    private static void createWorld(MinecraftClient client) {
-        LevelInfo info = new LevelInfo(WORLD, GameMode.SURVIVAL, false, Difficulty.PEACEFUL, true, new GameRules(),
-                DataConfiguration.SAFE_MODE);
-        GeneratorOptions options = new GeneratorOptions(20261004L, false, false);
-        client.createIntegratedServerLoader().createAndStart(WORLD, info, options,
-                registries -> registries.get(RegistryKeys.WORLD_PRESET).entryOf(WorldPresets.FLAT).value()
-                        .createDimensionsRegistryHolder(),
-                client.currentScreen);
+    private static void createWorld(Minecraft client) {
+        LevelSettings settings = new LevelSettings(WORLD, GameType.SURVIVAL,
+                new LevelSettings.DifficultySettings(Difficulty.PEACEFUL, false, false), true, WorldDataConfiguration.DEFAULT);
+        WorldOptions options = new WorldOptions(20261004L, false, false);
+        client.createWorldOpenFlows().createFreshLevel(WORLD, settings, options,
+                registries -> registries.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(WorldPresets.FLAT).value()
+                        .createWorldDimensions(),
+                client.gui.screen());
     }
 }
