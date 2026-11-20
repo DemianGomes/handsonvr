@@ -10,7 +10,9 @@ Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, F
   - O que você escolhe no radial fica na mão.
   - Isso funciona até com o inventário 100% cheio.
 
-O design completo está em [docs/DESIGN.md](docs/DESIGN.md).
+![Mochila aberta](docs/img/mochila.png)
+
+O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O histórico de versões está no [CHANGELOG](CHANGELOG.md).
 
 ## Controles (Quest 2)
 
