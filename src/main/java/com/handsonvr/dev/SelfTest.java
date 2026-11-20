@@ -1115,8 +1115,8 @@ public final class SelfTest {
             handAt(0, Holster.RIGHT_HIP);
         }
         if (at(37)) {
-            grip(client, 0, true);
-            SimulatedVr.setGrip(0, false);
+            grip(client, 0, true);  // segura a espada dentro do coldre
+            grip(client, 0, false); // e solta ali: guarda
             check("minecraft:iron_sword".equals(holsters().binding(Holster.RIGHT_HIP).item()),
                     "inventário cheio: guardar no quadril direito lembra a espada (ela fica no mesmo espaço)");
             inv.setSelectedSlot(1);
