@@ -122,6 +122,11 @@ public final class VivecraftInput {
         return held(hand == 0 ? gripMain : gripOff);
     }
 
+    /** O gatilho da mão (direito = atacar, esquerdo = teleporte) está apertado. */
+    public static boolean isTriggerHeld(int hand) {
+        return held(hand == 0 ? attack : teleport);
+    }
+
     /** O botão do radial da mão (B principal, X secundária) está apertado. */
     public static boolean isMenuButtonHeld(int hand) {
         return held(hand == 0 ? radialMain : radialOff);

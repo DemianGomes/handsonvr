@@ -53,6 +53,17 @@ public final class SimulatedVr {
         return grip[hand];
     }
 
+    private static final boolean[] trigger = new boolean[2];
+
+    /** Finge o gatilho da mão apertado/solto (só o estado: o aperto em si o teste chama direto). */
+    public static void setTrigger(int hand, boolean pressed) {
+        trigger[hand] = pressed;
+    }
+
+    public static boolean triggerHeld(int hand) {
+        return trigger[hand];
+    }
+
     private static final boolean[] menuButton = new boolean[2];
 
     /** Finge o botão do menu radial da mão (B = principal, X = secundária) apertado/solto. */

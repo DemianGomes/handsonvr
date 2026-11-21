@@ -41,21 +41,27 @@ public final class HandsController {
     /** O aperto do botão do radial foi nosso (o soltar também é). */
     private final boolean[] menuConsumed = new boolean[2];
 
-    /** De onde vem o resultado que a mão segura com o grip, esperando o gatilho. */
+    /** De onde vem o resultado que a mão pegou com o grip. */
     public enum ResultSource { NONE, BACKPACK, TABLE }
 
-    /** O resultado (do crafting 2x2 ou da mesa) que cada mão segura com o grip: o gatilho fabrica tudo para ela. */
+    /**
+     * O resultado (do crafting 2x2 ou da mesa) que cada mão pegou com o grip, enquanto o grip continua apertado: o
+     * gatilho com a mão no resultado fabrica o resto para ela.
+     */
     private final ResultSource[] resultHold = {ResultSource.NONE, ResultSource.NONE};
 
+    /** "Fabricar tudo" (grip + gatilho): até acabar a grade (o máximo de uma pilha, como o Shift+clique). */
+    private static final int ALL = 64;
+
     /**
-     * Fabricando tudo para uma mão (grip + gatilho no resultado), um por tick (o servidor manda o próximo resultado no
-     * tick seguinte), como o Shift+clique da tela do jogo. {@code target}: o espaço em que o resultado se junta (o da
-     * mão, ou um vazio que vai para a mão no fim, {@code equipAtEnd}).
+     * Fabricando para uma mão: uma vez (grip no resultado) ou tudo (grip + gatilho, como o Shift+clique da tela do
+     * jogo), um por tick (o servidor manda o próximo resultado no tick seguinte). {@code target}: o espaço em que o
+     * resultado se junta (o da mão, ou um vazio que vai para a mão no fim, {@code equipAtEnd}).
      */
     private static final class CraftJob {
         final int hand;
         final ResultSource source;
-        int target = -1, crafts = 0, wait = 0;
+        int target = -1, crafts = 0, wait = 0, limit = 1;
         boolean equipAtEnd = false;
         ItemStack item = ItemStack.EMPTY;
 
@@ -246,11 +252,11 @@ public final class HandsController {
                 return true;
             }
         }
-        // 3) Mesa de trabalho: o resultado flutuando (o grip o segura; o gatilho fabrica tudo para a mão) ou uma casa com
-        //    item (o item volta para a mão).
+        // 3) Mesa de trabalho: o resultado flutuando (o grip fabrica uma vez para a mão; com o gatilho, tudo) ou uma casa
+        //    com item (o item volta para a mão).
         int onTable = table.targetAt(tip);
         if (onTable == CraftingTable.RESULT) {
-            holdResult(client, hand, ResultSource.TABLE);
+            gripResult(client, hand, ResultSource.TABLE);
             return true;
         }
         if (onTable >= 0 && !table.cellStack(onTable).isEmpty()) {
@@ -277,16 +283,30 @@ public final class HandsController {
         return true;
     }
 
-    // ------------------------------------------------------------------ resultado do crafting: grip + gatilho
+    // ------------------------------------------------------------------ resultado do crafting: grip (uma vez) e gatilho (tudo)
 
-    /** O resultado que esta mão segura com o grip (esperando o gatilho), ou {@link ResultSource#NONE}. */
+    /** O resultado que esta mão pegou com o grip (ainda apertado), ou {@link ResultSource#NONE}. */
     public ResultSource resultHeld(int hand) {
         return resultHold[hand];
     }
 
-    /** Fabricando tudo agora (grip + gatilho)? */
+    /** Fabricando agora (uma vez ou tudo)? */
     public boolean isCrafting() {
         return craftJob != null;
+    }
+
+    /** A mão está no lugar do resultado (o da mesa flutuando, ou o do crafting 2x2 da mochila aberta na outra mão)? */
+    private ResultSource resultUnder(int hand, Vec3 tip) {
+        if (table.nearResult(tip)) {
+            return ResultSource.TABLE;
+        }
+        if (backpack.isOpen() && backpack.holder() != hand) {
+            Backpack.Element e = backpack.elementAt(tip);
+            if (e != null && e.kind() == Backpack.Kind.CRAFT_OUT) {
+                return ResultSource.BACKPACK;
+            }
+        }
+        return ResultSource.NONE;
     }
 
     private ItemStack resultStack(LocalPlayer p, ResultSource source) {
@@ -298,28 +318,36 @@ public final class HandsController {
     }
 
     /**
-     * Grip no resultado: a mão o segura, mas nada é fabricado ainda (pode gastar muito material). O gatilho, com o grip
-     * apertado, fabrica tudo ({@link #startCraftAll}).
+     * Grip no resultado: fabrica UMA vez para a mão (um pack de toras na mesa: 4 tábuas na mão e sobram 63 toras). Com
+     * o gatilho já apertado, fabrica tudo. Enquanto o grip continua apertado, o gatilho com a mão no resultado fabrica o
+     * resto, juntando na mesma mão ({@link #onTrigger}).
      */
-    private void holdResult(Minecraft client, int hand, ResultSource source) {
+    private void gripResult(Minecraft client, int hand, ResultSource source) {
         LocalPlayer p = client.player;
         if (!InvOps.ready(client) || resultStack(p, source).isEmpty()) {
             refuse(hand); // nada para fabricar (ou o crafting 2x2 espera a mesa de trabalho fechar)
             return;
         }
         resultHold[hand] = source;
-        VrBridge.pulse(hand, 0.02f);
-        action("segurando o resultado (" + source + "): o gatilho fabrica tudo");
+        startCraft(client, hand, source, GripState.isTriggerHeld(hand) ? ALL : 1);
+    }
+
+    /** {@code a} recebe mais de {@code b} (mesmo item e espaço na pilha)? */
+    private static boolean joins(ItemStack a, ItemStack b) {
+        return !a.isEmpty() && ItemStack.isSameItemSameComponents(a, b) && a.getCount() < a.getMaxStackSize();
     }
 
     /**
-     * Grip + gatilho no resultado: fabrica tudo o que a grade der, juntando na mão que segura o resultado. A mão direita
-     * usa o espaço dela se estiver vazio, senão um espaço vazio da hotbar (o item que ela tinha fica onde está); a
-     * esquerda recebe o resultado no fim.
+     * Fabrica {@code limit} vezes (1 = o grip; {@link #ALL} = grip + gatilho) para a mão. A mão direita usa o espaço dela
+     * se estiver vazio ou já tiver o mesmo item (junta), senão um espaço vazio da hotbar (o item que ela tinha fica onde
+     * está); a esquerda recebe o resultado no fim (o que ela já tinha do mesmo item junta com ele).
      */
-    private void startCraftAll(Minecraft client, int hand, ResultSource source) {
+    private void startCraft(Minecraft client, int hand, ResultSource source, int limit) {
         LocalPlayer p = client.player;
         if (craftJob != null) {
+            if (craftJob.hand == hand && craftJob.source == source) {
+                craftJob.limit = Math.max(craftJob.limit, limit); // o gatilho chegou com a primeira ainda a caminho
+            }
             return;
         }
         ItemStack result = resultStack(p, source);
@@ -328,9 +356,11 @@ public final class HandsController {
             return;
         }
         CraftJob job = new CraftJob(hand, source);
+        job.limit = limit;
         if (hand == 0 && grabs.inHandSlot(0) == null) {
             int selected = InvOps.handSlot(p, 0);
-            if (InvOps.stack(p, selected).isEmpty() && !isLocked(p, selected)) {
+            ItemStack inHand = InvOps.stack(p, selected);
+            if (!isLocked(p, selected) && (inHand.isEmpty() || joins(inHand, result))) {
                 job.target = selected;
             } else {
                 int empty = emptyHotbarFor(p);
@@ -343,6 +373,11 @@ public final class HandsController {
         if (job.target < 0) {
             job.target = freeSlotForResult(p);
             job.equipAtEnd = true;
+            if (hand == 1 && job.target >= 0 && offSource < 0 && grabs.inHandSlot(1) == null && !grabs.isGrabbing(1)
+                    && joins(p.getOffhandItem(), result)) {
+                // A mão esquerda já tem este item (a vez anterior): ele vai para o espaço livre, junta com o novo e volta.
+                InvOps.swap(client, job.target, InvOps.OFFHAND_BUTTON);
+            }
         }
         if (job.target < 0) {
             refuse(hand); // inventário cheio
@@ -350,7 +385,7 @@ public final class HandsController {
             return;
         }
         craftJob = job;
-        action("fabricando tudo para a mão " + hand);
+        action((limit == 1 ? "fabricando uma vez" : "fabricando tudo") + " para a mão " + hand);
     }
 
     /** Espaço vazio para o resultado: o inventário principal antes da hotbar, sem os espaços em uso. */
@@ -413,12 +448,12 @@ public final class HandsController {
         job.crafts++;
         job.wait = 0;
         VrBridge.pulse(job.hand, 0.012f);
-        if (job.crafts >= 64) {
+        if (job.crafts >= job.limit) {
             finishCraft(client);
         }
     }
 
-    /** Fim do "fabricar tudo": o resultado na mão; com o grip ainda apertado, ela o segura (soltar decide). */
+    /** Fim da fabricação: o resultado na mão; com o grip ainda apertado, ela o segura (soltar decide). */
     private void finishCraft(Minecraft client) {
         CraftJob job = craftJob;
         craftJob = null;
@@ -426,7 +461,9 @@ public final class HandsController {
         if (job == null || p == null) {
             return;
         }
-        resultHold[job.hand] = ResultSource.NONE;
+        if (!GripState.isHeld(job.hand)) {
+            resultHold[job.hand] = ResultSource.NONE;
+        }
         if (job.crafts == 0) {
             refuse(job.hand);
             return;
@@ -503,10 +540,8 @@ public final class HandsController {
 
     /** Grip solto. Retorna true se foi nosso. */
     public boolean onGripReleased(Minecraft client, int hand) {
-        if (resultHold[hand] != ResultSource.NONE) {
-            resultHold[hand] = ResultSource.NONE; // soltou sem o gatilho: nada fabricado (se já está fabricando, termina)
-            return true;
-        }
+        boolean wasResult = resultHold[hand] != ResultSource.NONE;
+        resultHold[hand] = ResultSource.NONE; // (se ainda está fabricando, termina e o resultado fica na mão)
         if (backpack.holder() == hand) {
             closeBackpack(client);
             action("mochila fechada");
@@ -516,7 +551,7 @@ public final class HandsController {
             releaseGrab(client, hand);
             return true;
         }
-        return false;
+        return wasResult;
     }
 
     private void radialGrip(Minecraft client, int hand, int target) {
@@ -553,7 +588,7 @@ public final class HandsController {
                     action("não deu para pegar o espaço " + e.handler());
                 }
             }
-            case CRAFT_OUT -> holdResult(client, hand, ResultSource.BACKPACK); // o gatilho fabrica tudo para a mão
+            case CRAFT_OUT -> gripResult(client, hand, ResultSource.BACKPACK); // uma vez (com o gatilho, tudo) para a mão
             case PREV -> flip(hand, -1);
             case NEXT -> flip(hand, 1);
             default -> { }
@@ -716,11 +751,22 @@ public final class HandsController {
         if (backpack.holder() == hand) {
             return true;
         }
-        if (resultHold[hand] != ResultSource.NONE) {
-            startCraftAll(client, hand, resultHold[hand]); // grip + gatilho no resultado: fabrica tudo para a mão
+        Vec3 tip = VrBridge.pointer(hand);
+        // Grip (que pegou o resultado) + gatilho com a mão no resultado: fabrica o resto, juntando na mesma mão.
+        if (resultHold[hand] != ResultSource.NONE && resultUnder(hand, tip) == resultHold[hand]) {
+            if (craftJob == null && resultStack(p, resultHold[hand]).isEmpty()) {
+                refuse(hand); // a grade acabou: nada mais a fabricar
+                return true;
+            }
+            GrabSystem.Grab own = grabs.get(hand);
+            if (own != null && own.origin() == GrabSystem.Origin.HAND) {
+                grabs.end(client, hand); // a mão segurava o que fabricou: o resto junta com ele
+            }
+            if (!grabs.isGrabbing(hand)) {
+                startCraft(client, hand, resultHold[hand], ALL);
+            }
             return true;
         }
-        Vec3 tip = VrBridge.pointer(hand);
         if (grabs.isGrabbing(hand)) {
             int handSlot = GrabSystem.itemSlot(p, grabs.get(hand)); // onde o item pego está
             if (radial.isOpen()) {

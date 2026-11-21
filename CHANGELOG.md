@@ -2,6 +2,15 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.3.4-alpha (Minecraft 26.3)
+
+### Resultado do crafting: grip sozinho fabrica uma vez ([#32](https://github.com/DemianGomes/handsonvr/issues/32))
+
+- **Grip** no resultado (da mesa de trabalho ou do crafting 2x2 da mochila) fabrica **uma vez** e o resultado vai para a mão que pegou: com um pack de toras na mesa, vêm 4 tábuas para a mão e sobram 63 toras.
+- **Grip + gatilho** continua fabricando **tudo** o que der, como o Shift+clique.
+- Com o grip ainda apertado e a mão no resultado, o gatilho fabrica o resto, juntando na mesma mão (o que não couber vai para o inventário). Com o gatilho já apertado, o grip fabrica tudo de uma vez.
+- Na mão direita, o resultado se junta ao que ela já tem do mesmo item; senão, ocupa um espaço vazio da hotbar e o item que ela tinha continua na hotbar.
+
 ## 0.3.3-alpha (Minecraft 26.3)
 
 ### Mira do arco, opcional ([#28](https://github.com/DemianGomes/handsonvr/issues/28))

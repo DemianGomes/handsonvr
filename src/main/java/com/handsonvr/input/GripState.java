@@ -14,6 +14,14 @@ public final class GripState {
         return VrBridge.isVivecraftLoaded() && VivecraftInput.isGripHeld(hand);
     }
 
+    /** O gatilho da mão (direito = atacar, esquerdo = teleporte no Vivecraft) está apertado? */
+    public static boolean isTriggerHeld(int hand) {
+        if (SimulatedVr.isEnabled()) {
+            return SimulatedVr.triggerHeld(hand);
+        }
+        return VrBridge.isVivecraftLoaded() && VivecraftInput.isTriggerHeld(hand);
+    }
+
     /** Botão do menu radial: B na mão principal, X na secundária. */
     public static boolean isMenuButtonHeld(int hand) {
         if (SimulatedVr.isEnabled()) {

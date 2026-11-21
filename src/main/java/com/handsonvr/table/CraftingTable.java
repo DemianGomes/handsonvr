@@ -161,6 +161,11 @@ public final class CraftingTable {
         return topCenter().add(0, RESULT_HEIGHT, 0);
     }
 
+    /** A ponta da mão está no lugar do resultado (com a mesa aberta, mesmo sem nada flutuando agora)? */
+    public boolean nearResult(Vec3 tip) {
+        return pos != null && tip != null && menu != null && tip.distanceTo(resultCenter()) <= RESULT_REACH;
+    }
+
     /** O alvo sob a ponta da mão (uma casa, o resultado, ou {@link #NONE}). */
     public int targetAt(Vec3 tip) {
         if (pos == null || tip == null) {
