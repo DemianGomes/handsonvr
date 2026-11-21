@@ -2144,7 +2144,7 @@ public final class SelfTest {
 
     // ------------------------------------------------------------------ fornalhas imersivas
 
-    private static BlockPos furnacePos;
+    private static BlockPos furnacePos, farFurnacePos;
     /** O teste abre a tela da fornalha do jeito normal: ela não é fechada como tela de outro mod. */
     private static boolean allowFurnaceScreen = false;
 
@@ -2198,6 +2198,17 @@ public final class SelfTest {
                 player.level().setBlock(at.above(), Blocks.AIR.defaultBlockState(), 3);
             });
             setFurnaceBlock(client, Blocks.FURNACE); // de frente para o jogador
+            // Um defumador a uns 7 blocos, já com carne e carvão: longe para abrir, perto para mostrar (até 10 blocos).
+            farFurnacePos = furnacePos.offset(5, 0, 5);
+            BlockPos far = farFurnacePos;
+            onServer(client, player -> {
+                player.level().setBlock(far, Blocks.SMOKER.defaultBlockState()
+                        .setValue(net.minecraft.world.level.block.AbstractFurnaceBlock.FACING, net.minecraft.core.Direction.NORTH), 3);
+                if (player.level().getBlockEntity(far) instanceof net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity be) {
+                    be.setItem(0, new ItemStack(Items.BEEF, 5));
+                    be.setItem(1, new ItemStack(Items.COAL, 3));
+                }
+            });
             inv.setSelectedSlot(0);
             p.setYRot(0f);
             p.setXRot(45f); // olhando para a fornalha, embaixo à frente
@@ -2241,6 +2252,15 @@ public final class SelfTest {
         }
         if (at(32)) {
             hc.onTrigger(client, 0);
+        }
+        if (at(34)) {
+            com.handsonvr.furnace.FurnaceView farView = hc.furnaceWatcher().views(f).stream()
+                    .filter(v -> v.pos().equals(farFurnacePos)).findFirst().orElse(null);
+            check(farView != null && farView.live() && farView.kind() == com.handsonvr.furnace.FurnaceStation.Kind.SMOKER
+                            && farView.input().is(Items.BEEF) && farView.fuel().is(Items.COAL) && farView.lit(),
+                    "um defumador a " + String.format(Locale.ROOT, "%.1f", Vec3.atCenterOf(farFurnacePos).distanceTo(p.getEyePosition()))
+                            + " blocos, longe para abrir: mostra ao vivo a carne, o carvão e o fogo (lido do servidor do singleplayer)");
+            check(!f.isOpen() || !farFurnacePos.equals(f.pos()), "ele não é aberto (só a fornalha da frente, de perto)");
         }
         if (at(36)) {
             // O primeiro carvão já começou a queimar (o jogo tira um da pilha ao acender).
@@ -2398,7 +2418,11 @@ public final class SelfTest {
             p.closeContainer();
             allowFurnaceScreen = false;
             BlockPos at = furnacePos;
-            onServer(client, player -> player.level().setBlock(at, Blocks.AIR.defaultBlockState(), 3));
+            BlockPos far = farFurnacePos;
+            onServer(client, player -> {
+                player.level().setBlock(at, Blocks.AIR.defaultBlockState(), 3);
+                player.level().setBlock(far, Blocks.AIR.defaultBlockState(), 3);
+            });
             clearDrops(client);
             p.setXRot(0f);
             handAway(0);

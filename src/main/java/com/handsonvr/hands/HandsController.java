@@ -38,6 +38,7 @@ public final class HandsController {
     private final RadialMenu radial = new RadialMenu();
     private final CraftingTable table = new CraftingTable();
     private final FurnaceStation furnace = new FurnaceStation();
+    private final com.handsonvr.furnace.FurnaceWatcher furnaceWatcher = new com.handsonvr.furnace.FurnaceWatcher();
     /** Espaço da hotbar (0-8) de onde veio o item que o radial pôs na mão esquerda; -1 = nenhum. */
     private int offSource = -1;
     /** O aperto do botão do radial foi nosso (o soltar também é). */
@@ -101,6 +102,11 @@ public final class HandsController {
         return furnace;
     }
 
+    /** As fornalhas por perto (até 10 blocos), para mostrar o que tem em cada uma. */
+    public com.handsonvr.furnace.FurnaceWatcher furnaceWatcher() {
+        return furnaceWatcher;
+    }
+
     public int offSource() {
         return offSource;
     }
@@ -133,6 +139,7 @@ public final class HandsController {
         radial.close();
         table.reset();
         furnace.reset();
+        furnaceWatcher.reset();
         offSource = -1;
         menuConsumed[0] = menuConsumed[1] = false;
         resultHold[0] = resultHold[1] = ResultSource.NONE;
@@ -1202,6 +1209,7 @@ public final class HandsController {
                 && !table.isWaiting() && craftJob == null && !grabbingOutsideMenus();
         boolean inUse = craftJob != null && craftJob.source == ResultSource.FURNACE;
         furnace.tick(client, canAuto, inUse);
+        furnaceWatcher.tick(client, furnace);
         for (int hand = 0; hand < 2; hand++) {
             int target = backpack.holder() == hand || !VrBridge.isVRActive() ? FurnaceStation.NONE
                     : furnace.targetAt(VrBridge.pointer(hand));

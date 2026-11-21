@@ -2,6 +2,15 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.5.1-alpha (Minecraft 26.3)
+
+### Fornalhas: o conteúdo aparece de longe ([#38](https://github.com/DemianGomes/handsonvr/issues/38))
+
+- Todas as fornalhas, alto-fornos e defumadores a até **10 blocos** mostram o que têm: os itens, a barra de progresso e o resultado flutuando. Antes, só a que você olhava bem de perto.
+- **No singleplayer**, tudo ao vivo: o mod lê as fornalhas no servidor do próprio jogo a cada quarto de segundo.
+- **Em servidor**, a fornalha aberta (a que você olha de perto) aparece ao vivo. As outras mostram o que tinham na última vez que você as viu abertas, porque o servidor só manda o conteúdo de uma fornalha aberta.
+- Usar com as mãos continua igual, de perto.
+
 ## 0.5.0-alpha (Minecraft 26.3)
 
 ### Arremesso com a mão ([#36](https://github.com/DemianGomes/handsonvr/issues/36))

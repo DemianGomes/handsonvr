@@ -211,69 +211,47 @@ public final class FurnaceStation {
         hover[0] = hover[1] = NONE;
     }
 
-    // ------------------------------------------------------------------ geometria
+    // ------------------------------------------------------------------ geometria (a de FurnaceView) e o retrato
+
+    /** A fornalha aberta como {@link FurnaceView}: o conteúdo de agora, pelo menu. Null se nenhuma. */
+    public FurnaceView view() {
+        if (pos == null || kind == null) {
+            return null;
+        }
+        return new FurnaceView(pos, kind, facing, stack(INPUT).copy(), stack(FUEL).copy(), resultStack().copy(), isLit(),
+                litProgress(), burnProgress(), menu != null);
+    }
+
+    private FurnaceView shape() {
+        return FurnaceView.shape(pos, kind, facing);
+    }
 
     public Vec3 center() {
         return Vec3.atCenterOf(pos);
     }
 
     public Vec3 topCenter() {
-        return center().add(0, 0.5, 0);
+        return shape().topCenter();
     }
 
     /** O centro da frente (a face para onde a fornalha olha). */
     public Vec3 frontCenter() {
-        return center().add(Vec3.atLowerCornerOf(facing.getUnitVec3i()).scale(0.5));
+        return shape().frontCenter();
     }
 
-    /** A direita de quem olha a frente (no plano). */
-    public Vec3 frontRight() {
-        Vec3 n = Vec3.atLowerCornerOf(facing.getUnitVec3i());
-        return new Vec3(n.z, 0, -n.x);
-    }
-
-    /**
-     * O plano de um lugar: origem no centro dele, x para a direita, y para cima do desenho e z para fora da face. No
-     * topo, o "cima" do desenho aponta para longe do jogador.
-     */
+    /** O plano de um lugar (veja {@link FurnaceView#spotPlane}). */
     public Panel spotPlane(int target) {
-        Spot s = spot(target);
-        double cx = ((s.x0() + s.x1()) / 2.0 - 8) / 16, cy = (8 - (s.y0() + s.y1()) / 2.0) / 16;
-        if (s.face() == Face.FRONT) {
-            Vec3 right = frontRight(), up = new Vec3(0, 1, 0);
-            Vec3 origin = frontCenter().add(right.scale(cx)).add(up.scale(cy));
-            return new Panel(origin, right, up, Vec3.atLowerCornerOf(facing.getUnitVec3i()), 1.0);
-        }
-        Vec3 away = away(), right = new Vec3(-away.z, 0, away.x);
-        Vec3 origin = topCenter().add(right.scale(cx)).add(away.scale(cy));
-        return new Panel(origin, right, away, new Vec3(0, 1, 0), 1.0);
-    }
-
-    /** Para longe do jogador, no plano (da cabeça para a fornalha). */
-    public Vec3 away() {
-        VrBridge.Pose head = VrBridge.head();
-        if (head == null || pos == null) {
-            return new Vec3(0, 0, 1);
-        }
-        Vec3 d = center().subtract(head.position());
-        Vec3 flat = new Vec3(d.x, 0, d.z);
-        return flat.lengthSqr() < 1.0e-6 ? new Vec3(0, 0, 1) : flat.normalize();
-    }
-
-    /** A direita de quem olha a fornalha agora (a linha do progresso e do resultado acompanha o jogador). */
-    public Vec3 viewRight() {
-        Vec3 f = away();
-        return new Vec3(-f.z, 0, f.x);
+        return shape().spotPlane(target);
     }
 
     /** O centro da barra de progresso (à esquerda na linha acima do bloco). */
     public Vec3 panelCenter() {
-        return topCenter().add(0, ROW_HEIGHT, 0).subtract(viewRight().scale(PANEL_SIDE));
+        return shape().panelCenter();
     }
 
     /** Onde o resultado flutua (sem o balanço do desenho): à direita da seta. */
     public Vec3 resultCenter() {
-        return topCenter().add(0, ROW_HEIGHT, 0).add(viewRight().scale(RESULT_SIDE));
+        return shape().resultCenter();
     }
 
     /** A ponta da mão está no lugar do resultado (com o menu aberto, mesmo sem nada pronto agora)? */

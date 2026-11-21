@@ -18,6 +18,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Desenha as fornalhas imersivas (padrão em docs/VISUAL.md):
+ * Todas as fornalhas a até 10 blocos ({@link FurnaceWatcher}); o realce da mão e a caixa de dica só na que está aberta.
  * <ul>
  *   <li>a entrada e o combustível no próprio bloco, com a luz do lugar: em pé numa abertura da frente ou deitados no
  *       topo, com a quantidade como no inventário; o lugar sob a mão clareia como um espaço do inventário;</li>
@@ -46,33 +47,37 @@ public final class FurnaceRenderer {
 
     public static void render(LevelRenderContext context, HandsController hands) {
         Minecraft client = Minecraft.getInstance();
-        FurnaceStation f = hands.furnace();
+        FurnaceStation station = hands.furnace();
         PoseStack ms = context.poseStack();
-        if (f.pos() == null || f.kind() == null || !f.isOpen() || client.level == null || client.player == null
-                || ms == null || context.submitNodeCollector() == null || !VrBridge.isVRActive()) {
+        VrBridge.Pose head = VrBridge.head();
+        if (client.level == null || client.player == null || ms == null || context.submitNodeCollector() == null
+                || !VrBridge.isVRActive() || head == null) {
             return;
         }
         Vec3 camera = context.levelState().cameraRenderState.pos;
         Draw d = new Draw(ms, context.submitNodeCollector());
         boolean holding = hands.grabs().isGrabbing(0) || hands.grabs().isGrabbing(1);
-        for (int target : new int[] {FurnaceStation.INPUT, FurnaceStation.FUEL}) {
-            spot(d, ms, camera, client, f, target, holding);
+        // Todas as fornalhas por perto (até 10 blocos): a aberta ao vivo e as outras com o conteúdo mais novo que se tem.
+        for (FurnaceView v : hands.furnaceWatcher().views(station)) {
+            boolean open = station.isOpen() && v.pos().equals(station.pos());
+            int hover0 = open ? station.hover(0) : FurnaceStation.NONE, hover1 = open ? station.hover(1) : FurnaceStation.NONE;
+            for (int target : new int[] {FurnaceStation.INPUT, FurnaceStation.FUEL}) {
+                spot(d, ms, camera, client, v, target, holding && open, hover0 == target || hover1 == target);
+            }
+            if (v.busy()) {
+                progress(d, ms, camera, v, head.position());
+                result(d, ms, camera, client, v, head.position(),
+                        hover0 == FurnaceStation.RESULT || hover1 == FurnaceStation.RESULT);
+            }
         }
-        VrBridge.Pose head = VrBridge.head();
-        if (head == null || !f.busy()) {
-            return;
-        }
-        progress(d, ms, camera, f, head.position());
-        result(d, ms, camera, client, f, head.position());
     }
 
     /** A entrada ou o combustível: o item no lugar dele (em pé na frente ou deitado no topo) e o realce da mão. */
-    private static void spot(Draw d, PoseStack ms, Vec3 camera, Minecraft client, FurnaceStation f, int target,
-            boolean holding) {
+    private static void spot(Draw d, PoseStack ms, Vec3 camera, Minecraft client, FurnaceView f, int target,
+            boolean holding, boolean hovered) {
         FurnaceStation.Spot s = f.spot(target);
         Panel plane = f.spotPlane(target);
         ItemStack stack = f.stack(target);
-        boolean hovered = f.hover(0) == target || f.hover(1) == target;
         boolean front = s.face() == FurnaceStation.Face.FRONT;
         int light = LightCoordsUtil.getLightCoords(client.level, front ? f.pos().relative(f.facing()) : f.pos().above());
         float w = (float) s.width(), h = (float) s.height(), box = (float) s.box();
@@ -95,7 +100,7 @@ public final class FurnaceRenderer {
     }
 
     /** A plaquinha com a chama e a seta da tela do jogo, virada para o rosto. */
-    private static void progress(Draw d, PoseStack ms, Vec3 camera, FurnaceStation f, Vec3 eye) {
+    private static void progress(Draw d, PoseStack ms, Vec3 camera, FurnaceView f, Vec3 eye) {
         Vec3 c = f.panelCenter();
         Panel p = Panel.facing(c, eye, 0, 1.0);
         ms.pushPose();
@@ -114,7 +119,7 @@ public final class FurnaceRenderer {
         if (flameBg != null && arrowBg != null && lit != null && burn != null) {
             gui(d, flameBg, 14, flameLeft, flameTop, px, 0.0008f);
             gui(d, arrowBg, 24, arrowLeft, arrowTop, px, 0.0008f);
-            if (f.isLit()) {
+            if (f.lit()) {
                 int l = (int) Math.ceil(f.litProgress() * 13f) + 1; // a chama baixa de cima para baixo
                 int rows = Math.round(l * lit.height() / 14f), skip = lit.height() - rows;
                 Sprite part = lit.crop(0, skip, lit.width(), rows);
@@ -144,13 +149,13 @@ public final class FurnaceRenderer {
     }
 
     /** O resultado flutuando à direita da seta, como um item no chão; com a mão perto, maior e com o nome. */
-    private static void result(Draw d, PoseStack ms, Vec3 camera, Minecraft client, FurnaceStation f, Vec3 eye) {
-        ItemStack result = f.resultStack();
+    private static void result(Draw d, PoseStack ms, Vec3 camera, Minecraft client, FurnaceView f, Vec3 eye,
+            boolean hovered) {
+        ItemStack result = f.result();
         if (result.isEmpty()) {
             return;
         }
         int light = LightCoordsUtil.getLightCoords(client.level, f.pos().above());
-        boolean hovered = f.hover(0) == FurnaceStation.RESULT || f.hover(1) == FurnaceStation.RESULT;
         float t = client.level.getGameTime() + client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         Vec3 c = f.resultCenter().add(0, Math.sin(t / 10f) * BOB, 0);
         ms.pushPose();
