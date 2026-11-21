@@ -2,6 +2,18 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.6.0-alpha (Minecraft 26.3)
+
+### Distribuir arrastando e pegar metade ([#39](https://github.com/DemianGomes/handsonvr/issues/39))
+
+- **Distribuir:** segurando uma pilha com o grip, aperte o gatilho num espaço e, **sem soltar o gatilho**, passe a mão por outros. Cada um marcado clareia e o controle vibra.
+  - Ao soltar o gatilho, a pilha se **divide igualmente** entre eles, como arrastar na tela do jogo: 9 canas pela linha de cima da mesa viram 3 em cada casa. O que sobrar fica na mão.
+  - Soltar o gatilho no mesmo espaço em que apertou continua pondo um item só.
+  - Vale na mesa de trabalho e na mochila (crafting 2x2 e inventário).
+- **Pegar metade:** com o **gatilho já apertado**, o grip num espaço com itens traz a metade para a mão (arredondada para cima, como o clique direito). Vale na mesa e na mochila.
+- O gatilho numa casa da mesa, com a mão vazia, não acerta mais a mesa (não começa a quebrá-la).
+- Por baixo, são os cliques normais do jogo (o arrastar e o clique direito): funciona em qualquer servidor.
+
 ## 0.5.1-alpha (Minecraft 26.3)
 
 ### Fornalhas: o conteúdo aparece de longe ([#38](https://github.com/DemianGomes/handsonvr/issues/38))

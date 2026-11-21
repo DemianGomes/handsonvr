@@ -299,6 +299,60 @@ public final class InvOps {
     }
 
     /**
+     * Divide a pilha de {@code from} igualmente entre os espaços {@code targets}, como arrastar a pilha pela tela do jogo
+     * (o "arrastar" com o botão esquerdo): cada um recebe a mesma quantidade e o que sobra volta para {@code from}.
+     * Espaços com outro item ficam de fora. Retorna true se algo saiu de {@code from}.
+     */
+    public static boolean distribute(Minecraft client, int from, java.util.List<Integer> targets) {
+        LocalPlayer p = client.player;
+        int[] all = new int[targets.size() + 1];
+        all[0] = from;
+        for (int i = 0; i < targets.size(); i++) {
+            all[i + 1] = targets.get(i);
+        }
+        prepare(client, all);
+        ItemStack before = stack(p, from).copy();
+        if (before.isEmpty() || !cursor(p).isEmpty() || targets.isEmpty() || !reachable(p, from)) {
+            return false;
+        }
+        click(client, from, 0, ContainerInput.PICKUP); // a pilha no "cursor"
+        click(client, AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_START, AbstractContainerMenu.QUICKCRAFT_TYPE_CHARITABLE),
+                ContainerInput.QUICK_CRAFT);
+        for (int t : targets) {
+            if (reachable(p, t)) {
+                click(client, t, AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_CONTINUE,
+                        AbstractContainerMenu.QUICKCRAFT_TYPE_CHARITABLE), ContainerInput.QUICK_CRAFT);
+            }
+        }
+        click(client, AbstractContainerMenu.SLOT_CLICKED_OUTSIDE,
+                AbstractContainerMenu.getQuickcraftMask(AbstractContainerMenu.QUICKCRAFT_HEADER_END, AbstractContainerMenu.QUICKCRAFT_TYPE_CHARITABLE),
+                ContainerInput.QUICK_CRAFT);
+        if (!cursor(p).isEmpty()) {
+            click(client, from, 0, ContainerInput.PICKUP); // o que sobrou volta
+        }
+        flushCursor(client);
+        return !ItemStack.matches(before, stack(p, from));
+    }
+
+    /**
+     * Pega a METADE da pilha de {@code from} (arredondada para cima, como o clique direito da tela do jogo) e a põe em
+     * {@code to} (vazio). Retorna true se deu.
+     */
+    public static boolean takeHalf(Minecraft client, int from, int to) {
+        LocalPlayer p = client.player;
+        prepare(client, from, to);
+        if (from == to || stack(p, from).isEmpty() || !stack(p, to).isEmpty() || !cursor(p).isEmpty()
+                || !reachable(p, from) || !reachable(p, to)) {
+            return false;
+        }
+        click(client, from, 1, ContainerInput.PICKUP); // botão direito: a metade no "cursor"
+        click(client, to, 0, ContainerInput.PICKUP);
+        flushCursor(client);
+        return !stack(p, to).isEmpty();
+    }
+
+    /**
      * Fabrica UM resultado do crafting 2x2 direto no espaço {@code target} (vazio, ou com o mesmo item e espaço para
      * tudo; o que não couber vai para o inventário). Retorna true se fabricou.
      */

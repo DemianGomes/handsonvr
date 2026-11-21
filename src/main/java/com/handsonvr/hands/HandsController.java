@@ -16,6 +16,9 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * O "cérebro" das mãos: recebe grip, gatilho e os botões do radial (B/X) de cada mão e decide quem responde — o
  * menu radial aberto, a mochila aberta, a zona do corpo (mochila no ombro esquerdo, coldres) — e aplica a regra das
@@ -55,6 +58,36 @@ public final class HandsController {
 
     /** "Fabricar tudo" (grip + gatilho): até acabar a grade (o máximo de uma pilha, como o Shift+clique). */
     private static final int ALL = 64;
+
+    /** Onde se arrasta uma pilha com o gatilho: as casas da mesa de trabalho ou os espaços da mochila. */
+    public enum DragKind { TABLE, BACKPACK }
+
+    /**
+     * Arrastar com o gatilho (como arrastar a pilha pela tela do jogo): começa no gatilho sobre uma casa, com a pilha
+     * segura pelo grip, e marca cada casa por que a mão passa. Soltar o gatilho põe um (uma casa) ou divide a pilha
+     * igualmente (duas ou mais). {@code cells}: casas da mesa (0-8) ou espaços do menu do jogador (mochila).
+     */
+    private static final class Drag {
+        final DragKind kind;
+        final List<Integer> cells = new ArrayList<>();
+
+        Drag(DragKind kind, int first) {
+            this.kind = kind;
+            cells.add(first);
+        }
+    }
+
+    private final Drag[] drags = new Drag[2];
+
+    /** Esta casa está marcada pelo arrastar de alguma mão (o desenho a clareia)? */
+    public boolean dragMarked(DragKind kind, int cell) {
+        for (Drag d : drags) {
+            if (d != null && d.kind == kind && d.cells.contains(cell)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
      * Fabricando para uma mão: uma vez (grip no resultado) ou tudo (grip + gatilho, como o Shift+clique da tela do
@@ -285,7 +318,13 @@ public final class HandsController {
             return true;
         }
         if (onTable >= 0 && !table.cellStack(onTable).isEmpty()) {
-            blockToHand(client, hand, table.take(client, onTable), "tirou da mesa a casa " + onTable);
+            if (GripState.isTriggerHeld(hand)) {
+                // Gatilho apertado + grip: só a metade (como o clique direito da tela do jogo).
+                int free = freeSlotForResult(p);
+                blockToHand(client, hand, free < 0 ? -1 : table.takeHalf(client, onTable, free), "tirou a metade da casa " + onTable);
+            } else {
+                blockToHand(client, hand, table.take(client, onTable), "tirou da mesa a casa " + onTable);
+            }
             return true;
         }
         // 3b) Fornalha: o resultado (vem para a mão, com a experiência do jogo), ou a entrada/o combustível com item
@@ -625,7 +664,14 @@ public final class HandsController {
             // Como em todo lugar, o grip pega emprestado: o item vem para a mão (inclusive a armadura vestida e o que
             // está no crafting) e soltar decide para onde ele vai.
             case SLOT, CRAFT_IN, ARMOR -> {
-                if (isLocked(p, e.handler())) {
+                int half = e.kind() != Backpack.Kind.ARMOR && GripState.isTriggerHeld(hand) && !isLocked(p, e.handler())
+                        && InvOps.stack(p, e.handler()).getCount() > 1 ? freeSlotForResult(p) : -1;
+                if (half >= 0 && InvOps.takeHalf(client, e.handler(), half)) {
+                    // Gatilho apertado + grip: a metade vem para a mão (pega do espaço vazio em que ela ficou).
+                    if (grabs.begin(client, hand, half, GrabSystem.Origin.BACKPACK, null, hand == 0 ? emptyHotbarFor(p) : -1)) {
+                        action("pegou a metade do espaço " + e.handler());
+                    }
+                } else if (isLocked(p, e.handler())) {
                     refuse(hand);
                 } else if (grabs.begin(client, hand, e.handler(), GrabSystem.Origin.BACKPACK, null,
                         hand == 0 ? emptyHotbarFor(p) : -1)) {
@@ -706,6 +752,13 @@ public final class HandsController {
         }
         if (!InvOps.ready(client)) {
             return; // uma tela (baú...) está aberta: devolve quando fechar
+        }
+        // Soltou o grip ainda arrastando (o gatilho apertado): o arrastar vale (como soltar o botão do mouse), e o resto
+        // da pilha segue a regra de sempre.
+        Drag drag = drags[hand];
+        if (drag != null) {
+            drags[hand] = null;
+            finishDrag(client, hand, drag);
         }
         Vec3 tip = VrBridge.pointer(hand);
         HandsOnConfig config = HandsOnConfig.get();
@@ -884,7 +937,16 @@ public final class HandsController {
                             VrBridge.pulse(hand, 0.01f);
                             action("descartou um");
                         }
-                        case SLOT, CRAFT_IN, ARMOR -> {
+                        case SLOT, CRAFT_IN -> {
+                            // Começa a arrastar: soltar o gatilho aqui põe um; passando por outros espaços, divide.
+                            if (!isLocked(p, e.handler())) {
+                                drags[hand] = new Drag(DragKind.BACKPACK, e.handler());
+                                VrBridge.pulse(hand, 0.005f);
+                            } else {
+                                refuse(hand);
+                            }
+                        }
+                        case ARMOR -> {
                             if (!isLocked(p, e.handler()) && InvOps.placeOne(client, handSlot, e.handler())) {
                                 VrBridge.pulse(hand, 0.01f);
                                 action("colocou um no espaço " + e.handler());
@@ -902,15 +964,12 @@ public final class HandsController {
                     return true;
                 }
             }
-            // Mesa de trabalho: gatilho sobre uma casa põe UM item e a mão continua segurando o resto.
+            // Mesa de trabalho: o gatilho começa a arrastar. Soltar o gatilho na mesma casa põe UM item (a mão continua
+            // segurando o resto); passando por outras casas, a pilha se divide igualmente entre elas.
             int cell = table.targetAt(tip);
             if (cell >= 0 && cell < 9) {
-                if (table.place(client, hand, handSlot, cell, tableCanOpen(p), false)) {
-                    VrBridge.pulse(hand, 0.01f);
-                    action("pôs um na mesa (gatilho), casa " + cell);
-                } else {
-                    refuse(hand);
-                }
+                drags[hand] = new Drag(DragKind.TABLE, cell);
+                VrBridge.pulse(hand, 0.005f);
                 return true;
             }
             // Fornalha: gatilho na entrada ou no combustível põe UM item.
@@ -945,7 +1004,7 @@ public final class HandsController {
         }
         // Gatilho sozinho no resultado da mesa: nada (o resultado sai com o grip). Numa fornalha também: o gatilho não
         // quebra o bloco em que a mão está mexendo.
-        if (table.targetAt(tip) == CraftingTable.RESULT || furnace.targetAt(tip) != FurnaceStation.NONE) {
+        if (table.targetAt(tip) != CraftingTable.NONE || furnace.targetAt(tip) != FurnaceStation.NONE) {
             return true;
         }
         return false;
@@ -957,6 +1016,83 @@ public final class HandsController {
             return false;
         }
         return backpack.holder() == 0 || (backpack.isOpen() && backpack.onPanel(VrBridge.pointer(0)));
+    }
+
+    // ------------------------------------------------------------------ arrastar com o gatilho (distribuir)
+
+    /** Gatilho solto. Retorna true se foi nosso (terminou um arrastar). */
+    public boolean onTriggerReleased(Minecraft client, int hand) {
+        Drag d = drags[hand];
+        drags[hand] = null;
+        if (d == null || client.player == null) {
+            return false;
+        }
+        finishDrag(client, hand, d);
+        return true;
+    }
+
+    /** Fim do arrastar: uma casa = um item; duas ou mais = a pilha dividida igualmente entre elas. */
+    private void finishDrag(Minecraft client, int hand, Drag d) {
+        LocalPlayer p = client.player;
+        GrabSystem.Grab g = grabs.get(hand);
+        if (g == null || !InvOps.ready(client)) {
+            return;
+        }
+        int handSlot = GrabSystem.itemSlot(p, g);
+        List<Integer> cells = new ArrayList<>(d.cells);
+        if (d.kind == DragKind.BACKPACK) {
+            cells.removeIf(c -> isLocked(p, c) || c == handSlot);
+        }
+        if (cells.isEmpty()) {
+            refuse(hand);
+            return;
+        }
+        boolean one = cells.size() == 1;
+        boolean ok = switch (d.kind) {
+            case TABLE -> one ? table.place(client, hand, handSlot, cells.get(0), tableCanOpen(p), false)
+                    : table.distribute(client, handSlot, cells);
+            case BACKPACK -> one ? InvOps.placeOne(client, handSlot, cells.get(0)) : InvOps.distribute(client, handSlot, cells);
+        };
+        if (ok) {
+            VrBridge.pulse(hand, one ? 0.01f : 0.03f);
+            action(one ? "pôs um (" + d.kind + " " + cells.get(0) + ")" : "dividiu a pilha em " + cells.size() + " (" + d.kind + ")");
+        } else {
+            refuse(hand);
+        }
+    }
+
+    /** Durante o arrastar: marca cada casa nova por que a mão passa (vibra) e termina se o gatilho foi solto. */
+    private void dragTick(Minecraft client) {
+        LocalPlayer p = client.player;
+        for (int hand = 0; hand < 2; hand++) {
+            Drag d = drags[hand];
+            if (d == null) {
+                continue;
+            }
+            if (!grabs.isGrabbing(hand) || !VrBridge.isVRActive()) {
+                drags[hand] = null;
+                continue;
+            }
+            if (!GripState.isTriggerHeld(hand)) {
+                onTriggerReleased(client, hand); // o aviso de soltar não chegou: termina aqui
+                continue;
+            }
+            Vec3 tip = VrBridge.pointer(hand);
+            int cell = -1;
+            if (d.kind == DragKind.TABLE) {
+                int t = table.targetAt(tip);
+                cell = t >= 0 && t < 9 ? t : -1;
+            } else if (backpack.isOpen() && backpack.holder() != hand) {
+                Backpack.Element e = backpack.elementAt(tip);
+                if (e != null && (e.kind() == Backpack.Kind.SLOT || e.kind() == Backpack.Kind.CRAFT_IN) && !isLocked(p, e.handler())) {
+                    cell = e.handler();
+                }
+            }
+            if (cell >= 0 && !d.cells.contains(cell)) {
+                d.cells.add(cell);
+                VrBridge.pulse(hand, 0.008f);
+            }
+        }
     }
 
     // ------------------------------------------------------------------ menu radial (B / X)
@@ -1195,6 +1331,7 @@ public final class HandsController {
         holsters.tick(client);
         BowHand.tick(client);
         tableTick(client);
+        dragTick(client);
         furnaceTick(client);
         craftTick(client);
     }

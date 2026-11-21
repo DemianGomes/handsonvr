@@ -136,7 +136,9 @@ public final class BackpackRenderer {
         int free = 1 - bp.holder();
         Backpack.Element hover = bp.hover(free);
         for (Backpack.Element e : bp.layout()) {
-            boolean hovered = hover != null && hover.kind() == e.kind() && hover.handler() == e.handler() && hover.x() == e.x();
+            boolean hovered = (hover != null && hover.kind() == e.kind() && hover.handler() == e.handler() && hover.x() == e.x())
+                    || ((e.kind() == Backpack.Kind.SLOT || e.kind() == Backpack.Kind.CRAFT_IN)
+                    && hands.dragMarked(HandsController.DragKind.BACKPACK, e.handler())); // marcado pelo arrastar
             drawElement(p, hands, d, e, hovered);
         }
 

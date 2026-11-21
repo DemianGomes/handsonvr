@@ -26,6 +26,8 @@ O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O padrão visual (t
 | Grip | Pegar (coldre, mochila, item da mochila ou do radial) enquanto estiver apertado. Em qualquer outro lugar, segura o item da própria mão. |
 | Soltar o grip | Devolve o item ao lugar dele. Sobre um espaço da mochila, coloca ali; num coldre, guarda ali; no ombro esquerdo, guarda na mochila. |
 | Gatilho com o grip apertado | Coloca um item por vez num espaço ou na zona de descarte. |
+| Gatilho segurado passando por vários espaços | Divide a pilha igualmente entre eles (mesa e mochila), como arrastar na tela do jogo. |
+| Gatilho + grip num espaço | Pega a metade. |
 | Grip no resultado do crafting | Fabrica uma vez (mochila ou mesa) e o resultado vai para a mão. |
 | Grip + gatilho no resultado do crafting | Fabrica tudo o que der, direto na mão. |
 | Grip no resultado de uma fornalha | Leva tudo o que está pronto para a mão. |
