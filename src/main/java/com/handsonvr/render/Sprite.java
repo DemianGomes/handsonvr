@@ -50,8 +50,39 @@ public final class Sprite {
      * existir (o desenho usa um substituto).
      */
     public static Sprite gui(String path) {
-        return CACHE.computeIfAbsent("gui:" + path,
-                k -> read(Identifier.withDefaultNamespace("textures/gui/sprites/" + path + ".png"), 64)).orElse(null);
+        return gui(path, 64);
+    }
+
+    /** Como {@link #gui(String)}, aceitando imagens de até {@code maxSize} pixels (a hotbar tem 182). */
+    public static Sprite gui(String path, int maxSize) {
+        return cached("gui:" + path,
+                () -> read(Identifier.withDefaultNamespace("textures/gui/sprites/" + path + ".png"), maxSize));
+    }
+
+    /**
+     * Uma casa da hotbar sozinha (22x22 pixels na textura padrão), recortada de {@code hud/hotbar}: a borda da
+     * esquerda e a primeira casa, mais a borda da direita do fim da barra. É a casa que o jogo desenharia se a hotbar
+     * tivesse um espaço só. Null se a textura não tiver o formato da do jogo (182x22, ou múltiplos dela).
+     */
+    public static Sprite hotbarCell() {
+        return cached("hotbar_cell", () -> {
+            Sprite bar = gui("hud/hotbar", 2048);
+            if (bar == null || bar.height % 22 != 0 || bar.width != 182 * (bar.height / 22)) {
+                return Optional.empty();
+            }
+            int u = bar.height / 22; // pixels da textura por pixel do jogo (resource packs em alta resolução)
+            int left = 19 * u, right = 3 * u, w = left + right, h = bar.height;
+            int[] px = new int[w * h];
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < left; x++) {
+                    px[y * w + x] = bar.pixel(x, y);
+                }
+                for (int x = 0; x < right; x++) {
+                    px[y * w + left + x] = bar.pixel(bar.width - right + x, y);
+                }
+            }
+            return Optional.of(new Sprite(w, h, px));
+        });
     }
 
     /**
@@ -62,12 +93,11 @@ public final class Sprite {
         if (c > 0xFF) {
             return null;
         }
-        return CACHE.computeIfAbsent("glyph:" + c, k -> cutGlyph(c)).orElse(null);
+        return cached("glyph:" + c, () -> cutGlyph(c));
     }
 
     private static Optional<Sprite> cutGlyph(char c) {
-        Sprite sheet = CACHE.computeIfAbsent("font:ascii",
-                k -> read(Identifier.withDefaultNamespace("textures/font/ascii.png"), 2048)).orElse(null);
+        Sprite sheet = cached("font:ascii", () -> read(Identifier.withDefaultNamespace("textures/font/ascii.png"), 2048));
         if (sheet == null || sheet.width % 16 != 0) {
             return Optional.empty();
         }
@@ -89,6 +119,19 @@ public final class Sprite {
             }
         }
         return Optional.of(new Sprite(w, cell, px));
+    }
+
+    /**
+     * O sprite guardado com essa chave, lido na primeira vez. (Sem {@code computeIfAbsent}: ler um sprite pode ler
+     * outro, e o HashMap não aceita mudar dentro do computeIfAbsent.)
+     */
+    private static Sprite cached(String key, java.util.function.Supplier<Optional<Sprite>> load) {
+        Optional<Sprite> s = CACHE.get(key);
+        if (s == null) {
+            s = load.get();
+            CACHE.put(key, s);
+        }
+        return s.orElse(null);
     }
 
     /** Esquece os sprites lidos (troca de resource pack). */

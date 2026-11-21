@@ -2,6 +2,19 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.2.3-alpha (Minecraft 26.3)
+
+### Menu radial acompanha o jogador ([#13](https://github.com/DemianGomes/handsonvr/issues/13))
+
+- O radial fica preso à área de jogo do Vivecraft: anda e gira junto quando você anda ou vira com o analógico. Antes ele ficava parado no mundo.
+- Mexer a cabeça ou se inclinar não move o radial, para ele não fugir da mão.
+
+### Padrão visual do Minecraft ([#14](https://github.com/DemianGomes/handsonvr/issues/14))
+
+- Novo guia [docs/VISUAL.md](docs/VISUAL.md): toda tela ou objeto do mod segue o visual do jogo.
+- Radial com a cara da hotbar: casas da hotbar, a moldura de seleção da hotbar no espaço sob a mão, o nome do item na caixa de dica do jogo, o ícone do escudo no item da mão esquerda e a barreira quando não dá para esvaziar a mão. Saíram os círculos, as cores próprias e as letras "D"/"E".
+- Correção: o primeiro número de quantidade desenhado depois de entrar num mundo podia falhar (leitura da fonte dentro do cache).
+
 ## 0.2.2-alpha (Minecraft 26.3)
 
 ### Guardar o item da mão ([#8](https://github.com/DemianGomes/handsonvr/issues/8), [#9](https://github.com/DemianGomes/handsonvr/issues/9))

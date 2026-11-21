@@ -3,6 +3,7 @@ package com.handsonvr.radial;
 import com.handsonvr.hands.HandsController;
 import com.handsonvr.inv.InvOps;
 import com.handsonvr.render.Draw;
+import com.handsonvr.render.Sprite;
 import com.handsonvr.vr.Panel;
 import com.handsonvr.vr.VrBridge;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -11,18 +12,26 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Desenha o menu radial: 9 círculos da hotbar em volta da "mão vazia". O alvo sob a mão fica amarelo (como no Alyx),
- * o espaço da mão direita tem anel azul, o da mão esquerda anel verde com "E", e a mão vazia fica apagada quando não
- * há espaço livre para esvaziar a mão.
+ * Desenha o menu radial com a cara da hotbar do jogo (padrão em docs/VISUAL.md): cada espaço é uma casa da hotbar
+ * ({@code hud/hotbar}), a moldura de seleção ({@code hud/hotbar_selection}) fica no espaço sob a mão (sem a mão em
+ * cima, no espaço que está na mão), o nome do item aparece na caixa de dica do jogo e o item da mão esquerda leva o
+ * ícone do escudo, o mesmo do espaço da mão secundária no inventário. No centro, a "mão vazia" é uma casa vazia; sem
+ * espaço livre para esvaziar a mão, mostra a barreira.
  */
 public final class RadialRenderer {
     private RadialRenderer() {}
 
-    private static final int BG = 0xA0202020, HOVER_BG = 0xD0E8C547, RING = 0xE6F0F0F0, HOVER_RING = 0xFFFFE680;
-    private static final int MAIN_RING = 0xFF5AA9FF, OFF_RING = 0xFF6BD66B, DISABLED = 0x80505050;
+    private static final float PX = (float) RadialMenu.PX, CELL = (float) RadialMenu.CELL;
+    /** Profundidades (m, para o rosto): casas, itens, quantidade, moldura de seleção, caixa de dica. */
+    private static final float Z_CELL = 0.002f, Z_SELECTION = 0.018f, Z_TOOLTIP = 0.024f;
+    /** A caixa de dica é um pouco menor que o resto (o texto fica com ~2 cm). */
+    private static final float TOOLTIP_PX = PX * 0.8f;
+    /** Contorno do ícone do escudo (mão esquerda), como a quantidade: branco com a sombra do jogo. */
+    private static final int MARK = 0xFFFFFFFF, MARK_SHADOW = 0xFF3F3F3F;
 
     public static void render(LevelRenderContext context, HandsController hands) {
         Minecraft client = Minecraft.getInstance();
@@ -46,35 +55,74 @@ public final class RadialRenderer {
         float s = (float) panel.scale();
         ms.scale(s, s, s);
 
-        int selected = p.getInventory().getSelectedSlot();
+        int highlighted = radial.highlighted();
+        int inHand = opener == 0 ? p.getInventory().getSelectedSlot() : hands.offSource() >= 0 ? hands.offSource()
+                : RadialMenu.NONE;
+        int framed = highlighted != RadialMenu.NONE ? highlighted : inHand;
+        boolean canEmpty = hands.canEmpty(p, opener);
+
+        Sprite cell = Sprite.hotbarCell();
         for (int i = RadialMenu.CENTER; i < 9; i++) {
             double[] c = RadialMenu.position(i);
-            float x = (float) c[0], y = (float) c[1], r = (float) RadialMenu.radius(i);
-            boolean hovered = radial.hover(opener) == i || radial.hover(1 - opener) == i;
-            if (i == RadialMenu.CENTER) {
-                boolean enabled = hands.canEmpty(p, opener);
-                d.disc(x, y, r, 0.002f, !enabled ? DISABLED : hovered ? HOVER_BG : BG);
-                d.ring(x, y, r - (hovered ? 0.006f : 0.0035f), r, 0.003f, hovered && enabled ? HOVER_RING : RING);
-                d.text(enabled ? "✋" : "✕", x, y + 0.008f, 0.006f, 0.03f, enabled ? 0xFFFFFFFF : 0xFFB0B0B0, true);
-                d.text(Component.translatable("radial.handsonvr.empty").getString(), x, y - 0.022f, 0.006f, 0.010f,
-                        0xFFE0E0E0, true);
-                continue;
+            float x = (float) c[0], y = (float) c[1];
+            if (cell != null) {
+                d.spriteCentered(cell, x, y, CELL, Z_CELL, Draw.KEEP_ALPHA);
+            } else {
+                d.mcSlot(x, y, CELL, Z_CELL, false);
             }
-            int slot = InvOps.HOTBAR_START + i;
-            ItemStack stack = hands.displayStack(p, slot);
-            d.disc(x, y, r, 0.002f, hovered ? HOVER_BG : BG);
-            int ring = hovered ? HOVER_RING : i == hands.offSource() ? OFF_RING : i == selected ? MAIN_RING : RING;
-            float thick = hovered || i == selected || i == hands.offSource() ? 0.006f : 0.0035f;
-            d.ring(x, y, r - thick, r, 0.003f, ring);
-            d.item(stack, x, y, 0.02f, r * 1.25f);
-            d.count(stack, x, y, r, 0.032f);
-            d.text(Integer.toString(i + 1), x - r * 0.62f, y + r * 0.62f, 0.006f, r * 0.34f, 0xC0FFFFFF, true);
-            if (i == hands.offSource()) {
-                d.text("E", x + r * 0.62f, y + r * 0.62f, 0.006f, r * 0.4f, OFF_RING, true);
-            } else if (i == selected) {
-                d.text("D", x + r * 0.62f, y + r * 0.62f, 0.006f, r * 0.4f, MAIN_RING, true);
+            ItemStack stack = i == RadialMenu.CENTER ? (canEmpty ? ItemStack.EMPTY : new ItemStack(Items.BARRIER))
+                    : hands.displayStack(p, InvOps.HOTBAR_START + i);
+            // Como na hotbar do jogo: o item de 16 pixels no meio da casa e a quantidade no canto de um espaço de 18.
+            float slot = 18 * PX, itemSize = slot * 0.85f, itemZ = 0.004f + itemSize * 0.1f;
+            d.item(stack, x, y, itemZ, itemSize);
+            if (i != RadialMenu.CENTER) {
+                d.mcCount(stack, x, y, slot, itemZ + itemSize * 0.13f);
+            }
+            if (i >= 0 && i == hands.offSource()) {
+                offhandMark(d, x - 8 * PX, y + 8 * PX, itemZ + itemSize * 0.13f);
+            }
+        }
+        if (framed != RadialMenu.NONE) {
+            double[] c = RadialMenu.position(framed);
+            selection(d, (float) c[0], (float) c[1]);
+        }
+        if (highlighted != RadialMenu.NONE) {
+            Component name = tooltip(hands, p, highlighted, canEmpty);
+            if (name != null) {
+                double[] c = RadialMenu.position(highlighted);
+                d.mcTooltip(name, (float) c[0], (float) c[1] + CELL / 2f + 3 * PX, TOOLTIP_PX, Z_TOOLTIP);
             }
         }
         ms.popPose();
+    }
+
+    /** A moldura de seleção da hotbar (24x23): começa um pixel acima e à esquerda da casa e vai até a borda de baixo. */
+    private static void selection(Draw d, float x, float y) {
+        Sprite frame = Sprite.gui("hud/hotbar_selection");
+        if (frame != null) {
+            d.spriteCentered(frame, x, y + PX / 2f, 24 * PX, Z_SELECTION, Draw.KEEP_ALPHA);
+        } else {
+            d.frame(x - 12 * PX, y - 11 * PX, x + 12 * PX, y + 12 * PX, 2 * PX, Z_SELECTION, 0xFFFFFFFF);
+        }
+    }
+
+    /** O ícone do escudo (espaço da mão secundária no inventário), pela metade, no canto de cima à esquerda. */
+    private static void offhandMark(Draw d, float left, float top, float z) {
+        Sprite shield = Sprite.gui("container/slot/shield");
+        if (shield == null) {
+            return;
+        }
+        float px = 8 * PX / shield.width();
+        d.spriteSolid(shield, left + px, top - px, px, z, MARK_SHADOW);
+        d.spriteSolid(shield, left, top, px, z + 0.0006f, MARK);
+    }
+
+    /** O texto da caixa de dica: o nome do item (com a cor da raridade) ou o da mão vazia; nada num espaço vazio. */
+    private static Component tooltip(HandsController hands, LocalPlayer p, int target, boolean canEmpty) {
+        if (target == RadialMenu.CENTER) {
+            return Component.translatable(canEmpty ? "radial.handsonvr.empty" : "radial.handsonvr.empty_full");
+        }
+        ItemStack stack = hands.displayStack(p, InvOps.HOTBAR_START + target);
+        return stack.isEmpty() ? null : stack.getStyledHoverName();
     }
 }

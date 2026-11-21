@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.LightCoordsUtil;
@@ -82,9 +83,25 @@ public final class Draw {
             return;
         }
         int c = color(argb);
-        RenderType type = opaqueOver == null ? RenderTypes.debugQuads() : RenderTypes.beaconBeam(WHITE, false);
+        List<Integer> colors = new ArrayList<>(corners.size() / 4);
+        for (int i = 0; i + 3 < corners.size(); i += 4) {
+            colors.add(c);
+        }
+        submit(corners, colors, (c >>> 24) == 0xFF);
+    }
+
+    /**
+     * Um submit com vários quads, cada um com a sua cor. Os opacos vão pela camada opaca (profundidade normal, cada
+     * camada no lugar); os semitransparentes, pela translúcida.
+     */
+    private void submit(List<Vector3f> corners, List<Integer> colors, boolean opaque) {
+        if (corners.isEmpty()) {
+            return;
+        }
+        RenderType type = opaque ? RenderTypes.beaconBeam(WHITE, false) : RenderTypes.debugQuads();
         out.submitCustomGeometry(ms, type, (pose, vc) -> {
             for (int i = 0; i + 3 < corners.size(); i += 4) {
+                int c = colors.get(i / 4);
                 Vector3f a = corners.get(i), b = corners.get(i + 1), cc = corners.get(i + 2), d = corners.get(i + 3);
                 v(vc, pose, a, c);
                 v(vc, pose, b, c);
@@ -205,35 +222,49 @@ public final class Draw {
         quads(dark, MC_PANEL_DARK);
     }
 
+    /** {@code over} de {@link #sprite}: os pixels semitransparentes continuam semitransparentes (o mundo aparece atrás). */
+    public static final int KEEP_ALPHA = 0;
+
     /**
-     * Desenha um {@link Sprite} pixel por pixel, como quadradinhos opacos ({@code left}/{@code top} = canto de cima à
+     * Desenha um {@link Sprite} pixel por pixel, como quadradinhos ({@code left}/{@code top} = canto de cima à
      * esquerda; {@code px} = tamanho de um pixel em metros). Pixels semitransparentes são misturados com {@code over}
-     * (a cor que está atrás). Pixels vizinhos da mesma cor viram um retângulo só.
+     * (a cor que está atrás) ou, com {@link #KEEP_ALPHA}, ficam semitransparentes. Pixels vizinhos da mesma cor viram
+     * um retângulo só; tudo sai em dois submits (opacos e semitransparentes).
      */
     public void sprite(Sprite s, float left, float top, float px, float z, int over) {
         if (s == null) {
             return;
         }
-        java.util.Map<Integer, List<Vector3f>> byColor = new java.util.HashMap<>();
+        List<Vector3f> solid = new ArrayList<>(), glass = new ArrayList<>();
+        List<Integer> solidColors = new ArrayList<>(), glassColors = new ArrayList<>();
         for (int y = 0; y < s.height(); y++) {
             int x = 0;
             while (x < s.width()) {
-                int c = s.pixel(x, y);
+                int c = finalColor(s.pixel(x, y), over);
                 if ((c >>> 24) == 0) {
                     x++;
                     continue;
                 }
-                int solid = blend(c, over);
                 int end = x + 1;
-                while (end < s.width() && (s.pixel(end, y) >>> 24) != 0 && blend(s.pixel(end, y), over) == solid) {
+                while (end < s.width() && finalColor(s.pixel(end, y), over) == c) {
                     end++;
                 }
-                addRect(byColor.computeIfAbsent(solid, k -> new ArrayList<>()), left + x * px, top - (y + 1) * px,
-                        left + end * px, top - y * px, z);
+                boolean opaque = (c >>> 24) == 0xFF;
+                addRect(opaque ? solid : glass, left + x * px, top - (y + 1) * px, left + end * px, top - y * px, z);
+                (opaque ? solidColors : glassColors).add(c);
                 x = end;
             }
         }
-        byColor.forEach((color, corners) -> quads(corners, color));
+        submit(solid, solidColors, true);
+        submit(glass, glassColors, false);
+    }
+
+    /** A cor com que um pixel do sprite é desenhado (alfa 0 = não desenha). */
+    private int finalColor(int argb, int over) {
+        if ((argb >>> 24) == 0) {
+            return 0;
+        }
+        return color(over == KEEP_ALPHA ? argb : blend(argb, over));
     }
 
     /** Sprite centrado em (cx, cy) com {@code size} metros de largura. */
@@ -270,6 +301,58 @@ public final class Draw {
         FormattedCharSequence seq = FormattedCharSequence.forward(s, Style.EMPTY);
         out.submitText(ms, centered ? -w / 2f : 0f, -4f, seq, shadow, Font.DisplayMode.NORMAL, FULL_LIGHT, argb, 0, 0);
         ms.popPose();
+    }
+
+    /** Texto com estilo (cores, como a raridade no nome de um item), sem sombra. */
+    public void text(Component c, float x, float y, float z, float height, int argb, boolean centered) {
+        Font font = Minecraft.getInstance().font;
+        ms.pushPose();
+        ms.translate(x, y, z);
+        float k = height / 8f;
+        ms.scale(k, -k, k);
+        FormattedCharSequence seq = c.getVisualOrderText();
+        float w = font.width(seq);
+        out.submitText(ms, centered ? -w / 2f : 0f, -4f, seq, false, Font.DisplayMode.NORMAL, FULL_LIGHT, argb, 0, 0);
+        ms.popPose();
+    }
+
+    // ------------------------------------------------------------------ caixa de dica do jogo
+
+    /**
+     * Cores da caixa de dica do jogo (tooltip/background.png e tooltip/frame.png), já misturadas como o jogo as mostra:
+     * fundo quase preto e moldura roxa, mais clara em cima.
+     */
+    public static final int MC_TOOLTIP_BG = 0xFF100010, MC_TOOLTIP_TOP = 0xFF24005B, MC_TOOLTIP_BOTTOM = 0xFF180033;
+
+    /**
+     * Caixa de dica do jogo (como o nome de um item no inventário) com uma linha de texto, centrada em {@code cx} e
+     * com a borda de baixo em {@code bottom}. {@code px} = um pixel do jogo em metros. Medidas do jogo: o texto (8
+     * pixels) a 3 pixels da moldura roxa de 1 pixel, o fundo 1 pixel além dela, de cantos cortados.
+     */
+    public void mcTooltip(Component text, float cx, float bottom, float px, float z) {
+        int w = Minecraft.getInstance().font.width(text);
+        float x0 = cx - (w / 2f + 4) * px, x1 = cx + (w / 2f + 4) * px, y0 = bottom, y1 = bottom + 16 * px;
+        rect(x0 + px, y0, x1 - px, y1, z, MC_TOOLTIP_BG);
+        rect(x0, y0 + px, x0 + px, y1 - px, z, MC_TOOLTIP_BG);
+        rect(x1 - px, y0 + px, x1, y1 - px, z, MC_TOOLTIP_BG);
+        float zf = z + 0.0004f, fx0 = x0 + px, fx1 = x1 - px, fy0 = y0 + px, fy1 = y1 - px;
+        rect(fx0, fy1 - px, fx1, fy1, zf, MC_TOOLTIP_TOP);
+        rect(fx0, fy0, fx1, fy0 + px, zf, MC_TOOLTIP_BOTTOM);
+        int rows = 12; // entre a linha de cima e a de baixo da moldura
+        for (int i = 0; i < rows; i++) {
+            int c = lerpColor(MC_TOOLTIP_TOP, MC_TOOLTIP_BOTTOM, (i + 1f) / (rows + 1f));
+            float ya = fy1 - (i + 2) * px, yb = fy1 - (i + 1) * px;
+            rect(fx0, ya, fx0 + px, yb, zf, c);
+            rect(fx1 - px, ya, fx1, yb, zf, c);
+        }
+        text(text, cx, y0 + 8 * px, z + 0.0008f, 8 * px, 0xFFFFFFFF, true);
+    }
+
+    private static int lerpColor(int a, int b, float t) {
+        int r = Math.round(((a >> 16) & 0xFF) + (((b >> 16) & 0xFF) - ((a >> 16) & 0xFF)) * t);
+        int g = Math.round(((a >> 8) & 0xFF) + (((b >> 8) & 0xFF) - ((a >> 8) & 0xFF)) * t);
+        int bl = Math.round((a & 0xFF) + ((b & 0xFF) - (a & 0xFF)) * t);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
     }
 
     /** Item como ícone (estilo inventário) de {@code size} metros, centrado em (x, y, z). */
