@@ -17,8 +17,8 @@ import net.minecraft.world.phys.Vec3;
 public final class BowAimRenderer {
     private BowAimRenderer() {}
 
-    /** Tamanho na vista: a mira (15 pixels) ocupa este tanto da distância (uns 2 graus). */
-    private static final double ANGULAR_SIZE = 0.035;
+    /** Tamanho na vista: a mira (15 pixels) ocupa este tanto da distância (uns 3 graus). */
+    private static final double ANGULAR_SIZE = 0.05;
     /** Um pouco à frente do ponto (para o rosto), para não entrar no bloco. */
     private static final double LIFT = 0.06;
     private static final int WHITE = 0xFFFFFFFF, SHADOW = 0xFF3F3F3F;
