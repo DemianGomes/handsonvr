@@ -2,6 +2,15 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.3.3-alpha (Minecraft 26.3)
+
+### Mira do arco, opcional ([#28](https://github.com/DemianGomes/handsonvr/issues/28))
+
+- Nova opção **"Mira do arco"** nos ajustes, **desligada** por padrão: acertar continua dependendo da sua habilidade.
+- Ligada, enquanto a corda está puxada, a mira do jogo aparece no ponto em que a flecha vai acertar (bloco ou criatura).
+- A conta é a do jogo: a flecha sai da mão que puxa, na direção do arco, com a força do arco (o tempo puxando) vezes o quanto a corda está puxada, e cai com a gravidade e o ar. Não conta a pequena imprecisão aleatória do arco.
+- A mira fica sempre do mesmo tamanho na vista, a qualquer distância, branca com a sombra do jogo.
+
 ## 0.3.2-alpha (Minecraft 26.3)
 
 ### Mesa: a quantidade de cada casa e o total que será fabricado ([#27](https://github.com/DemianGomes/handsonvr/issues/27))
