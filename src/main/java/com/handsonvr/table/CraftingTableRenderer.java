@@ -34,8 +34,8 @@ public final class CraftingTableRenderer {
     private static final float TOOLTIP_PX = 0.0027f;
     /** A caixa de dica fica acima do resultado e um pouco à frente dele (m). */
     private static final double TOOLTIP_ABOVE = 0.15, TOOLTIP_FRONT = 0.10;
-    /** Quantidade: o "espaço" de cada casa (os números têm 8/18 dele: uns 4 cm) e o do resultado; à frente do item (m). */
-    private static final float CELL_COUNT = 0.09f, RESULT_COUNT = 0.13f;
+    /** Quantidade: o "espaço" de cada casa (os números têm 8/18 dele: uns 5 cm) e o do resultado; à frente do item (m). */
+    private static final float CELL_COUNT = 0.12f, RESULT_COUNT = 0.13f;
     private static final double COUNT_FRONT = 0.09;
 
     public static void render(LevelRenderContext context, HandsController hands) {
