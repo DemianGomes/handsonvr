@@ -689,7 +689,7 @@ public final class HandsController {
                 closeBackpack(client);
             }
         }
-        // O item da mão seguro com o grip mudou (analógico trocou a hotbar, o item acabou): solta, sem guardar nada.
+        // O item da mão seguro com o grip mudou (a hotbar mudou, o item acabou): solta, sem guardar nada.
         for (int hand = 0; hand < 2; hand++) {
             GrabSystem.Grab g = grabs.get(hand);
             if (g != null && g.origin() == GrabSystem.Origin.HAND

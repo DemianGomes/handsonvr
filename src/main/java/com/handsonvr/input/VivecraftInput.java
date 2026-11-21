@@ -3,7 +3,6 @@ package com.handsonvr.input;
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
 import net.minecraft.client.Minecraft;
-import org.joml.Vector2fc;
 import org.vivecraft.client.VivecraftVRMod;
 import org.vivecraft.client_vr.provider.ControllerType;
 import org.vivecraft.client_vr.provider.MCVR;
@@ -17,9 +16,10 @@ import org.vivecraft.client_vr.provider.openvr_lwjgl.VRInputAction;
  *   <li>gatilho direito = "atacar" e esquerdo = "teleporte": um item por vez na mochila/radial; o esquerdo usa a mão
  *       esquerda;</li>
  *   <li>B = "menu radial" do Vivecraft e X = "inventário": o menu radial da hotbar de cada mão;</li>
- *   <li>A = "usar": bloqueado só na mão que segura a mochila;</li>
- *   <li>analógico direito para os lados = "girar" (em saltos): troca o item da hotbar.</li>
+ *   <li>A = "usar": bloqueado só na mão que segura a mochila.</li>
  * </ul>
+ * O analógico direito ("girar") é sempre do Vivecraft: gira a câmera. Até a 0.2.4 ele trocava a hotbar; hoje a hotbar
+ * é do menu radial.
  * Um "ouvinte" que responde true consome o aperto: a ação original do Vivecraft não acontece. As ações são recriadas
  * quando o VR reinicia — por isso o registro é conferido a cada tick.
  */
@@ -40,7 +40,7 @@ public final class VivecraftInput {
             gripMain = ensure(mcvr.getInputAction(mod.keyHotbarNext), gripMain, new GripListener(0));
             gripOff = ensure(mcvr.getInputAction(mod.keyHotbarPrev), gripOff, new GripListener(1));
             teleport = ensure(mcvr.getInputAction(mod.keyTeleport), teleport, new LeftTriggerListener());
-            rotate = ensure(mcvr.getInputAction(mod.keyRotateAxis), rotate, new RightStickListener());
+            rotate = mcvr.getInputAction(mod.keyRotateAxis); // sem ouvinte: só para o teste conferir que é do Vivecraft
             attack = ensure(mcvr.getInputAction(client.options.keyAttack), attack, new RightTriggerListener());
             use = ensure(mcvr.getInputAction(client.options.keyUse), use, new UseListener());
             radialMain = ensure(mcvr.getInputAction(mod.keyRadialMenu), radialMain, new MenuButtonListener(0));
@@ -61,10 +61,10 @@ public final class VivecraftInput {
         return current;
     }
 
-    /** Teste automático (VR nulo do Vivecraft): quantas das 8 ações estão sendo escutadas. */
+    /** Teste automático (VR nulo do Vivecraft): quantas das 7 ações estão sendo escutadas. */
     public static int debugListening() {
         int n = 0;
-        for (VRInputAction a : new VRInputAction[] {gripMain, gripOff, teleport, rotate, attack, use, radialMain, radialOff}) {
+        for (VRInputAction a : new VRInputAction[] {gripMain, gripOff, teleport, attack, use, radialMain, radialOff}) {
             n += a != null ? 1 : 0;
         }
         return n;
@@ -102,6 +102,7 @@ public final class VivecraftInput {
             case "radialMain" -> radialMain;
             case "radialOff" -> radialOff;
             case "attack" -> attack;
+            case "rotate" -> rotate;
             default -> null;
         };
         return a == null ? "-" : a.name;
@@ -223,36 +224,6 @@ public final class VivecraftInput {
         @Override
         public boolean onUnpressed(ControllerType controller) {
             return HandsOnConfig.get().leftTriggerOffhandUse;
-        }
-
-        @Override
-        public int getPriority() {
-            return 50;
-        }
-    }
-
-    private static final class RightStickListener implements VRInputAction.KeyListener {
-        @Override
-        public boolean onPressed(ControllerType controller) {
-            if (!HandsOnConfig.get().rightStickHotbar) {
-                return false;
-            }
-            VRInputAction action = rotate;
-            float x = 0f;
-            if (action != null) {
-                Vector2fc axis = action.getAxis2D(false);
-                x = axis == null ? 0f : axis.x();
-            }
-            if (Math.abs(x) >= 0.3f) {
-                int direction = x > 0 ? 1 : -1;
-                HandsOnVR.guard("analógico direito", () -> HotbarScroll.scroll(mc(), direction));
-            }
-            return true; // sem girar a câmera
-        }
-
-        @Override
-        public boolean onUnpressed(ControllerType controller) {
-            return HandsOnConfig.get().rightStickHotbar;
         }
 
         @Override

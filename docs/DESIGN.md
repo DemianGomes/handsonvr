@@ -22,6 +22,7 @@ O objetivo é deixar o inventário do Minecraft com cara de jogo nativo de VR: o
 | Gatilho (indicador), com o grip apertado sobre um espaço | Coloca **um** item no espaço. Na zona de descarte, solta **um** item no chão. |
 | B (mão direita) | Enquanto estiver apertado, mostra o menu radial da mão direita. |
 | X (mão esquerda) | Enquanto estiver apertado, mostra o menu radial da mão esquerda. |
+| Analógico direito | Do Vivecraft: gira a câmera. O mod não usa (até a 0.2.4, trocava a hotbar). |
 
 O B substitui o menu radial do Vivecraft e o X substitui a tela de inventário. Os dois podem voltar ao comportamento original nos ajustes.
 
@@ -170,7 +171,7 @@ Apertar o grip no ombro esquerdo **sem** um item seguro abre a mochila. Com um i
 |---|---|
 | Pelo radial ou pela hotbar | Nada: o item continua na mão (sem grip). |
 | Pegado com o grip (coldre, mochila ou radial) | O item volta para o lugar dele e a mão volta a segurar o que tinha antes. |
-| O item da própria mão, seguro com o grip | Num coldre, no ombro da mochila ou num espaço, é guardado ali. Em qualquer outro lugar, continua na mão. Trocar de item no analógico com o grip apertado solta o item antigo. |
+| O item da própria mão, seguro com o grip | Num coldre, no ombro da mochila ou num espaço, é guardado ali. Em qualquer outro lugar, continua na mão. Se o item da mão mudar com o grip apertado (a hotbar mudou, o item acabou), o grip solta o item antigo. |
 
 Exemplo com as duas mãos:
 
@@ -196,4 +197,4 @@ Ele confere:
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 
-O `./gradlew prodClientNullVr` liga o Vivecraft de verdade com o "VR nulo" e confere a ligação com os controles: grips, gatilhos, X e B.
+O `./gradlew prodClientNullVr` liga o Vivecraft de verdade com o "VR nulo" e confere a ligação com os controles: grips, gatilhos, X e B. Confere também que o analógico direito ficou com o Vivecraft.
