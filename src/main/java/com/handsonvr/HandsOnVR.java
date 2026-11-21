@@ -60,6 +60,7 @@ public class HandsOnVR implements ClientModInitializer {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> HANDS.onLeave());
 
         ClientTickEvents.START_CLIENT_TICK.register(client -> {
+            guard("arremesso (amostra)", com.handsonvr.hands.ThrowGesture::tick);
             if (VrBridge.isVivecraftLoaded()) {
                 guard("controles do Vivecraft", () -> VivecraftInput.tick(client));
             }
@@ -75,6 +76,7 @@ public class HandsOnVR implements ClientModInitializer {
         LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
             // A área de jogo deste quadro (o radial anda com ela), antes de desenhar.
             guard("área de jogo", VrBridge::captureFrame);
+            guard("arremesso (amostra)", com.handsonvr.hands.ThrowGesture::sample);
             renderSafely(context.poseStack(), "coldres (desenho)", () -> HolsterRenderer.render(context, HANDS.holsters()));
             renderSafely(context.poseStack(), "mochila (desenho)", () -> BackpackRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "radial (desenho)", () -> RadialRenderer.render(context, HANDS));

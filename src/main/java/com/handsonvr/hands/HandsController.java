@@ -663,6 +663,31 @@ public final class HandsController {
     }
 
     /**
+     * Soltar o grip como arremesso ({@link ThrowGesture}): o item da mão é arremessável, a mão estava rápida e não está
+     * sobre um espaço do radial ou da mochila (lá, soltar guarda o item). Joga UM item; o resto segue a regra de
+     * sempre (volta para o lugar de onde veio, ou fica na mão). Retorna true se arremessou.
+     */
+    private boolean throwRelease(Minecraft client, int hand, GrabSystem.Grab g, Vec3 tip) {
+        LocalPlayer p = client.player;
+        if (!HandsOnConfig.get().physicalThrow || g.itemHand() != hand
+                || !ThrowGesture.isThrowable(InvOps.stack(p, GrabSystem.itemSlot(p, g)))) {
+            return false;
+        }
+        if ((radial.isOpen() && radial.targetAt(tip) != RadialMenu.NONE)
+                || (backpack.isOpen() && backpack.holder() != hand && (backpack.elementAt(tip) != null || backpack.onPanel(tip)))) {
+            return false;
+        }
+        Vec3 velocity = ThrowGesture.roomVelocity(hand);
+        if (velocity == null || velocity.length() < ThrowGesture.MIN_SPEED || !ThrowGesture.throwItem(client, hand, velocity)) {
+            return false;
+        }
+        grabs.end(client, hand); // o resto volta para o lugar de onde veio (do coldre, da mochila) ou fica na mão
+        VrBridge.pulse(hand, 0.04f);
+        action(String.format(java.util.Locale.ROOT, "arremessou com a mão %d (%.1f m/s)", hand, velocity.length()));
+        return true;
+    }
+
+    /**
      * O grip de uma mão que pegou um item foi solto: coloca no espaço do radial/mochila sob a mão, descarta na zona de
      * descarte, guarda no coldre em que a mão está ou, em qualquer outro lugar, devolve ao lugar de onde veio.
      */
@@ -677,6 +702,10 @@ public final class HandsController {
         }
         Vec3 tip = VrBridge.pointer(hand);
         HandsOnConfig config = HandsOnConfig.get();
+        // Arremesso: um item arremessável e a mão rápida ao soltar = joga UM na direção do movimento.
+        if (throwRelease(client, hand, g, tip)) {
+            return;
+        }
         if (radial.isOpen()) {
             int target = radial.targetAt(tip);
             if (target >= 0) {

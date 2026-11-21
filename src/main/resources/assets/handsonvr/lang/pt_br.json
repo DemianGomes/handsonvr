@@ -18,6 +18,8 @@
   "option.handsonvr.left_trigger": "Gatilho esq.: mão esq.",
   "option.handsonvr.pickup_main": "Coleta: mochila primeiro",
   "option.handsonvr.bow_aim": "Mira do arco",
+  "option.handsonvr.throw": "Arremesso com a mão",
+  "option.handsonvr.throw_power": "Força real (singleplayer)",
   "backpack.handsonvr.page": "Página %s/%s",
   "backpack.handsonvr.slots": "Espaços %s/%s",
   "radial.handsonvr.empty": "Mão vazia",

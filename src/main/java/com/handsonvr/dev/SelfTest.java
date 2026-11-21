@@ -406,7 +406,8 @@ public final class SelfTest {
             case 20 -> bowHands(client);
             case 21 -> tableCrafting(client);
             case 22 -> furnaces(client);
-            case 23 -> bowAimMarker(client);
+            case 23 -> throwing(client);
+            case 24 -> bowAimMarker(client);
             default -> { }
         }
     }
@@ -2408,6 +2409,197 @@ public final class SelfTest {
         }
     }
 
+    // ------------------------------------------------------------------ arremesso com a mão
+
+    private static Vec3 probeVel = null, throwFrom = null, throwDir = null;
+    private static int probeCount = 0, probeTicks = 0;
+
+    /** No servidor: os itens arremessados pelo jogador agora há pouco (quantos e a velocidade do último). */
+    private static void probeThrown(Minecraft client) {
+        probeVel = null;
+        probeCount = 0;
+        onServer(client, player -> {
+            for (var e : player.level().getEntitiesOfClass(net.minecraft.world.entity.projectile.Projectile.class,
+                    player.getBoundingBox().inflate(48), x -> x.getOwner() == player && x.tickCount <= 10)) {
+                probeCount++;
+                if (probeVel == null || e.tickCount < probeTicks) {
+                    probeVel = e.getDeltaMovement();
+                    probeTicks = e.tickCount;
+                }
+            }
+        });
+    }
+
+    /** Arremesso simulado: a mão começa em {@code from} (com o grip) e anda {@code perTick} por tick, 3 ticks; solta no 4º. */
+    private static void swing(Minecraft client, int t0, int hand, Vec3 from, Vec3 perTick) {
+        swing(client, t0, hand, from, perTick, null);
+    }
+
+    /** Como {@link #swing(Minecraft, int, int, Vec3, Vec3)}, com o controle apontando para {@code pointing} (null: para onde vai). */
+    private static void swing(Minecraft client, int t0, int hand, Vec3 from, Vec3 perTick, Vec3 pointing) {
+        Vec3 dir = pointing != null ? pointing : perTick.lengthSqr() < 1.0e-9 ? new Vec3(0, 0, 1) : perTick;
+        if (at(t0)) {
+            SimulatedVr.setHand(hand, from, dir);
+            grip(client, hand, true);
+        }
+        for (int k = 1; k <= 3; k++) {
+            if (at(t0 + k)) {
+                SimulatedVr.setHand(hand, from.add(perTick.scale(k)), dir);
+            }
+        }
+        if (at(t0 + 4)) {
+            com.handsonvr.hands.ThrowGesture.last = null;
+            com.handsonvr.hands.ThrowPower.lastVelocity = -1f;
+            grip(client, hand, false);
+        }
+        if (at(t0 + 5)) {
+            probeThrown(client);
+        }
+    }
+
+    private static String speedOf(com.handsonvr.hands.ThrowGesture.Throw t) {
+        return t == null ? "sem arremesso" : String.format(Locale.ROOT, "mão a %.1f m/s, força %.2f, velocidade %.2f",
+                t.speed(), t.power(), com.handsonvr.hands.ThrowPower.lastVelocity);
+    }
+
+    private static void throwing(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        HandsOnConfig config = HandsOnConfig.get();
+        Vec3 eye = p.getEyePosition();
+        Vec3 right = eye.add(-0.35, -0.3, 0.35), left = eye.add(0.35, -0.3, 0.35);
+        var gesture = com.handsonvr.hands.ThrowGesture.last;
+        if (at(1)) {
+            section("Arremesso com a mão");
+            check(com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.SNOWBALL))
+                            && com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.EGG))
+                            && com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.ENDER_PEARL))
+                            && com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.SPLASH_POTION))
+                            && com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.LINGERING_POTION))
+                            && com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.EXPERIENCE_BOTTLE))
+                            && com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.WIND_CHARGE))
+                            && !com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.POTION))
+                            && !com.handsonvr.hands.ThrowGesture.isThrowable(new ItemStack(Items.ARROW)),
+                    "arremessáveis: bola de neve, ovo, pérola, poção arremessável e persistente, frasco de experiência e carga de vento (poção de beber e flecha não)");
+            float[] potion = com.handsonvr.hands.ThrowGesture.rotationFor(new Vec3(0, 0, 1), -20f);
+            check(Math.abs(potion[1] - 20f) < 0.1f && Math.abs(potion[0]) < 0.1f,
+                    "poção para a frente: a mira vai 20° para baixo, porque o jogo a levanta 20°");
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(1, new ItemStack(Items.SNOWBALL, 16));
+                pinv.setItem(11, new ItemStack(Items.SNOWBALL, 8));
+                pinv.setItem(Inventory.SLOT_OFFHAND, net.minecraft.world.item.alchemy.PotionContents.createItemStack(
+                        Items.SPLASH_POTION, net.minecraft.world.item.alchemy.Potions.HEALING).copyWithCount(2));
+            });
+            p.setYRot(0f);
+            p.setXRot(0f);
+            handAway(0);
+            handAway(1);
+            config.physicalThrow = true;
+            config.throwRealPower = true;
+            com.handsonvr.hands.ThrowGesture.debugTickTime = true; // a mão anda a cada tick: velocidade exata
+        }
+        if (at(5)) {
+            inv.setSelectedSlot(1); // bolas de neve na mão direita
+        }
+        // --- 1) forte, para a frente: 0,3 m por tick (6 m/s)
+        swing(client, 8, 0, right, new Vec3(0, 0.02, 0.3));
+        if (at(9)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && g.origin() == GrabSystem.Origin.HAND, "grip com a bola de neve: a mão segura o próprio item");
+        }
+        if (at(16)) {
+            check(gesture != null && p.getMainHandItem().is(Items.SNOWBALL) && p.getMainHandItem().getCount() == 15
+                            && hc.grabs().get(0) == null,
+                    "soltar o grip com a mão rápida: jogou UMA bola de neve e as outras 15 ficaram na mão (" + speedOf(gesture) + ")");
+            check(gesture != null && gesture.direction().z > 0.95, "o arremesso vai para onde a mão ia: para a frente");
+            check(probeCount == 1 && probeVel != null && probeVel.normalize().z > 0.9,
+                    "o servidor lançou a bola de neve nessa direção (" + fmt3(probeVel) + ")");
+            check(gesture != null && Math.abs(com.handsonvr.hands.ThrowPower.lastVelocity - 1.5f * gesture.power()) < 0.01f,
+                    "força real no singleplayer: velocidade = a do jogo (1,5) x a força do gesto (" + speedOf(gesture) + ")");
+        }
+        // --- 2) devagar (0,8 m/s): não arremessa
+        swing(client, 20, 0, right, new Vec3(0, 0, 0.04));
+        if (at(28)) {
+            check(gesture == null && probeCount == 0 && p.getMainHandItem().getCount() == 15,
+                    "mão devagar: não arremessa, a bola continua na mão");
+        }
+        // --- 3) da mochila, para a esquerda
+        if (at(30)) {
+            inv.setSelectedSlot(0); // espada na mão
+            check(openBackpack(client, 1), "mochila aberta na mão esquerda");
+            pointBackpackSlot(0, 11);
+        }
+        if (at(32)) {
+            throwFrom = VrBridge.hand(0).position();
+            throwDir = VrBridge.hand(0).direction(); // a ponta da mão continua no espaço da mochila
+        }
+        if (throwFrom != null && stepTicks >= 34 && stepTicks <= 39) {
+            swing(client, 34, 0, throwFrom, new Vec3(0.3, 0.02, 0), throwDir);
+        }
+        if (at(35)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && g.origin() == GrabSystem.Origin.BACKPACK && p.getMainHandItem().is(Items.SNOWBALL),
+                    "grip nas bolas de neve da mochila: vêm para a mão");
+        }
+        if (at(42)) {
+            check(gesture != null && gesture.direction().x > 0.9 && slot(p, 11).is(Items.SNOWBALL) && slot(p, 11).getCount() == 7
+                            && p.getMainHandItem().is(Items.IRON_SWORD),
+                    "da mochila, jogando para a esquerda: saiu uma e as outras 7 voltaram para a mochila (" + speedOf(gesture) + ")");
+            check(probeCount == 1 && probeVel != null && probeVel.normalize().x > 0.85,
+                    "o servidor lançou para a esquerda (" + fmt3(probeVel) + ")");
+            grip(client, 1, false); // fecha a mochila
+            throwFrom = null;
+        }
+        // --- 4) mão esquerda, poção arremessável na horizontal: sai reta (sem os 20° para cima do jogo)
+        swing(client, 46, 1, left, new Vec3(0, 0, 0.3));
+        if (at(53)) {
+            check(gesture != null && Math.abs(gesture.xRot() - 20f) < 4f && p.getOffhandItem().getCount() == 1,
+                    "mão esquerda: jogou uma poção e a mira mandada foi " + (gesture == null ? "-" : String.format(Locale.ROOT, "%.1f°", gesture.xRot()))
+                            + " para baixo, que o jogo levanta para a horizontal");
+            // A velocidade de saída, desfazendo os ticks de voo (a poção perde 1% por tick e cai 0,05 por tick).
+            double vy0 = probeVel == null ? 1 : probeVel.y / Math.pow(0.99, probeTicks) + 0.05 * probeTicks;
+            check(probeVel != null && probeVel.z > 0.1 && Math.abs(vy0) < 0.06,
+                    String.format(Locale.ROOT, "o servidor lançou a poção reta, sem subir (saída vertical %.3f; sem o desconto seria %.3f)",
+                            vy0, 0.5 * (gesture == null ? 1 : gesture.power()) * Math.sin(Math.toRadians(20))));
+            check(gesture != null && Math.abs(com.handsonvr.hands.ThrowPower.lastVelocity - 0.5f * gesture.power()) < 0.01f,
+                    "a poção também ganha a força real (0,5 x " + (gesture == null ? "-" : String.format(Locale.ROOT, "%.2f", gesture.power())) + ")");
+            inv.setSelectedSlot(1);
+        }
+        // --- 5) arremesso fraco (3 m/s): a bola sai mais devagar
+        swing(client, 56, 0, right, new Vec3(0, 0.01, 0.17));
+        if (at(64)) {
+            float v = com.handsonvr.hands.ThrowPower.lastVelocity;
+            check(gesture != null && v > 0.5f && v < 1.2f, "arremesso fraco: a bola sai mais devagar e cai perto (" + speedOf(gesture) + ")");
+            config.throwRealPower = false;
+        }
+        // --- 6) força real desligada (como em servidor): sempre a velocidade do jogo
+        swing(client, 66, 0, right, new Vec3(0, 0.01, 0.17));
+        if (at(74)) {
+            check(gesture != null && Math.abs(com.handsonvr.hands.ThrowPower.lastVelocity - 1.5f) < 0.001f,
+                    "força real desligada: a velocidade é a do jogo, qualquer que seja o gesto (" + speedOf(gesture) + ")");
+            config.throwRealPower = true;
+            config.physicalThrow = false;
+        }
+        // --- 7) arremesso desligado: soltar rápido não joga nada
+        swing(client, 76, 0, right, new Vec3(0, 0.02, 0.3));
+        if (at(84)) {
+            check(gesture == null && probeCount == 0 && p.getMainHandItem().is(Items.SNOWBALL) && p.getMainHandItem().getCount() == 13,
+                    "com o arremesso desligado, soltar o grip rápido não joga nada (13 bolas na mão)");
+            config.physicalThrow = true;
+            com.handsonvr.hands.ThrowGesture.debugTickTime = false;
+            inv.setSelectedSlot(0);
+            handAway(0);
+            handAway(1);
+        }
+        if (at(88)) {
+            next();
+        }
+    }
+
     // ------------------------------------------------------------------ mira do arco (opcional)
 
     private static BlockPos wallAt;
@@ -2711,6 +2903,46 @@ public final class SelfTest {
                             "Vivecraft: sem o arco na mão, o Reverse Bow volta ao que era (" + reverseBefore + ")");
                     handAway(0);
                     handAway(1);
+                    next();
+                }
+            }
+            case 9 -> { // arremesso: a direção do gesto chega ao servidor pela mira do Vivecraft, não a do controle
+                Vec3 from = p.getEyePosition().add(-0.35, -0.3, 0.35);
+                if (at(1)) {
+                    onServer(client, player -> {
+                        Inventory pinv = player.getInventory();
+                        pinv.clearContent();
+                        pinv.setItem(0, new ItemStack(Items.SNOWBALL, 16));
+                    });
+                    inv.setSelectedSlot(0);
+                    com.handsonvr.hands.ThrowGesture.debugTickTime = true;
+                    p.setYRot(0f);
+                    p.setXRot(0f);
+                }
+                if (at(5)) {
+                    SimulatedVr.setHand(0, from, new Vec3(1, 0, 0));
+                    SimulatedVr.setGrip(0, true);
+                    check(VivecraftInput.debugNotify("gripMain", true, 0f), "Vivecraft: grip com a bola de neve na mão é do mod (segura o item)");
+                }
+                for (int k = 1; k <= 3; k++) {
+                    if (at(5 + k)) {
+                        SimulatedVr.setHand(0, from.add(0.3 * k, 0.02 * k, 0), new Vec3(1, 0, 0));
+                    }
+                }
+                if (at(9)) {
+                    com.handsonvr.hands.ThrowGesture.last = null;
+                    SimulatedVr.setGrip(0, false);
+                    VivecraftInput.debugNotify("gripMain", false, 0f);
+                }
+                if (at(10)) {
+                    probeThrown(client);
+                }
+                if (at(14)) {
+                    check(com.handsonvr.hands.ThrowGesture.last != null && probeVel != null && probeVel.normalize().x > 0.85
+                                    && p.getMainHandItem().getCount() == 15,
+                            "Vivecraft: o arremesso sai para onde a mão ia (a esquerda), não para a mira do controle ("
+                                    + fmt3(probeVel) + "; mira do controle " + org.vivecraft.client.network.ClientNetworking.getActiveAimDir() + ")");
+                    handAway(0);
                     next();
                 }
             }
