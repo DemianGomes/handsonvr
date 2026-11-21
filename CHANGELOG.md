@@ -2,6 +2,14 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.3.2-alpha (Minecraft 26.3)
+
+### Mesa: a quantidade de cada casa e o total que será fabricado ([#27](https://github.com/DemianGomes/handsonvr/issues/27))
+
+- Cada casa da mesa de trabalho com mais de um item mostra a quantidade como no inventário: os números do jogo, brancos com a sombra, no canto da casa mais perto de você, deitados na mesa.
+- O resultado flutuante mostra o **total** que o grip + gatilho vai fabricar, não só o de uma receita: 4 toras mostram 16 tábuas. A caixa de dica com o nome também mostra o total.
+- O resultado do crafting 2x2 da mochila também mostra o total.
+
 ## 0.3.1-alpha (Minecraft 26.3)
 
 ### Fabricar: a pilha inteira ao soltar, tudo para a mão com grip + gatilho ([#26](https://github.com/DemianGomes/handsonvr/issues/26))
