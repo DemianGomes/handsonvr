@@ -40,6 +40,32 @@ public final class HandsController {
     private int offSource = -1;
     /** O aperto do botão do radial foi nosso (o soltar também é). */
     private final boolean[] menuConsumed = new boolean[2];
+
+    /** De onde vem o resultado que a mão segura com o grip, esperando o gatilho. */
+    public enum ResultSource { NONE, BACKPACK, TABLE }
+
+    /** O resultado (do crafting 2x2 ou da mesa) que cada mão segura com o grip: o gatilho fabrica tudo para ela. */
+    private final ResultSource[] resultHold = {ResultSource.NONE, ResultSource.NONE};
+
+    /**
+     * Fabricando tudo para uma mão (grip + gatilho no resultado), um por tick (o servidor manda o próximo resultado no
+     * tick seguinte), como o Shift+clique da tela do jogo. {@code target}: o espaço em que o resultado se junta (o da
+     * mão, ou um vazio que vai para a mão no fim, {@code equipAtEnd}).
+     */
+    private static final class CraftJob {
+        final int hand;
+        final ResultSource source;
+        int target = -1, crafts = 0, wait = 0;
+        boolean equipAtEnd = false;
+        ItemStack item = ItemStack.EMPTY;
+
+        CraftJob(int hand, ResultSource source) {
+            this.hand = hand;
+            this.source = source;
+        }
+    }
+
+    private CraftJob craftJob;
     /** O que aconteceu por último (log e teste automático). */
     private String lastAction = "-";
 
@@ -96,6 +122,8 @@ public final class HandsController {
         table.reset();
         offSource = -1;
         menuConsumed[0] = menuConsumed[1] = false;
+        resultHold[0] = resultHold[1] = ResultSource.NONE;
+        craftJob = null;
     }
 
     // ------------------------------------------------------------------ consultas (desenho, mixins)
@@ -193,7 +221,7 @@ public final class HandsController {
         if (p == null || client.gui.screen() != null || p.isSpectator() || !VrBridge.isVRActive()) {
             return false;
         }
-        if (grabs.isGrabbing(hand) || backpack.holder() == hand) {
+        if (grabs.isGrabbing(hand) || backpack.holder() == hand || resultHold[hand] != ResultSource.NONE) {
             return true;
         }
         Vec3 tip = VrBridge.pointer(hand);
@@ -218,11 +246,11 @@ public final class HandsController {
                 return true;
             }
         }
-        // 3) Mesa de trabalho: o resultado flutuando (fabrica, e o item vem para a mão) ou uma casa com item (o item
-        //    volta para a mão).
+        // 3) Mesa de trabalho: o resultado flutuando (o grip o segura; o gatilho fabrica tudo para a mão) ou uma casa com
+        //    item (o item volta para a mão).
         int onTable = table.targetAt(tip);
         if (onTable == CraftingTable.RESULT) {
-            tableToHand(client, hand, table.craftOne(client), "fabricou na mesa");
+            holdResult(client, hand, ResultSource.TABLE);
             return true;
         }
         if (onTable >= 0 && !table.cellStack(onTable).isEmpty()) {
@@ -249,9 +277,191 @@ public final class HandsController {
         return true;
     }
 
+    // ------------------------------------------------------------------ resultado do crafting: grip + gatilho
+
+    /** O resultado que esta mão segura com o grip (esperando o gatilho), ou {@link ResultSource#NONE}. */
+    public ResultSource resultHeld(int hand) {
+        return resultHold[hand];
+    }
+
+    /** Fabricando tudo agora (grip + gatilho)? */
+    public boolean isCrafting() {
+        return craftJob != null;
+    }
+
+    private ItemStack resultStack(LocalPlayer p, ResultSource source) {
+        return switch (source) {
+            case TABLE -> table.resultStack();
+            case BACKPACK -> InvOps.reachable(p, InvOps.RESULT) ? InvOps.stack(p, InvOps.RESULT) : ItemStack.EMPTY;
+            default -> ItemStack.EMPTY;
+        };
+    }
+
     /**
-     * O item que saiu da mesa (fabricado ou tirado de uma casa) foi para o espaço {@code slot} do inventário: a mão o
-     * pega dali, como em todo o mod (soltar decide para onde ele vai; longe de tudo, fica no inventário).
+     * Grip no resultado: a mão o segura, mas nada é fabricado ainda (pode gastar muito material). O gatilho, com o grip
+     * apertado, fabrica tudo ({@link #startCraftAll}).
+     */
+    private void holdResult(Minecraft client, int hand, ResultSource source) {
+        LocalPlayer p = client.player;
+        if (!InvOps.ready(client) || resultStack(p, source).isEmpty()) {
+            refuse(hand); // nada para fabricar (ou o crafting 2x2 espera a mesa de trabalho fechar)
+            return;
+        }
+        resultHold[hand] = source;
+        VrBridge.pulse(hand, 0.02f);
+        action("segurando o resultado (" + source + "): o gatilho fabrica tudo");
+    }
+
+    /**
+     * Grip + gatilho no resultado: fabrica tudo o que a grade der, juntando na mão que segura o resultado. A mão direita
+     * usa o espaço dela se estiver vazio, senão um espaço vazio da hotbar (o item que ela tinha fica onde está); a
+     * esquerda recebe o resultado no fim.
+     */
+    private void startCraftAll(Minecraft client, int hand, ResultSource source) {
+        LocalPlayer p = client.player;
+        if (craftJob != null) {
+            return;
+        }
+        ItemStack result = resultStack(p, source);
+        if (result.isEmpty() || !InvOps.ready(client)) {
+            refuse(hand);
+            return;
+        }
+        CraftJob job = new CraftJob(hand, source);
+        if (hand == 0 && grabs.inHandSlot(0) == null) {
+            int selected = InvOps.handSlot(p, 0);
+            if (InvOps.stack(p, selected).isEmpty() && !isLocked(p, selected)) {
+                job.target = selected;
+            } else {
+                int empty = emptyHotbarFor(p);
+                if (empty >= 0) {
+                    p.getInventory().setSelectedSlot(empty); // a mão fica vazia (o item dela continua na hotbar)
+                    job.target = InvOps.HOTBAR_START + empty;
+                }
+            }
+        }
+        if (job.target < 0) {
+            job.target = freeSlotForResult(p);
+            job.equipAtEnd = true;
+        }
+        if (job.target < 0) {
+            refuse(hand); // inventário cheio
+            action("sem espaço para o resultado");
+            return;
+        }
+        craftJob = job;
+        action("fabricando tudo para a mão " + hand);
+    }
+
+    /** Espaço vazio para o resultado: o inventário principal antes da hotbar, sem os espaços em uso. */
+    private int freeSlotForResult(LocalPlayer p) {
+        for (int i = InvOps.MAIN_START; i < InvOps.OFFHAND; i++) {
+            if (InvOps.stack(p, i).isEmpty() && !isLocked(p, i) && !(offSource >= 0 && i == InvOps.HOTBAR_START + offSource)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** O espaço da mão está cheio: o resto vai para uma pilha igual com espaço, ou um espaço vazio (principal antes). */
+    private int overflowSlot(LocalPlayer p, ItemStack result) {
+        for (int i = InvOps.MAIN_START; i < InvOps.OFFHAND; i++) {
+            ItemStack s = InvOps.stack(p, i);
+            if (!isLocked(p, i) && !s.isEmpty() && ItemStack.isSameItemSameComponents(s, result)
+                    && s.getCount() + result.getCount() <= s.getMaxStackSize()) {
+                return i;
+            }
+        }
+        return freeSlotForResult(p);
+    }
+
+    /** Um tick do "fabricar tudo": um resultado por tick, até a grade acabar (ou faltar espaço). */
+    private void craftTick(Minecraft client) {
+        CraftJob job = craftJob;
+        LocalPlayer p = client.player;
+        if (job == null) {
+            return;
+        }
+        boolean open = job.source == ResultSource.TABLE ? table.isOpen() : backpack.isOpen();
+        if (p == null || !InvOps.ready(client) || client.gui.screen() != null || !open) {
+            finishCraft(client);
+            return;
+        }
+        ItemStack result = resultStack(p, job.source);
+        if (result.isEmpty()) {
+            if (++job.wait > 6) {
+                finishCraft(client); // a grade acabou (o servidor não mandou outro resultado)
+            }
+            return;
+        }
+        if (!job.item.isEmpty() && !ItemStack.isSameItemSameComponents(result, job.item)) {
+            finishCraft(client); // a receita mudou
+            return;
+        }
+        int target = job.target;
+        ItemStack t = InvOps.stack(p, target);
+        if (!t.isEmpty() && (!ItemStack.isSameItemSameComponents(t, result) || t.getCount() + result.getCount() > t.getMaxStackSize())) {
+            target = overflowSlot(p, result);
+        }
+        boolean crafted = target >= 0
+                && (job.source == ResultSource.TABLE ? table.craftInto(client, target) : InvOps.craftInto(client, target));
+        if (!crafted) {
+            finishCraft(client);
+            return;
+        }
+        job.item = result.copy();
+        job.crafts++;
+        job.wait = 0;
+        VrBridge.pulse(job.hand, 0.012f);
+        if (job.crafts >= 64) {
+            finishCraft(client);
+        }
+    }
+
+    /** Fim do "fabricar tudo": o resultado na mão; com o grip ainda apertado, ela o segura (soltar decide). */
+    private void finishCraft(Minecraft client) {
+        CraftJob job = craftJob;
+        craftJob = null;
+        LocalPlayer p = client.player;
+        if (job == null || p == null) {
+            return;
+        }
+        resultHold[job.hand] = ResultSource.NONE;
+        if (job.crafts == 0) {
+            refuse(job.hand);
+            return;
+        }
+        if (job.equipAtEnd && InvOps.ready(client)) {
+            equipInHand(client, job.hand, job.target);
+        }
+        if (GripState.isHeld(job.hand) && !grabs.isGrabbing(job.hand) && InvOps.ready(client)) {
+            holdOwnItem(client, job.hand);
+        }
+        VrBridge.pulse(job.hand, 0.05f);
+        action("fabricou " + job.crafts + "x: o resultado está na mão " + job.hand);
+    }
+
+    /** Põe na mão a pilha do espaço {@code slot} (o resultado fabricado). O que a mão tinha vai para onde ela estava. */
+    private void equipInHand(Minecraft client, int hand, int slot) {
+        LocalPlayer p = client.player;
+        if (InvOps.stack(p, slot).isEmpty() || grabs.inHandSlot(hand) != null) {
+            return;
+        }
+        if (hand == 0) {
+            if (slot >= InvOps.HOTBAR_START && slot < InvOps.HOTBAR_START + 9) {
+                p.getInventory().setSelectedSlot(slot - InvOps.HOTBAR_START);
+                return;
+            }
+            InvOps.swapWithHand(client, slot, 0); // sem espaço vazio na hotbar: o item da mão vai para a mochila
+            return;
+        }
+        unequipOff(client); // o item que o radial pôs na mão esquerda volta para a hotbar
+        InvOps.swap(client, slot, InvOps.OFFHAND_BUTTON);
+    }
+
+    /**
+     * O item que saiu da mesa (tirado de uma casa) foi para o espaço {@code slot} do inventário: a mão o pega dali,
+     * como em todo o mod (soltar decide para onde ele vai; longe de tudo, fica no inventário).
      */
     private void tableToHand(Minecraft client, int hand, int slot, String what) {
         LocalPlayer p = client.player;
@@ -293,6 +503,10 @@ public final class HandsController {
 
     /** Grip solto. Retorna true se foi nosso. */
     public boolean onGripReleased(Minecraft client, int hand) {
+        if (resultHold[hand] != ResultSource.NONE) {
+            resultHold[hand] = ResultSource.NONE; // soltou sem o gatilho: nada fabricado (se já está fabricando, termina)
+            return true;
+        }
         if (backpack.holder() == hand) {
             closeBackpack(client);
             action("mochila fechada");
@@ -339,14 +553,7 @@ public final class HandsController {
                     action("não deu para pegar o espaço " + e.handler());
                 }
             }
-            case CRAFT_OUT -> {
-                if (InvOps.craftOne(client)) {
-                    VrBridge.pulse(hand, 0.03f);
-                    action("fabricou um");
-                } else if (!InvOps.reachable(p, InvOps.RESULT)) {
-                    refuse(hand); // a mesa de trabalho está aberta: o crafting 2x2 espera ela fechar
-                }
-            }
+            case CRAFT_OUT -> holdResult(client, hand, ResultSource.BACKPACK); // o gatilho fabrica tudo para a mão
             case PREV -> flip(hand, -1);
             case NEXT -> flip(hand, 1);
             default -> { }
@@ -430,13 +637,14 @@ public final class HandsController {
                 return;
             }
         }
-        // Mesa de trabalho: soltar sobre uma casa põe UM item ali; o resto volta para onde estava.
+        // Mesa de trabalho: soltar sobre uma casa põe a pilha inteira ali (como no crafting 2x2 da mochila); uma casa
+        // com outro item troca de lugar com ele.
         int cell = table.targetAt(tip);
         if (cell >= 0 && cell < 9) {
             grabs.end(client, hand);
-            if (table.placeOne(client, hand, g.source(), cell, tableCanOpen(p))) {
+            if (table.place(client, hand, g.source(), cell, tableCanOpen(p), true)) {
                 VrBridge.pulse(hand, 0.02f);
-                action("pôs um na mesa, casa " + cell);
+                action("pôs a pilha na mesa, casa " + cell);
             } else {
                 refuse(hand);
                 action("a casa " + cell + " da mesa recusou");
@@ -508,6 +716,10 @@ public final class HandsController {
         if (backpack.holder() == hand) {
             return true;
         }
+        if (resultHold[hand] != ResultSource.NONE) {
+            startCraftAll(client, hand, resultHold[hand]); // grip + gatilho no resultado: fabrica tudo para a mão
+            return true;
+        }
         Vec3 tip = VrBridge.pointer(hand);
         if (grabs.isGrabbing(hand)) {
             int handSlot = GrabSystem.itemSlot(p, grabs.get(hand)); // onde o item pego está
@@ -558,7 +770,7 @@ public final class HandsController {
             // Mesa de trabalho: gatilho sobre uma casa põe UM item e a mão continua segurando o resto.
             int cell = table.targetAt(tip);
             if (cell >= 0 && cell < 9) {
-                if (table.placeOne(client, hand, handSlot, cell, tableCanOpen(p))) {
+                if (table.place(client, hand, handSlot, cell, tableCanOpen(p), false)) {
                     VrBridge.pulse(hand, 0.01f);
                     action("pôs um na mesa (gatilho), casa " + cell);
                 } else {
@@ -574,13 +786,6 @@ public final class HandsController {
                 switch (e.kind()) {
                     case PREV -> flip(hand, -1);
                     case NEXT -> flip(hand, 1);
-                    case CRAFT_OUT -> {
-                        if (!InvOps.stack(p, InvOps.RESULT).isEmpty() && InvOps.ready(client)) {
-                            InvOps.quickMove(client, InvOps.RESULT);
-                            VrBridge.pulse(hand, 0.04f);
-                            action("fabricou o máximo");
-                        }
-                    }
                     default -> { }
                 }
                 return true;
@@ -592,10 +797,8 @@ public final class HandsController {
         if (radial.isOpen() && radial.targetAt(tip) != RadialMenu.NONE) {
             return true;
         }
-        // Mesa de trabalho: gatilho no resultado fabrica tudo o que a grade der (um por vez, para o inventário).
+        // Gatilho sozinho no resultado da mesa: nada (o resultado sai com grip + gatilho).
         if (table.targetAt(tip) == CraftingTable.RESULT) {
-            table.startCraftAll(hand);
-            action("fabricando tudo na mesa");
             return true;
         }
         return false;
@@ -845,6 +1048,7 @@ public final class HandsController {
         holsters.tick(client);
         BowHand.tick(client);
         tableTick(client);
+        craftTick(client);
     }
 
     /** A mesa de trabalho: a casa ou o resultado sob cada mão (vibra ao entrar) e, com um item na mão sobre a mesa, já

@@ -2,6 +2,16 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.3.1-alpha (Minecraft 26.3)
+
+### Fabricar: a pilha inteira ao soltar, tudo para a mão com grip + gatilho ([#26](https://github.com/DemianGomes/handsonvr/issues/26))
+
+- Na mesa de trabalho, soltar o grip sobre uma casa põe a **pilha inteira**, como no crafting da mochila. Uma casa com outro item troca de lugar com ele. O gatilho com o grip apertado continua pondo um por vez.
+- O resultado (da mesa e do crafting 2x2 da mochila) só sai com **grip + gatilho**: segure o grip no resultado e aperte o gatilho. Grip sozinho ou gatilho sozinho não fabricam, porque fabricar pode gastar muito material.
+- Sai **tudo o que der** (como o Shift+clique da tela do jogo: 4 toras dão 16 tábuas) e vai para a **mão que pegou o resultado**, e fica nela.
+- Na mão direita, o resultado ocupa o espaço da mão, se estiver vazio, ou um espaço vazio da hotbar; o item que ela tinha continua na hotbar. A esquerda recebe o resultado no lugar do que tinha.
+- Com o grip ainda apertado, soltar num coldre, na mochila ou no radial guarda o resultado ali. Soltar em outro lugar o deixa na mão.
+
 ## 0.3.0-alpha (Minecraft 26.3)
 
 ### Mesa de trabalho imersiva ([#21](https://github.com/DemianGomes/handsonvr/issues/21))

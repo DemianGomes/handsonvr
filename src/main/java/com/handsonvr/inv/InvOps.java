@@ -223,14 +223,20 @@ public final class InvOps {
         return stack(p, to).getCount() > before;
     }
 
-    /** Fabrica UM resultado do crafting 2x2 e guarda no inventário (sem espaço: cai no chão). */
-    public static boolean craftOne(Minecraft client) {
+    /**
+     * Fabrica UM resultado do crafting 2x2 direto no espaço {@code target} (vazio, ou com o mesmo item e espaço para
+     * tudo; o que não couber vai para o inventário). Retorna true se fabricou.
+     */
+    public static boolean craftInto(Minecraft client, int target) {
         LocalPlayer p = client.player;
-        if (stack(p, RESULT).isEmpty() || !cursor(p).isEmpty() || !reachable(p, RESULT)) {
+        if (stack(p, RESULT).isEmpty() || !cursor(p).isEmpty() || !reachable(p, RESULT) || !reachable(p, target)) {
             return false;
         }
         click(client, RESULT, 0, ContainerInput.PICKUP);
         boolean crafted = !cursor(p).isEmpty();
+        if (crafted) {
+            click(client, target, 0, ContainerInput.PICKUP);
+        }
         flushCursor(client);
         return crafted;
     }

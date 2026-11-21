@@ -78,6 +78,7 @@ public final class SelfTest {
     private static boolean finished = false;
     private static final List<String> report = new ArrayList<>();
     private static int swordSlot = -1, counted = 0, emptySelected = -1;
+    private static int craftSelected = 0;
     private static BlockPos torchAt;
 
     public static void register() {
@@ -857,17 +858,30 @@ public final class SelfTest {
             pointBackpack(0, bp.element(Backpack.Kind.CRAFT_OUT));
         }
         if (at(36)) {
-            grip(client, 0, true);
-            SimulatedVr.setGrip(0, false);
-            grip(client, 0, false);
+            craftSelected = p.getInventory().getSelectedSlot();
+            grip(client, 0, true); // segura o resultado
+        }
+        if (at(37)) {
+            check(hc.resultHeld(0) == HandsController.ResultSource.BACKPACK && slot(p, InvOps.RESULT).is(Items.CRAFTING_TABLE)
+                            && find(p.getInventory(), Items.CRAFTING_TABLE) < 0,
+                    "grip sozinho no resultado: a mão o segura, mas nada é fabricado");
+            check(hc.onTrigger(client, 0), "grip + gatilho no resultado: fabrica tudo");
         }
         if (at(46)) {
-            check(find(p.getInventory(), Items.CRAFTING_TABLE) >= 0, "grip no resultado: fabricou a mesa e ela foi para o inventário");
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(!hc.isCrafting() && p.getMainHandItem().is(Items.CRAFTING_TABLE) && slot(p, InvOps.HOTBAR_START + craftSelected).is(Items.STONE_SWORD),
+                    "grip + gatilho: a mesa de trabalho foi para a mão direita (a espada ficou na hotbar)");
+            check(g != null && g.origin() == GrabSystem.Origin.HAND, "com o grip ainda apertado, a mão segura o resultado (soltar decide)");
             boolean emptyGrid = true;
             for (int k = 0; k < 4; k++) {
                 emptyGrid &= slot(p, InvOps.CRAFT_START + k).isEmpty();
             }
             check(emptyGrid, "o crafting gastou as 4 tábuas");
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+            grip(client, 0, false);
+            check(p.getMainHandItem().is(Items.CRAFTING_TABLE), "soltar longe: a mesa de trabalho continua na mão");
+            p.getInventory().setSelectedSlot(craftSelected); // de volta à espada (o resto do teste conta com ela)
             pointBackpackSlot(0, 9); // capacete (trocado de lugar antes)
         }
         if (at(48)) {
@@ -1958,14 +1972,14 @@ public final class SelfTest {
                     "a mesa abriu por baixo, sem a tela do jogo (" + table.last() + ")");
             check(!InvOps.reachable(p, InvOps.ARMOR_START) && InvOps.reachable(p, InvOps.MAIN_START),
                     "com a mesa aberta, a mochila ainda usa o inventário (a armadura espera ela fechar)");
-            grip(client, 0, false); // solta sobre a casa: põe uma
+            grip(client, 0, false); // solta sobre a casa: a pilha inteira
         }
         if (at(30)) {
-            check(table.cellStack(4).is(Items.OAK_LOG) && table.cellStack(4).getCount() == 1 && total(inv, Items.OAK_LOG) == 3
+            check(table.cellStack(4).is(Items.OAK_LOG) && table.cellStack(4).getCount() == 4 && total(inv, Items.OAK_LOG) == 0
                             && p.getMainHandItem().is(Items.IRON_SWORD),
-                    "soltar sobre a casa: uma tora fica deitada na mesa, as outras 3 voltam e a espada volta para a mão");
+                    "soltar sobre a casa: as 4 toras ficam deitadas na mesa e a espada volta para a mão");
             check(table.resultStack().is(Items.OAK_PLANKS) && table.resultStack().getCount() == 4,
-                    "a receita fecha: 4 tábuas flutuam acima da grade (" + describe(table.resultStack()) + ")");
+                    "a receita fecha: as tábuas flutuam acima da grade (" + describe(table.resultStack()) + " por vez)");
             grip(client, 1, false); // fecha a mochila
             pointTable(0, table.resultCenter());
             p.setXRot(38f);
@@ -1977,102 +1991,106 @@ public final class SelfTest {
             screenshot(client, "10-mesa");
         }
         if (at(40)) {
-            grip(client, 0, true); // pega o resultado: fabrica
+            grip(client, 0, true); // segura o resultado
         }
         if (at(42)) {
+            check(hc.resultHeld(0) == HandsController.ResultSource.TABLE && total(inv, Items.OAK_PLANKS) == 0
+                            && table.cellStack(4).getCount() == 4,
+                    "grip sozinho no resultado: a mão o segura, mas nada é fabricado");
+            check(hc.onTrigger(client, 0), "grip + gatilho no resultado: fabrica tudo");
+        }
+        if (at(64)) {
             GrabSystem.Grab g = hc.grabs().get(0);
-            check(g != null && g.origin() == GrabSystem.Origin.TABLE && p.getMainHandItem().is(Items.OAK_PLANKS)
-                            && p.getMainHandItem().getCount() == 4 && table.cellStack(4).isEmpty(),
-                    "pegar o resultado: fabricou e as 4 tábuas vieram para a mão (a tora foi gasta)");
+            check(!hc.isCrafting() && p.getMainHandItem().is(Items.OAK_PLANKS) && p.getMainHandItem().getCount() == 16
+                            && table.cellStack(4).isEmpty() && slot(p, InvOps.HOTBAR_START).is(Items.IRON_SWORD),
+                    "grip + gatilho: as 4 toras viraram 16 tábuas, direto na mão direita (a espada ficou na hotbar)");
+            check(g != null && g.origin() == GrabSystem.Origin.HAND, "com o grip ainda apertado, a mão segura as tábuas");
             pointAway(client, 0);
             grip(client, 0, false);
+            check(p.getMainHandItem().is(Items.OAK_PLANKS) && table.resultStack().isEmpty(),
+                    "soltar longe: as tábuas continuam na mão e nada mais flutua");
         }
-        if (at(46)) {
-            plankSlot = InvOps.fromInventory(find(inv, Items.OAK_PLANKS));
-            check(plankSlot >= InvOps.MAIN_START && plankSlot < InvOps.HOTBAR_START && total(inv, Items.OAK_PLANKS) == 4
-                            && table.resultStack().isEmpty(),
-                    "soltar longe: as tábuas ficam no inventário principal (espaço " + plankSlot + ") e nada mais flutua");
-            check(openBackpack(client, 1), "mochila aberta de novo");
-            pointBackpackSlot(0, plankSlot);
-        }
-        if (at(48)) {
-            grip(client, 0, true); // pega as tábuas
-            grip(client, 1, false); // fecha a mochila
+        // --- gatilho: uma tábua por casa (a mão segura as próprias tábuas com o grip)
+        if (at(66)) {
             pointTable(0, table.cellCenter(1).add(0, 0.03, 0)); // linha de cima, meio
         }
-        if (at(50)) {
+        if (at(68)) {
+            grip(client, 0, true); // casa vazia: a mão segura o próprio item
+        }
+        if (at(70)) {
             check(hands().onTrigger(client, 0), "gatilho sobre a casa de cima: é da mesa");
             pointTable(0, table.cellCenter(4).add(0, 0.03, 0));
         }
-        if (at(52)) {
+        if (at(72)) {
             hands().onTrigger(client, 0);
         }
-        if (at(58)) {
-            check(table.cellStack(1).is(Items.OAK_PLANKS) && table.cellStack(4).is(Items.OAK_PLANKS)
-                            && p.getMainHandItem().is(Items.OAK_PLANKS) && p.getMainHandItem().getCount() == 2,
-                    "gatilho com o grip: uma tábua por casa e a mão continua com as outras 2");
+        if (at(78)) {
+            check(table.cellStack(1).is(Items.OAK_PLANKS) && table.cellStack(1).getCount() == 1
+                            && table.cellStack(4).getCount() == 1 && p.getMainHandItem().getCount() == 14,
+                    "grip + gatilho sobre as casas: uma tábua por casa e a mão continua com as outras 14");
             check(table.resultStack().is(Items.STICK) && table.resultStack().getCount() == 4,
-                    "tábua em cima de tábua (de longe para perto): 4 varetas flutuam (" + describe(table.resultStack()) + ")");
+                    "tábua em cima de tábua (de longe para perto): as varetas flutuam (" + describe(table.resultStack()) + ")");
             pointAway(client, 0);
             grip(client, 0, false);
         }
-        if (at(62)) {
+        // --- grip numa casa ocupada: o item volta para a mão
+        if (at(80)) {
             pointTable(0, table.cellCenter(1).add(0, 0.03, 0));
         }
-        if (at(64)) {
-            grip(client, 0, true); // grip na casa ocupada: a tábua volta para a mão
+        if (at(82)) {
+            grip(client, 0, true);
         }
-        if (at(66)) {
+        if (at(84)) {
             GrabSystem.Grab g = hc.grabs().get(0);
             check(g != null && g.origin() == GrabSystem.Origin.TABLE && p.getMainHandItem().is(Items.OAK_PLANKS)
-                            && table.cellStack(1).isEmpty(),
+                            && p.getMainHandItem().getCount() == 15 && table.cellStack(1).isEmpty(),
                     "grip numa casa ocupada: a tábua volta para a mão (junto com as outras)");
             pointAway(client, 0);
             grip(client, 0, false);
         }
-        if (at(70)) {
+        if (at(88)) {
             // Uma tábua sozinha também é uma receita do jogo: o botão de madeira.
             check(table.cellStack(4).is(Items.OAK_PLANKS) && table.resultStack().is(Items.OAK_BUTTON)
-                            && total(inv, Items.OAK_PLANKS) == 3,
+                            && total(inv, Items.OAK_PLANKS) == 15,
                     "a receita muda com a grade: uma tábua sozinha vira um botão (" + describe(table.resultStack())
-                            + "); 3 tábuas no inventário e 1 na mesa");
+                            + "); 15 tábuas na mão e 1 na mesa");
             check(table.take(client, 4) >= 0 && table.gridEmpty(), "a última tábua volta para o inventário");
             onServer(client, player -> {
-                player.getInventory().setItem(11, new ItemStack(Items.COAL));
+                player.getInventory().setItem(11, new ItemStack(Items.COAL, 2));
                 player.getInventory().setItem(12, new ItemStack(Items.STICK));
             });
         }
-        if (at(74)) {
+        if (at(92)) {
             // Carvão em cima de uma vareta: a tocha (a vareta é um item achatado, deitado na casa).
-            table.placeOne(client, 0, 11, 1, true);
-            table.placeOne(client, 0, 12, 4, true);
+            table.place(client, 0, 11, 1, true, true);  // a pilha toda (2 carvões)
+            table.place(client, 0, 12, 4, true, false); // uma vareta
             pointTable(0, table.cellCenter(4).add(0, 0.03, 0));
         }
-        if (at(78)) {
-            check(table.cellStack(1).is(Items.COAL) && table.cellStack(4).is(Items.STICK)
+        if (at(96)) {
+            check(table.cellStack(1).is(Items.COAL) && table.cellStack(1).getCount() == 2 && table.cellStack(4).is(Items.STICK)
                             && table.resultStack().is(Items.TORCH) && table.resultStack().getCount() == 4,
-                    "carvão em cima da vareta: 4 tochas flutuam (" + describe(table.resultStack()) + ")");
+                    "carvão em cima da vareta: as tochas flutuam (" + describe(table.resultStack()) + ")");
         }
-        if (at(82)) {
+        if (at(100)) {
             screenshot(client, "11-mesa-tocha");
             handAway(0);
         }
-        if (at(84)) {
+        if (at(102)) {
             p.setPos(p.getX(), p.getY(), p.getZ() - 6); // afasta-se da mesa
         }
-        if (at(99)) {
-            check(!table.isOpen() && p.containerMenu == p.inventoryMenu && total(inv, Items.COAL) == 1
-                            && total(inv, Items.STICK) == 1 && total(inv, Items.OAK_PLANKS) == 4,
+        if (at(117)) {
+            check(!table.isOpen() && p.containerMenu == p.inventoryMenu && total(inv, Items.COAL) == 2
+                            && total(inv, Items.STICK) == 1 && total(inv, Items.OAK_PLANKS) == 16,
                     "afastar-se: a mesa fecha e o carvão e a vareta voltam para o inventário (" + table.last() + ")");
             p.setPos(p.getX(), p.getY(), p.getZ() + 6);
             p.setXRot(0f);
         }
-        if (at(109)) {
+        if (at(127)) {
             allowCraftingScreen = true;
             client.gameMode.useItemOn(p, net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.phys.BlockHitResult(
                     Vec3.atCenterOf(tablePos).add(0, 0.5, 0), net.minecraft.core.Direction.UP, tablePos, false));
         }
-        if (at(119)) {
+        if (at(137)) {
             check(client.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.CraftingScreen && !table.isOpen(),
                     "usar a mesa do jeito normal ainda abre a tela do jogo");
             p.closeContainer();
@@ -2080,7 +2098,7 @@ public final class SelfTest {
             handAway(0);
             handAway(1);
         }
-        if (at(124)) {
+        if (at(142)) {
             finish(client);
         }
     }
