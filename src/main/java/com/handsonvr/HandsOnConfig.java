@@ -42,6 +42,12 @@ public final class HandsOnConfig {
     /** Fora dos coldres, o grip troca a hotbar como no Vivecraft (desligado: o radial cuida da hotbar). */
     public boolean gripScrollsHotbar = false;
 
+    /**
+     * Itens que chegam (coletados, sobras do crafting) vão primeiro para o inventário principal; a hotbar só recebe
+     * quando ele está cheio. Desligado: como no jogo (a hotbar primeiro).
+     */
+    public boolean pickupToMain = true;
+
     // ---- controles
     /** Gatilho esquerdo usa o item da mão esquerda (coloca tocha/bloco, usa) em vez do teleporte. */
     public boolean leftTriggerOffhandUse = true;

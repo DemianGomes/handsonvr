@@ -55,6 +55,7 @@ public class HandsOnVR implements ClientModInitializer {
                 guard("entrar no mundo", () -> {
                     com.handsonvr.render.Sprite.clearCache(); // ícones do jogo: relidos (o resource pack pode ter mudado)
                     HANDS.onJoin(client);
+                    com.handsonvr.inv.PickupOrder.reset();
                 }));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> HANDS.onLeave());
 
@@ -65,6 +66,7 @@ public class HandsOnVR implements ClientModInitializer {
         });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             guard("mãos", () -> HANDS.tick(client));
+            guard("coleta no inventário", () -> com.handsonvr.inv.PickupOrder.tick(client, HANDS));
             while (settingsKey.consumeClick()) {
                 client.gui.setScreen(new HandsOnScreen(client.gui.screen(), HANDS.holsters()));
             }
