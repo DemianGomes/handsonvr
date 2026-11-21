@@ -56,6 +56,7 @@ public class HandsOnVR implements ClientModInitializer {
                     com.handsonvr.render.Sprite.clearCache(); // ícones do jogo: relidos (o resource pack pode ter mudado)
                     HANDS.onJoin(client);
                     com.handsonvr.inv.PickupOrder.reset();
+                    com.handsonvr.net.PeerSync.reset();
                 }));
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> HANDS.onLeave());
 
@@ -68,6 +69,7 @@ public class HandsOnVR implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             guard("mãos", () -> HANDS.tick(client));
             guard("coleta no inventário", () -> com.handsonvr.inv.PickupOrder.tick(client, HANDS));
+            guard("estado para os outros jogadores", () -> com.handsonvr.net.PeerSync.tick(client, HANDS));
             while (settingsKey.consumeClick()) {
                 client.gui.setScreen(new HandsOnScreen(client.gui.screen(), HANDS.holsters()));
             }
@@ -85,6 +87,12 @@ public class HandsOnVR implements ClientModInitializer {
                     () -> com.handsonvr.table.CraftingTableRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "fornalha (desenho)",
                     () -> com.handsonvr.furnace.FurnaceRenderer.render(context, HANDS));
+            renderSafely(context.poseStack(), "baú (desenho)", () -> com.handsonvr.chest.ChestRenderer.render(context, HANDS));
+            renderSafely(context.poseStack(), "suporte de poções (desenho)",
+                    () -> com.handsonvr.brewing.BrewingRenderer.render(context, HANDS));
+            renderSafely(context.poseStack(), "pulso e quantidade (desenho)",
+                    () -> com.handsonvr.render.WristHudRenderer.render(context, HANDS));
+            renderSafely(context.poseStack(), "outros jogadores (desenho)", () -> com.handsonvr.net.PeerRenderer.render(context));
         });
 
         // Botão "Coldres VR" no menu de pausa (Y no controle): os ajustes sem precisar de tecla.
@@ -97,6 +105,7 @@ public class HandsOnVR implements ClientModInitializer {
             }
         });
 
+        com.handsonvr.net.PeerSync.register();
         SelfTest.register();
         LOGGER.info("[HandsOn VR] Pronto (Vivecraft {})", VrBridge.isVivecraftLoaded() ? "presente" : "ausente");
     }
@@ -112,7 +121,9 @@ public class HandsOnVR implements ClientModInitializer {
     /** Mixin do MenuScreens: o menu que o servidor abriu é o da mesa ou de uma fornalha imersiva? Então fica sem tela. */
     public static boolean openHiddenMenu(net.minecraft.world.inventory.MenuType<?> type, Minecraft client, int containerId) {
         return call("mesa de trabalho (abrir)", () -> HANDS.table().onOpenScreen(type, client, containerId))
-                || call("fornalha (abrir)", () -> HANDS.furnace().onOpenScreen(type, client, containerId));
+                || call("fornalha (abrir)", () -> HANDS.furnace().onOpenScreen(type, client, containerId))
+                || call("baú (abrir)", () -> HANDS.chest().onOpenScreen(type, client, containerId))
+                || call("suporte de poções (abrir)", () -> HANDS.brewing().onOpenScreen(type, client, containerId));
     }
 
     /** Grip apertado (VivecraftInput). true = foi nosso, o grip não troca a hotbar. */

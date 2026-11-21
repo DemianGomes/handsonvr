@@ -137,6 +137,11 @@ public final class Sprite {
         });
     }
 
+    /** Uma textura inteira qualquer ({@code textures/...png}, até 64 pixels), como os ícones de efeito. Null se não houver. */
+    public static Sprite texture(String path) {
+        return cached("img:" + path, () -> read(Identifier.withDefaultNamespace(path), 64));
+    }
+
     /** Um pedaço deste sprite (x, y, largura, altura em pixels dele), ou null se ficar vazio. */
     public Sprite crop(int x, int y, int w, int h) {
         int x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(width, x + w), y1 = Math.min(height, y + h);

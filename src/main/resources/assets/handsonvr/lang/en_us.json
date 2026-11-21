@@ -20,6 +20,8 @@
   "option.handsonvr.bow_aim": "Bow aim marker",
   "option.handsonvr.throw": "Throw with your hand",
   "option.handsonvr.throw_power": "Real throw power (singleplayer)",
+  "option.handsonvr.wrist_hud": "Wrist status (health, food...)",
+  "option.handsonvr.hand_count": "Stack count on the hand",
   "backpack.handsonvr.page": "Page %s/%s",
   "backpack.handsonvr.slots": "Slots %s/%s",
   "radial.handsonvr.empty": "Empty hand",

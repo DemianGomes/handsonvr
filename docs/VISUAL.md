@@ -23,6 +23,7 @@
 | **Janela** | Painel que a mão segura e manipula | `container/inventory`: fundo `#C6C6C6`, contorno preto de cantos cortados, relevo branco em cima e à esquerda, `#555555` embaixo e à direita | Mochila (`Draw.mcWindow`) |
 | **Espaço do inventário** | Dentro de uma janela | `container/slot`: fundo `#8B8B8B`, linha `#373737` em cima e à esquerda, branca embaixo e à direita | Mochila (`Draw.mcSlot`) |
 | **HUD** | Menu rápido solto no ar, sobre o mundo | `hud/hotbar`: moldura de pedra, fundo escuro translúcido | Radial (`Sprite.hotbarCell`) |
+| **Relógio no pulso** | Status do jogador preso ao corpo | Os ícones do HUD (`hud/heart/*`, `hud/armor_*`, `hud/food_*`, `hud/experience_bar_*`, `textures/mob_effect/*`) na mesma ordem e tamanho relativo, num fundo translúcido como o do chat; o nível de XP em verde com a borda preta, como no jogo | Pulso esquerdo (`render/WristHudRenderer`) |
 | **Bloco do mundo** | Um bloco do jogo usado com as mãos | A própria textura do bloco (a grade desenhada em `crafting_table_top`, as aberturas de `furnace_front`, a chaminé de `smoker_top`); os itens ficam em cima dele ou na abertura dele, como no chão ou num suporte | Mesa de trabalho (`table/CraftingTableRenderer`), fornalhas (`furnace/FurnaceRenderer`) |
 
 ## 4. Estados
@@ -112,4 +113,5 @@ O Minecraft 26 desenha o translúcido com OIT (ordem aproximada pela profundidad
 - `render/Sprite`: lê as texturas do jogo e faz os recortes (a casa da hotbar, os glifos da fonte).
 - `render/Draw`: `mcWindow`, `mcSlot`, `mcCount`, `mcTooltip`, `sprite` e `spriteSolid`.
 - `render/BlockItem`: itens apoiados num bloco (deitados no topo ou em pé numa abertura).
+- `render/WristHudRenderer`: o pulso e a quantidade na mão; `chest/ChestRenderer` (janela acima do baú); `brewing/BrewingRenderer` (a plaquinha do suporte de poções, como a das fornalhas); `net/PeerRenderer` (os coldres e a bolsa dos outros jogadores).
 - Exemplos completos: `backpack/BackpackRenderer` (janela), `radial/RadialRenderer` (HUD), `table/CraftingTableRenderer` e `furnace/FurnaceRenderer` (bloco do mundo).

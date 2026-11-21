@@ -61,6 +61,9 @@ public class HandsOnScreen extends Screen {
         toggle(right, y, w, "option.handsonvr.throw", config.physicalThrow, v -> config.physicalThrow = v);
         y += 24;
         toggle(left, y, w, "option.handsonvr.throw_power", config.throwRealPower, v -> config.throwRealPower = v);
+        toggle(right, y, w, "option.handsonvr.wrist_hud", config.wristHud, v -> config.wristHud = v);
+        y += 24;
+        toggle(left, y, w, "option.handsonvr.hand_count", config.handCount, v -> config.handCount = v);
         y += 30;
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).bounds(width / 2 - 100, y, 200, 20).build());
     }

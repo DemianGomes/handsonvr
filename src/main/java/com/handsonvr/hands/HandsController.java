@@ -3,6 +3,8 @@ package com.handsonvr.hands;
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
 import com.handsonvr.backpack.Backpack;
+import com.handsonvr.brewing.BrewingStation;
+import com.handsonvr.chest.ChestStation;
 import com.handsonvr.furnace.FurnaceStation;
 import com.handsonvr.holster.Holster;
 import com.handsonvr.holster.HolsterManager;
@@ -41,6 +43,8 @@ public final class HandsController {
     private final RadialMenu radial = new RadialMenu();
     private final CraftingTable table = new CraftingTable();
     private final FurnaceStation furnace = new FurnaceStation();
+    private final ChestStation chest = new ChestStation();
+    private final BrewingStation brewing = new BrewingStation();
     private final com.handsonvr.furnace.FurnaceWatcher furnaceWatcher = new com.handsonvr.furnace.FurnaceWatcher();
     /** Espaço da hotbar (0-8) de onde veio o item que o radial pôs na mão esquerda; -1 = nenhum. */
     private int offSource = -1;
@@ -135,6 +139,14 @@ public final class HandsController {
         return furnace;
     }
 
+    public ChestStation chest() {
+        return chest;
+    }
+
+    public BrewingStation brewing() {
+        return brewing;
+    }
+
     /** As fornalhas por perto (até 10 blocos), para mostrar o que tem em cada uma. */
     public com.handsonvr.furnace.FurnaceWatcher furnaceWatcher() {
         return furnaceWatcher;
@@ -173,6 +185,8 @@ public final class HandsController {
         table.reset();
         furnace.reset();
         furnaceWatcher.reset();
+        chest.reset();
+        brewing.reset();
         offSource = -1;
         menuConsumed[0] = menuConsumed[1] = false;
         resultHold[0] = resultHold[1] = ResultSource.NONE;
@@ -188,7 +202,8 @@ public final class HandsController {
 
     /** O golpe com o braço do Vivecraft fica desligado (mexendo na mochila, no radial, na mesa ou numa fornalha). */
     public boolean blocksSwing() {
-        return backpack.isOpen() || radial.isOpen() || table.blocksSwing() || furnace.blocksSwing();
+        return backpack.isOpen() || radial.isOpen() || table.blocksSwing() || furnace.blocksSwing() || chest.blocksSwing()
+                || brewing.blocksSwing();
     }
 
     /** Alguma mão segura um item pego da armadura ou do crafting 2x2 (espaços que não existem no menu de um bloco)? */
@@ -336,6 +351,34 @@ public final class HandsController {
         }
         if (onFurnace >= 0 && !furnace.stack(onFurnace).isEmpty()) {
             blockToHand(client, hand, furnace.take(client, onFurnace), "tirou da fornalha o lugar " + onFurnace);
+            return true;
+        }
+        // 3c) Suporte de poções: um lugar com item volta para a mão.
+        int onBrewing = brewing.targetAt(tip);
+        if (onBrewing >= 0 && brewing.isOpen() && !brewing.stack(onBrewing).isEmpty()) {
+            blockToHand(client, hand, brewing.take(client, onBrewing), "tirou do suporte de poções o lugar " + onBrewing);
+            return true;
+        }
+        // 3d) Baú aberto: um espaço com item vem para a mão (com o gatilho já apertado, a metade).
+        int onChest = chest.slotAt(tip);
+        if (onChest >= 0 && !chest.stack(onChest).isEmpty()) {
+            if (GripState.isTriggerHeld(hand)) {
+                int free = freeSlotForResult(p);
+                blockToHand(client, hand, free < 0 ? -1 : chest.takeHalf(client, onChest, free), "tirou a metade do espaço " + onChest + " do baú");
+            } else {
+                blockToHand(client, hand, chest.take(client, onChest), "tirou do baú o espaço " + onChest);
+            }
+            return true;
+        }
+        if (chest.onPanel(tip)) {
+            holdOwnItem(client, hand);
+            return true;
+        }
+        // 3e) Grip encostado num baú, barril ou caixa de shulker: abre a tampa (ou fecha a que está aberta).
+        net.minecraft.core.BlockPos box = ChestStation.containerAt(client.level, tip);
+        if (box != null && chest.toggle(client, box)) {
+            VrBridge.pulse(hand, 0.03f);
+            action((chest.isOpen() || chest.isWaiting() ? "abriu" : "fechou") + " o baú");
             return true;
         }
         // 4) Zonas do corpo: mochila (ombro esquerdo) ou um coldre com item (sacar).
@@ -828,6 +871,57 @@ public final class HandsController {
             }
             return;
         }
+        // Baú aberto: soltar num espaço põe a pilha ali (um item diferente troca de lugar).
+        int chestSlot = chest.slotAt(tip);
+        if (chestSlot >= 0) {
+            grabs.end(client, hand);
+            if (chest.place(client, g.source(), chestSlot, true)) {
+                VrBridge.pulse(hand, 0.02f);
+                action("pôs a pilha no baú, espaço " + chestSlot);
+            } else {
+                refuse(hand);
+            }
+            return;
+        }
+        // Suporte de poções: soltar num lugar (garrafa, ingrediente, pó de blaze) põe a pilha.
+        int brew = brewing.targetAt(tip);
+        if (brew >= 0) {
+            grabs.end(client, hand);
+            if (brewing.place(client, hand, g.source(), brew, true)) {
+                VrBridge.pulse(hand, 0.02f);
+                action("pôs no suporte de poções, lugar " + brew);
+            } else {
+                refuse(hand);
+            }
+            return;
+        }
+        // Fogueira: soltar em cima dela com comida crua põe um item (o "usar" do jogo); o resto volta.
+        if (g.itemHand() == hand) {
+            net.minecraft.world.phys.BlockHitResult fire = campfireUnder(client, tip);
+            if (fire != null) {
+                boolean placed = useOnBlock(client, hand, fire);
+                grabs.end(client, hand);
+                if (placed) {
+                    VrBridge.pulse(hand, 0.03f);
+                    action("pôs na fogueira");
+                } else {
+                    refuse(hand);
+                }
+                return;
+            }
+        }
+        // Armadura: soltar a peça na parte do corpo dela veste (capacete na cabeça, peitoral no peito...).
+        int armorSlot = bodyArmorSlot(p, InvOps.stack(p, GrabSystem.itemSlot(p, g)), tip);
+        if (armorSlot >= 0 && g.source() != armorSlot) {
+            grabs.end(client, hand);
+            if (!isLocked(p, armorSlot) && exchangeFits(p, g.source(), armorSlot) && InvOps.moveStack(client, g.source(), armorSlot)) {
+                VrBridge.pulse(hand, 0.05f);
+                action("vestiu a peça (espaço " + armorSlot + ")");
+            } else {
+                refuse(hand);
+            }
+            return;
+        }
         Holster zone = holsters.refreshZone(hand);
         grabs.end(client, hand);
         // Por cima do ombro, como no Saints & Sinners: soltar no ombro da mochila guarda o item nela.
@@ -983,6 +1077,39 @@ public final class HandsController {
                 }
                 return true;
             }
+            // Baú aberto: gatilho num espaço põe UM item.
+            int chestSlot = chest.slotAt(tip);
+            if (chestSlot >= 0) {
+                if (chest.place(client, handSlot, chestSlot, false)) {
+                    VrBridge.pulse(hand, 0.01f);
+                    action("pôs um no baú, espaço " + chestSlot);
+                } else {
+                    refuse(hand);
+                }
+                return true;
+            }
+            // Suporte de poções: gatilho num lugar põe UM item.
+            int brew = brewing.targetAt(tip);
+            if (brew >= 0) {
+                if (brewing.place(client, hand, handSlot, brew, false)) {
+                    VrBridge.pulse(hand, 0.01f);
+                    action("pôs um no suporte de poções, lugar " + brew);
+                } else {
+                    refuse(hand);
+                }
+                return true;
+            }
+            // Fogueira: gatilho em cima dela põe UM item e a mão continua segurando o resto.
+            net.minecraft.world.phys.BlockHitResult fire = grabs.get(hand).itemHand() == hand ? campfireUnder(client, tip) : null;
+            if (fire != null) {
+                if (useOnBlock(client, hand, fire)) {
+                    VrBridge.pulse(hand, 0.02f);
+                    action("pôs um na fogueira (gatilho)");
+                } else {
+                    refuse(hand);
+                }
+                return true;
+            }
             return false; // pegou um item e está longe dos menus: o gatilho usa o item normalmente
         }
         if (backpack.isOpen()) {
@@ -1004,7 +1131,8 @@ public final class HandsController {
         }
         // Gatilho sozinho no resultado da mesa: nada (o resultado sai com o grip). Numa fornalha também: o gatilho não
         // quebra o bloco em que a mão está mexendo.
-        if (table.targetAt(tip) != CraftingTable.NONE || furnace.targetAt(tip) != FurnaceStation.NONE) {
+        if (table.targetAt(tip) != CraftingTable.NONE || furnace.targetAt(tip) != FurnaceStation.NONE || chest.onPanel(tip)
+                || brewing.targetAt(tip) != BrewingStation.NONE) {
             return true;
         }
         return false;
@@ -1091,6 +1219,105 @@ public final class HandsController {
             if (cell >= 0 && !d.cells.contains(cell)) {
                 d.cells.add(cell);
                 VrBridge.pulse(hand, 0.008f);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ fogueira, armadura no corpo, baú, suporte de poções
+
+    /** A fogueira sob a ponta da mão (a mão em cima dela, até uns 30 cm acima), como um clique no topo dela; ou null. */
+    private static net.minecraft.world.phys.BlockHitResult campfireUnder(Minecraft client, Vec3 tip) {
+        if (tip == null || client.level == null) {
+            return null;
+        }
+        net.minecraft.core.BlockPos at = net.minecraft.core.BlockPos.containing(tip);
+        for (int dy = 0; dy <= 1; dy++) {
+            net.minecraft.core.BlockPos q = at.below(dy);
+            if (client.level.getBlockState(q).getBlock() instanceof net.minecraft.world.level.block.CampfireBlock) {
+                double above = tip.y - q.getY(); // a fogueira tem 7/16 de altura
+                if (above >= 0.15 && above <= 0.8) {
+                    return new net.minecraft.world.phys.BlockHitResult(new Vec3(q.getX() + 0.5, q.getY() + 0.4375, q.getZ() + 0.5),
+                            net.minecraft.core.Direction.UP, q, false);
+                }
+            }
+        }
+        return null;
+    }
+
+    /** "Usar" o item da mão no bloco, como o jogador faria (a fogueira põe a comida). True se o jogo aceitou. */
+    private static boolean useOnBlock(Minecraft client, int hand, net.minecraft.world.phys.BlockHitResult hit) {
+        if (client.player == null || client.gameMode == null) {
+            return false;
+        }
+        var interactionHand = hand == 0 ? net.minecraft.world.InteractionHand.MAIN_HAND : net.minecraft.world.InteractionHand.OFF_HAND;
+        return client.gameMode.useItemOn(client.player, interactionHand, hit).consumesAction();
+    }
+
+    /**
+     * Onde a peça de armadura se veste, se a ponta da mão está na parte do corpo dela: o capacete na cabeça, o peitoral
+     * (ou o élitro) no peito, as calças na cintura e as botas abaixo dos joelhos, sempre na frente do corpo (os coldres
+     * ficam dos lados e atrás). Retorna o espaço do menu do jogador, ou -1.
+     */
+    private static int bodyArmorSlot(LocalPlayer p, ItemStack stack, Vec3 tip) {
+        VrBridge.Pose head = VrBridge.head();
+        if (stack.isEmpty() || tip == null || head == null) {
+            return -1;
+        }
+        net.minecraft.world.entity.EquipmentSlot slot = p.getEquipmentSlotForItem(stack);
+        if (slot.getType() != net.minecraft.world.entity.EquipmentSlot.Type.HUMANOID_ARMOR) {
+            return -1;
+        }
+        double s = VrBridge.worldScale();
+        Vec3 h = head.position(), d = tip.subtract(h);
+        Vec3 look = head.direction();
+        Vec3 forward = new Vec3(look.x, 0, look.z).lengthSqr() < 1.0e-6 ? new Vec3(0, 0, 1) : new Vec3(look.x, 0, look.z).normalize();
+        double horizontal = Math.sqrt(d.x * d.x + d.z * d.z), front = d.x * forward.x + d.z * forward.z;
+        boolean in = switch (slot) {
+            case HEAD -> tip.distanceTo(h) < 0.25 * s && d.y > -0.12 * s;
+            case CHEST -> horizontal < 0.4 * s && front > 0.03 * s && d.y <= -0.2 * s && d.y > -0.62 * s;
+            case LEGS -> horizontal < 0.45 * s && front > 0.03 * s && d.y <= -0.62 * s && d.y > -1.05 * s;
+            case FEET -> horizontal < 0.55 * s && d.y <= -1.05 * s;
+            default -> false;
+        };
+        if (!in) {
+            return -1;
+        }
+        return InvOps.ARMOR_START + switch (slot) {
+            case HEAD -> 0;
+            case CHEST -> 1;
+            case LEGS -> 2;
+            default -> 3;
+        };
+    }
+
+    /** O baú aberto: o espaço sob cada mão (vibra ao entrar). */
+    private void chestTick(Minecraft client) {
+        chest.tick(client);
+        for (int hand = 0; hand < 2; hand++) {
+            int target = backpack.holder() == hand || !VrBridge.isVRActive() ? ChestStation.NONE : chest.slotAt(VrBridge.pointer(hand));
+            if (chest.updateHover(hand, target)) {
+                VrBridge.pulse(hand, 0.005f);
+            }
+        }
+    }
+
+    /** O suporte de poções: abre sozinho o que o jogador olha, o lugar sob cada mão e, com um item na mão, abre na hora. */
+    private void brewingTick(Minecraft client) {
+        LocalPlayer p = client.player;
+        boolean canAuto = InvOps.ready(client) && p.containerMenu == p.inventoryMenu && !table.isOpen() && !table.isWaiting()
+                && !furnace.isWaiting() && !chest.isWaiting() && craftJob == null && !grabbingOutsideMenus();
+        brewing.tick(client, canAuto);
+        for (int hand = 0; hand < 2; hand++) {
+            int target = backpack.holder() == hand || !VrBridge.isVRActive() ? BrewingStation.NONE
+                    : brewing.targetAt(VrBridge.pointer(hand));
+            if (brewing.updateHover(hand, target)) {
+                VrBridge.pulse(hand, 0.005f);
+            }
+            if (target >= 0 && grabs.isGrabbing(hand) && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
+                if (p.containerMenu != p.inventoryMenu) {
+                    InvOps.releaseHidden(client); // uma fornalha ou um baú aberto cede o menu
+                }
+                brewing.ensureOpen(client, true);
             }
         }
     }
@@ -1333,6 +1560,8 @@ public final class HandsController {
         tableTick(client);
         dragTick(client);
         furnaceTick(client);
+        chestTick(client);
+        brewingTick(client);
         craftTick(client);
     }
 

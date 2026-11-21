@@ -2,6 +2,16 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.7.0-alpha (Minecraft 26.3)
+
+- **Pulso esquerdo** ([#42](https://github.com/DemianGomes/handsonvr/issues/42)): virando o pulso para o rosto aparecem a vida, a armadura, a fome, a XP com o nível e os efeitos, com os ícones do HUD do jogo.
+- **Quantidade na mão** ([#43](https://github.com/DemianGomes/handsonvr/issues/43)): perto do dedão, a quantidade da pilha de cada mão (só para você).
+- **Fogueira** ([#44](https://github.com/DemianGomes/handsonvr/issues/44)): soltar a comida crua em cima dela põe um item; o gatilho também.
+- **Vestir armadura pelo corpo** ([#45](https://github.com/DemianGomes/handsonvr/issues/45)): capacete na cabeça, peitoral ou élitro no peito, calças na cintura, botas abaixo dos joelhos.
+- **Baú, barril, baú do Ender e caixa de shulker** ([#46](https://github.com/DemianGomes/handsonvr/issues/46)): grip no bloco abre a tampa sem a tela, o conteúdo aparece numa janela acima dele, e as mãos pegam, põem a pilha, põem um e pegam metade. Grip de novo ou se afastar fecha.
+- **Suporte de poções** ([#47](https://github.com/DemianGomes/handsonvr/issues/47)): abre ao olhar, as garrafas nos braços, o ingrediente no topo, o pó de blaze no meio da haste, e a plaquinha com as bolhas, a seta e a barra de combustível da tela do jogo.
+- **Multiplayer** ([#48](https://github.com/DemianGomes/handsonvr/issues/48)): no mundo aberto pelo jogo (LAN, Essential), os jogadores com o HandsOn veem os itens nos coldres e a mochila (uma bolsa) dos amigos em VR. Quem joga sem VR vê o jogo como sempre, mais isso.
+
 ## 0.6.0-alpha (Minecraft 26.3)
 
 ### Distribuir arrastando e pegar metade ([#39](https://github.com/DemianGomes/handsonvr/issues/39))

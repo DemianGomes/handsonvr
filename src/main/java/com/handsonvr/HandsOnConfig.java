@@ -66,6 +66,12 @@ public final class HandsOnConfig {
      */
     public boolean throwRealPower = true;
 
+    /** Virando o pulso esquerdo para o rosto: vida, armadura, fome, XP e efeitos, como um relógio. */
+    public boolean wristHud = true;
+
+    /** A quantidade da pilha de cada mão, perto do dedão (só para o próprio jogador). */
+    public boolean handCount = true;
+
     // ---- controles
     /** Gatilho esquerdo usa o item da mão esquerda (coloca tocha/bloco, usa) em vez do teleporte. */
     public boolean leftTriggerOffhandUse = true;
