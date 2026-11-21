@@ -48,6 +48,12 @@ public final class HandsOnConfig {
      */
     public boolean pickupToMain = true;
 
+    /**
+     * Mira do arco: com a corda puxada, a mira do jogo aparece onde a flecha vai acertar. Desligada por padrão (acertar
+     * depende da habilidade).
+     */
+    public boolean bowAim = false;
+
     // ---- controles
     /** Gatilho esquerdo usa o item da mão esquerda (coloca tocha/bloco, usa) em vez do teleporte. */
     public boolean leftTriggerOffhandUse = true;

@@ -6,7 +6,7 @@ Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, F
 - **Mochila no ombro esquerdo:** grip no ombro abre a mochila na mão, no estilo de *Saints & Sinners*. Ela tem 3 páginas de 3x3, crafting 2x2, armadura e uma zona de descarte. A outra mão pega, move, junta e descarta itens. Para guardar o item da mão, solte o grip **por cima do ombro esquerdo**, ou num espaço da mochila aberta.
 - **Menu radial da hotbar:** segure B (mão direita) ou X (mão esquerda). A hotbar aparece em círculo, com a mão vazia no centro; leve a mão até um item e solte o botão.
 - **Coleta na mochila:** o que você coleta do chão vai primeiro para o inventário principal (a mochila). A hotbar só recebe quando ele enche, então ela fica com o que você escolheu.
-- **Arco na mão que o pegou:** pegue o arco com uma mão e a flecha aparece na outra. Encoste a flecha na corda, segure o gatilho, puxe e solte.
+- **Arco na mão que o pegou:** pegue o arco com uma mão e a flecha aparece na outra. Encoste a flecha na corda, segure o gatilho, puxe e solte. Opcional: a mira do jogo mostrando onde a flecha vai cair (desligada por padrão).
 - **Mesa de trabalho imersiva:** com a mochila numa mão, ponha os itens na grade 3x3 em cima da mesa com a outra. Eles ficam deitados nas casas, o resultado flutua acima, e grip + gatilho nele fabrica tudo direto na sua mão.
 - **Regra das mãos:**
   - O que você pega com o grip é emprestado: ao soltar, volta para o lugar.

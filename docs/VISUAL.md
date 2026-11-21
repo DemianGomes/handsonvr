@@ -38,6 +38,7 @@
 | Nome ou explicação | Caixa de dica do jogo (ver texto) | Item sob a mão no radial |
 | Mão em cima de uma casa de um bloco | O realce de espaço do jogo (`container/slot_highlight`): branco translúcido, só no miolo da casa, entre as linhas da textura | Mesa de trabalho |
 | Pronto para pegar | Como um item no chão: girando devagar e balançando; com a mão perto, um pouco maior e com o nome na caixa de dica | Resultado da mesa de trabalho |
+| Ponto de mira no mundo | A mira do jogo (`hud/crosshair`), branca com a sombra do jogo (a da tela inverte as cores do fundo, o que não existe no mundo), virada para o rosto e sempre do mesmo tamanho na vista | Mira opcional do arco |
 
 Em VR, entrar num alvo também vibra o controle. Esse estado não tem equivalente no jogo, só no tato.
 
