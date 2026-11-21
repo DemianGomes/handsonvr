@@ -3,6 +3,7 @@ package com.handsonvr.dev;
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
 import com.handsonvr.backpack.Backpack;
+import com.handsonvr.hands.BowHand;
 import com.handsonvr.hands.GrabSystem;
 import com.handsonvr.hands.HandsController;
 import com.handsonvr.holster.BodyFrame;
@@ -399,6 +400,7 @@ public final class SelfTest {
             case 17 -> handItemStore(client);
             case 18 -> persistenceAndMisc(client);
             case 19 -> pickupOrder(client);
+            case 20 -> bowHands(client);
             default -> { }
         }
     }
@@ -1773,6 +1775,127 @@ public final class SelfTest {
             clearDrops(client);
         }
         if (at(105)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ arco na mão que o pegou
+
+    private static Boolean reverseBefore;
+
+    private static void bowHands(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        if (at(1)) {
+            section("Arco: na mão que o pegou, a flecha na outra");
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(9, new ItemStack(Items.BOW));
+                pinv.setItem(10, new ItemStack(Items.ARROW, 16));
+            });
+            inv.setSelectedSlot(0);
+            handAway(0);
+            handAway(1);
+            reverseBefore = BowHand.reverse();
+            info("Reverse Bow do Vivecraft antes: " + reverseBefore);
+        }
+        // --- mochila na mão direita, a esquerda pega o arco
+        if (at(8)) {
+            check(openBackpack(client, 0), "mochila aberta na mão direita");
+            pointBackpackSlot(1, 9);
+        }
+        if (at(10)) {
+            grip(client, 1, true);
+        }
+        if (at(12)) {
+            GrabSystem.Grab g = hc.grabs().get(1);
+            check(g != null && g.itemHand() == 0 && p.getMainHandItem().is(Items.BOW) && p.getOffhandItem().isEmpty(),
+                    "mão esquerda pega o arco: ele vai para o espaço da mão principal (o Vivecraft usa as flechas do inventário)");
+            check(slot(p, 9).is(Items.IRON_SWORD) && hc.displayStack(p, 9).isEmpty(),
+                    "a espada da mão direita espera no lugar do arco (o espaço aparece vazio)");
+        }
+        if (at(14)) {
+            check(BowHand.bowHand() == 1 && Boolean.FALSE.equals(BowHand.reverse()) && BowHand.isArrowHand(client, 0),
+                    "arco na mão esquerda: Reverse Bow desligado, a direita é a da flecha (" + BowHand.reverse() + ")");
+            pointAway(client, 1);
+            grip(client, 1, false);
+        }
+        if (at(17)) {
+            check(slot(p, 9).is(Items.BOW) && p.getMainHandItem().is(Items.IRON_SWORD) && inv.getSelectedSlot() == 0
+                            && hc.grabs().get(1) == null,
+                    "soltar longe: o arco volta para a mochila e a espada para a mão direita");
+        }
+        if (at(19)) {
+            check(java.util.Objects.equals(BowHand.reverse(), reverseBefore) && BowHand.bowHand() == -1,
+                    "sem o arco na mão, o Reverse Bow volta à escolha do jogador");
+            grip(client, 0, false); // fecha a mochila
+        }
+        // --- mochila na mão esquerda, a direita pega o arco
+        if (at(23)) {
+            check(openBackpack(client, 1), "mochila aberta na mão esquerda");
+            pointBackpackSlot(0, 9);
+        }
+        if (at(25)) {
+            grip(client, 0, true);
+        }
+        if (at(28)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && g.itemHand() == 0 && p.getMainHandItem().is(Items.BOW) && BowHand.bowHand() == 0
+                            && Boolean.TRUE.equals(BowHand.reverse()) && BowHand.isArrowHand(client, 1),
+                    "mão direita pega o arco: ele fica nela (Reverse Bow ligado) e a esquerda é a da flecha");
+            pointAway(client, 0);
+            grip(client, 0, false);
+            grip(client, 1, false);
+        }
+        if (at(31)) {
+            check(slot(p, 9).is(Items.BOW) && p.getMainHandItem().is(Items.IRON_SWORD) && !hc.backpack().isOpen(),
+                    "soltar longe: o arco volta, a espada volta para a mão e a mochila fecha");
+        }
+        if (at(33)) {
+            check(java.util.Objects.equals(BowHand.reverse(), reverseBefore), "o Reverse Bow volta à escolha do jogador");
+            InvOps.moveStack(client, 9, InvOps.HOTBAR_START + 4); // o arco na hotbar (espaço 5)
+            handInFront(client, 0);
+            handInFront(client, 1);
+        }
+        // --- radial: X põe o arco na mão esquerda, B na direita
+        if (at(36)) {
+            menuButton(client, 1, true);
+            pointRadial(1, 4);
+        }
+        if (at(39)) {
+            menuButton(client, 1, false);
+            check(inv.getSelectedSlot() == 4 && p.getMainHandItem().is(Items.BOW) && p.getOffhandItem().isEmpty()
+                            && BowHand.bowHand() == 1,
+                    "X no arco: ele vai para o espaço da mão principal e fica na mão esquerda");
+        }
+        if (at(41)) {
+            check(Boolean.FALSE.equals(BowHand.reverse()), "X no arco: Reverse Bow desligado (arco na esquerda)");
+            menuButton(client, 0, true);
+            pointRadial(0, 4);
+        }
+        if (at(44)) {
+            menuButton(client, 0, false);
+            check(inv.getSelectedSlot() == 4 && BowHand.bowHand() == 0, "B no arco: ele passa para a mão direita");
+        }
+        if (at(46)) {
+            check(Boolean.TRUE.equals(BowHand.reverse()), "B no arco: Reverse Bow ligado (arco na direita)");
+            menuButton(client, 0, true);
+            pointRadial(0, 0);
+        }
+        if (at(49)) {
+            menuButton(client, 0, false);
+            check(p.getMainHandItem().is(Items.IRON_SWORD), "B na espada: o arco sai da mão");
+        }
+        if (at(51)) {
+            check(java.util.Objects.equals(BowHand.reverse(), reverseBefore) && BowHand.bowHand() == -1,
+                    "arco fora da mão: o Reverse Bow volta à escolha do jogador");
+            handAway(0);
+            handAway(1);
+        }
+        if (at(55)) {
             finish(client);
         }
     }
@@ -1961,6 +2084,59 @@ public final class SelfTest {
                 if (at(5)) {
                     boolean backpack = org.vivecraft.client_vr.ClientDataHolderVR.getInstance().backpackTracker.isActive(p);
                     check(!backpack, "Vivecraft: a troca pelas costas está desligada (a mochila usa o ombro esquerdo)");
+                    next();
+                }
+            }
+            case 8 -> { // arco: na mão que o escolheu, e o gatilho da mão da flecha fica com o Vivecraft
+                if (at(1)) {
+                    onServer(client, player -> {
+                        Inventory pinv = player.getInventory();
+                        pinv.clearContent();
+                        pinv.setItem(3, new ItemStack(Items.BOW));
+                        pinv.setItem(20, new ItemStack(Items.ARROW, 16));
+                    });
+                    inv.setSelectedSlot(0);
+                    handInFront(client, 0);
+                    handInFront(client, 1);
+                    reverseBefore = BowHand.reverse();
+                }
+                if (at(5)) {
+                    SimulatedVr.setMenuButton(0, true);
+                    VivecraftInput.debugNotify("radialMain", true, 0f);
+                    pointRadial(0, 3);
+                }
+                if (at(8)) {
+                    SimulatedVr.setMenuButton(0, false);
+                    VivecraftInput.debugNotify("radialMain", false, 0f);
+                    check(p.getMainHandItem().is(Items.BOW) && org.vivecraft.client_vr.gameplay.trackers.BowTracker.isHoldingBow(p,
+                            net.minecraft.world.InteractionHand.MAIN_HAND), "Vivecraft: B no arco, o Vivecraft vê o arco na mão principal");
+                }
+                if (at(10)) {
+                    check(Boolean.TRUE.equals(BowHand.reverse()), "Vivecraft: arco escolhido pela mão direita, Reverse Bow ligado");
+                    check(!VivecraftInput.debugNotify("teleport", true, 0f),
+                            "Vivecraft: o gatilho esquerdo (mão da flecha) fica com o Vivecraft, sem usar a mão esquerda");
+                    VivecraftInput.debugNotify("teleport", false, 0f);
+                    SimulatedVr.setMenuButton(1, true);
+                    VivecraftInput.debugNotify("radialOff", true, 0f);
+                    pointRadial(1, 3);
+                }
+                if (at(13)) {
+                    SimulatedVr.setMenuButton(1, false);
+                    VivecraftInput.debugNotify("radialOff", false, 0f);
+                    check(p.getMainHandItem().is(Items.BOW) && p.getOffhandItem().isEmpty(),
+                            "Vivecraft: X no arco, ele continua no espaço da mão principal");
+                }
+                if (at(15)) {
+                    check(Boolean.FALSE.equals(BowHand.reverse()), "Vivecraft: arco escolhido pela mão esquerda, Reverse Bow desligado");
+                    check(!VivecraftInput.debugNotify("attack", true, 0f), "Vivecraft: o gatilho direito (mão da flecha) fica com o Vivecraft");
+                    VivecraftInput.debugNotify("attack", false, 0f);
+                    inv.setSelectedSlot(0);
+                }
+                if (at(18)) {
+                    check(java.util.Objects.equals(BowHand.reverse(), reverseBefore),
+                            "Vivecraft: sem o arco na mão, o Reverse Bow volta ao que era (" + reverseBefore + ")");
+                    handAway(0);
+                    handAway(1);
                     next();
                 }
             }
