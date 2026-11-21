@@ -29,7 +29,7 @@ public final class GrabSystem {
     public enum Mode { NONE, SELECTED, SWAPPED }
 
     /** De onde o item veio. {@code HAND}: o item que a mão já segurava (o grip só o "segura" para guardar). */
-    public enum Origin { HOLSTER, BACKPACK, RADIAL, HAND }
+    public enum Origin { HOLSTER, BACKPACK, RADIAL, HAND, TABLE }
 
     /**
      * {@code previousSelected}: SELECTED, a seleção a restaurar; SWAPPED, o espaço da hotbar que fez a troca.
@@ -109,7 +109,7 @@ public final class GrabSystem {
         } else if (itemHand == 0 && source >= InvOps.HOTBAR_START && source < InvOps.HOTBAR_START + 9) {
             inv.setSelectedSlot(source - InvOps.HOTBAR_START);
             grab = new Grab(hand, source, Mode.SELECTED, selected, origin, holster, selected, itemHand);
-        } else if (!p.inventoryMenu.getSlot(source).mayPickup(p)) {
+        } else if (!p.inventoryMenu.getSlot(source).mayPickup(p) || !InvOps.reachable(p, source)) {
             return false; // armadura com Maldição do Vínculo
         } else if (fitsIn(p, handSlot, source)) {
             InvOps.swapWithHand(client, source, itemHand);

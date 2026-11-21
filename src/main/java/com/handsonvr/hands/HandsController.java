@@ -8,6 +8,7 @@ import com.handsonvr.holster.HolsterManager;
 import com.handsonvr.input.GripState;
 import com.handsonvr.inv.InvOps;
 import com.handsonvr.radial.RadialMenu;
+import com.handsonvr.table.CraftingTable;
 import com.handsonvr.vr.VrBridge;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -34,6 +35,7 @@ public final class HandsController {
     private final HolsterManager holsters = new HolsterManager(grabs);
     private final Backpack backpack = new Backpack();
     private final RadialMenu radial = new RadialMenu();
+    private final CraftingTable table = new CraftingTable();
     /** Espaço da hotbar (0-8) de onde veio o item que o radial pôs na mão esquerda; -1 = nenhum. */
     private int offSource = -1;
     /** O aperto do botão do radial foi nosso (o soltar também é). */
@@ -55,6 +57,10 @@ public final class HandsController {
 
     public RadialMenu radial() {
         return radial;
+    }
+
+    public CraftingTable table() {
+        return table;
     }
 
     public int offSource() {
@@ -87,6 +93,7 @@ public final class HandsController {
         grabs.reset();
         backpack.reset();
         radial.close();
+        table.reset();
         offSource = -1;
         menuConsumed[0] = menuConsumed[1] = false;
     }
@@ -98,9 +105,28 @@ public final class HandsController {
         return backpack.holder() == hand;
     }
 
-    /** O golpe com o braço do Vivecraft fica desligado (mexendo na mochila ou no radial). */
+    /** O golpe com o braço do Vivecraft fica desligado (mexendo na mochila, no radial ou na mesa de trabalho). */
     public boolean blocksSwing() {
-        return backpack.isOpen() || radial.isOpen();
+        return backpack.isOpen() || radial.isOpen() || table.blocksSwing();
+    }
+
+    /**
+     * A mesa de trabalho pode abrir o menu dela agora? Não com um item pego da armadura ou do crafting 2x2, nem com o
+     * crafting 2x2 ocupado: esses espaços não existem no menu da mesa (ficariam sem como voltar).
+     */
+    private boolean tableCanOpen(LocalPlayer p) {
+        for (int hand = 0; hand < 2; hand++) {
+            GrabSystem.Grab g = grabs.get(hand);
+            if (g != null && g.source() < InvOps.MAIN_START) {
+                return false;
+            }
+        }
+        for (int i = InvOps.CRAFT_START; i < InvOps.ARMOR_START; i++) {
+            if (!InvOps.stack(p, i).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** O espaço está "em uso" por um item pego (o lugar de onde ele saiu, ou a mão que o segura). */
@@ -192,7 +218,18 @@ public final class HandsController {
                 return true;
             }
         }
-        // 3) Zonas do corpo: mochila (ombro esquerdo) ou um coldre com item (sacar).
+        // 3) Mesa de trabalho: o resultado flutuando (fabrica, e o item vem para a mão) ou uma casa com item (o item
+        //    volta para a mão).
+        int onTable = table.targetAt(tip);
+        if (onTable == CraftingTable.RESULT) {
+            tableToHand(client, hand, table.craftOne(client), "fabricou na mesa");
+            return true;
+        }
+        if (onTable >= 0 && !table.cellStack(onTable).isEmpty()) {
+            tableToHand(client, hand, table.take(client, onTable), "tirou da mesa a casa " + onTable);
+            return true;
+        }
+        // 4) Zonas do corpo: mochila (ombro esquerdo) ou um coldre com item (sacar).
         Holster zone = holsters.refreshZone(hand);
         if (zone != null && zone.isBackpack(config) && !backpack.isOpen() && InvOps.ready(client)) {
             backpack.open(hand);
@@ -210,6 +247,24 @@ public final class HandsController {
         }
         holdOwnItem(client, hand);
         return true;
+    }
+
+    /**
+     * O item que saiu da mesa (fabricado ou tirado de uma casa) foi para o espaço {@code slot} do inventário: a mão o
+     * pega dali, como em todo o mod (soltar decide para onde ele vai; longe de tudo, fica no inventário).
+     */
+    private void tableToHand(Minecraft client, int hand, int slot, String what) {
+        LocalPlayer p = client.player;
+        if (slot < 0) {
+            refuse(hand); // nada para fabricar, ou sem espaço no inventário
+            return;
+        }
+        VrBridge.pulse(hand, 0.04f);
+        if (grabs.begin(client, hand, slot, GrabSystem.Origin.TABLE, null, hand == 0 ? emptyHotbarFor(p) : -1)) {
+            action(what + " (na mão)");
+        } else {
+            action(what + " (ficou no inventário, espaço " + slot + ")");
+        }
     }
 
     /** Com a mochila aberta, o grip sobre este alvo segura o item da mão (em vez de pegar o que está no alvo)? */
@@ -288,6 +343,8 @@ public final class HandsController {
                 if (InvOps.craftOne(client)) {
                     VrBridge.pulse(hand, 0.03f);
                     action("fabricou um");
+                } else if (!InvOps.reachable(p, InvOps.RESULT)) {
+                    refuse(hand); // a mesa de trabalho está aberta: o crafting 2x2 espera ela fechar
                 }
             }
             case PREV -> flip(hand, -1);
@@ -363,14 +420,28 @@ public final class HandsController {
             }
             if (e != null && e.isSlotLike()) {
                 grabs.end(client, hand);
-                if (isLocked(p, e.handler()) || !exchangeFits(p, g.source(), e.handler())) {
-                    refuse(hand);
+                if (isLocked(p, e.handler()) || !exchangeFits(p, g.source(), e.handler())
+                        || !InvOps.reachable(p, e.handler())) {
+                    refuse(hand); // (com a mesa de trabalho aberta, a armadura e o crafting 2x2 esperam ela fechar)
                 } else {
                     InvOps.moveStack(client, g.source(), e.handler());
                     action("colocou no espaço " + e.handler());
                 }
                 return;
             }
+        }
+        // Mesa de trabalho: soltar sobre uma casa põe UM item ali; o resto volta para onde estava.
+        int cell = table.targetAt(tip);
+        if (cell >= 0 && cell < 9) {
+            grabs.end(client, hand);
+            if (table.placeOne(client, hand, g.source(), cell, tableCanOpen(p))) {
+                VrBridge.pulse(hand, 0.02f);
+                action("pôs um na mesa, casa " + cell);
+            } else {
+                refuse(hand);
+                action("a casa " + cell + " da mesa recusou");
+            }
+            return;
         }
         Holster zone = holsters.refreshZone(hand);
         grabs.end(client, hand);
@@ -480,7 +551,20 @@ public final class HandsController {
                     }
                     return true;
                 }
-                return backpack.onPanel(tip);
+                if (backpack.onPanel(tip)) {
+                    return true;
+                }
+            }
+            // Mesa de trabalho: gatilho sobre uma casa põe UM item e a mão continua segurando o resto.
+            int cell = table.targetAt(tip);
+            if (cell >= 0 && cell < 9) {
+                if (table.placeOne(client, hand, handSlot, cell, tableCanOpen(p))) {
+                    VrBridge.pulse(hand, 0.01f);
+                    action("pôs um na mesa (gatilho), casa " + cell);
+                } else {
+                    refuse(hand);
+                }
+                return true;
             }
             return false; // pegou um item e está longe dos menus: o gatilho usa o item normalmente
         }
@@ -505,7 +589,16 @@ public final class HandsController {
                 return true;
             }
         }
-        return radial.isOpen() && radial.targetAt(tip) != RadialMenu.NONE;
+        if (radial.isOpen() && radial.targetAt(tip) != RadialMenu.NONE) {
+            return true;
+        }
+        // Mesa de trabalho: gatilho no resultado fabrica tudo o que a grade der (um por vez, para o inventário).
+        if (table.targetAt(tip) == CraftingTable.RESULT) {
+            table.startCraftAll(hand);
+            action("fabricando tudo na mesa");
+            return true;
+        }
+        return false;
     }
 
     /** "Usar" (A): não usa o item escondido da mão que segura a mochila, nem aponta para o painel. */
@@ -751,5 +844,23 @@ public final class HandsController {
         }
         holsters.tick(client);
         BowHand.tick(client);
+        tableTick(client);
+    }
+
+    /** A mesa de trabalho: a casa ou o resultado sob cada mão (vibra ao entrar) e, com um item na mão sobre a mesa, já
+     * pede o menu dela (assim ele está aberto quando a mão soltar). */
+    private void tableTick(Minecraft client) {
+        LocalPlayer p = client.player;
+        table.tick(client);
+        for (int hand = 0; hand < 2; hand++) {
+            int target = backpack.holder() == hand || !VrBridge.isVRActive() ? CraftingTable.NONE
+                    : table.targetAt(VrBridge.pointer(hand));
+            if (table.updateHover(hand, target)) {
+                VrBridge.pulse(hand, 0.005f);
+            }
+            if (target >= 0 && target < 9 && grabs.isGrabbing(hand) && InvOps.ready(client)) {
+                table.ensureOpen(client, tableCanOpen(p));
+            }
+        }
     }
 }

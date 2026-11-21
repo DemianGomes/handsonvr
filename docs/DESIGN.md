@@ -223,6 +223,37 @@ Com o HandsOn, **o arco fica na mão que o pegou, e a flecha aparece na outra**:
 - A mão que segura a mochila esconde o que estiver nela, inclusive a flecha: feche a mochila antes de atirar.
 - Num servidor com um Vivecraft antigo, o "Reverse Bow" não funciona e o arco fica sempre na esquerda.
 
+## 6. Mesa de trabalho (imersiva)
+
+A nossa versão da mesa do ImmersiveMC: fabricar em cima da própria mesa, sem a tela do jogo.
+
+![As tábuas flutuando acima da tora, com o nome na caixa de dica](img/mesa.png)
+
+1. Chegue na frente de uma mesa de trabalho e abra a mochila numa mão.
+2. Com a outra mão, pegue um item (grip) e leve-o até uma casa da grade 3x3 desenhada no topo da mesa. A casa sob a mão clareia e o controle vibra.
+3. Solte o grip: **um** item fica deitado na casa e o resto volta para onde estava. Com o grip apertado, o **gatilho** põe um item por vez e a mão continua segurando o resto, então dá para "distribuir" um item por várias casas.
+4. Quando a receita fecha, o item que será fabricado aparece **flutuando** acima da grade, girando devagar. Com a mão perto, ele cresce um pouco e mostra o nome e a quantidade na caixa de dica do jogo.
+5. **Grip no item flutuante:** fabrica um e o item vem para a mão. Soltar decide para onde ele vai, como em todo o mod: num coldre, na mochila, no radial, numa casa da mesa (para a próxima receita). Longe de tudo, ele fica no inventário.
+6. **Gatilho no item flutuante:** fabrica tudo o que a grade der, um por vez, direto para o inventário.
+7. **Grip numa casa ocupada:** o que está nela volta para a mão.
+
+| Detalhe | Como é |
+|---|---|
+| Orientação | A linha de cima da receita é a mais longe do jogador, como na tela do jogo. O lado é escolhido (entre os 4) quando a mesa abre e fica fixo até ela fechar. |
+| Casas | As da própria textura da mesa (`crafting_table_top`): linhas nos pixels 3, 6, 9 e 12, casas de 3 pixels (18,75 cm) centradas no topo. A mão toca de 5 cm abaixo até 15 cm acima do topo. |
+| Quando fecha | Ao se afastar mais de 4 m, ao abrir uma tela de inventário, ou depois de 5 s com a grade vazia e as mãos longe. Como no jogo, os itens da grade voltam para o inventário (para a mochila primeiro). |
+| A tela normal | Usar a mesa do jeito de sempre (o "usar" apontando para ela) continua abrindo a tela do jogo. |
+
+### Por baixo: a mesa do jogo, sem a tela
+
+O mod não inventa receitas. Na primeira vez que a mão leva um item à mesa, ele "usa" a mesa como o jogador faria: o servidor abre o menu da mesa e o mod fica com esse menu **sem abrir a tela** (um mixin em `MenuScreens.create`). A grade e o resultado são os do servidor, que confere a receita. Tudo usa os cliques normais do menu, então funciona em qualquer servidor, sem o mod nele.
+
+Enquanto o menu da mesa está aberto, o resto do mod continua funcionando pelos cliques desse menu (`InvOps`). O menu da mesa tem o inventário principal e a hotbar (um espaço adiante), e a troca com a mão secundária também funciona. **A armadura e o crafting 2x2 não existem nesse menu**: com a mesa aberta, mexer neles na mochila vibra "negado" e espera a mesa fechar. Pelo mesmo motivo, a mesa não abre com um item pego da armadura ou do crafting 2x2, nem com o crafting 2x2 ocupado.
+
+Com a mão sobre a mesa, o golpe com o braço do Vivecraft fica desligado, para não quebrar a mesa ao pôr os itens.
+
+![Carvão e vareta deitados nas casas, a casa sob a mão clareada e a tocha flutuando](img/mesa-tocha.png)
+
 ## Testes sem VR
 
 O roteiro automático (`./gradlew prodClient`) cria um mundo plano e liga um "VR simulado". O teste posiciona as mãos e aperta grip, gatilho, X e B por código.
@@ -238,6 +269,7 @@ Ele confere:
 - guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
 - a coleta: um item recebido e um coletado do chão vão para o inventário principal com a hotbar livre, juntam com a pilha igual da hotbar, vão para a hotbar com o inventário cheio, seguem o jogo com a opção desligada e, num servidor remoto (simulado), são levados da hotbar para o inventário.
 - o arco: pego pela mão esquerda, vai para o espaço da mão principal e o "Reverse Bow" do Vivecraft fica desligado; pego pela direita (ou pelo B), fica ligado; pelo X, desligado; sem o arco na mão, volta ao que era.
+- a mesa de trabalho: achar a mesa, abrir sem a tela, soltar uma tora numa casa (uma fica, o resto volta), as tábuas flutuando, fabricar com o grip (vem para a mão), o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 

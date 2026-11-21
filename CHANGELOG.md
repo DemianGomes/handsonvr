@@ -2,6 +2,19 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.3.0-alpha (Minecraft 26.3)
+
+### Mesa de trabalho imersiva ([#21](https://github.com/DemianGomes/handsonvr/issues/21))
+
+- Fabricar em cima da própria mesa de trabalho, sem a tela do jogo: com a mochila numa mão, leve os itens com a outra até a grade 3x3 desenhada no topo da mesa.
+- Soltar o grip sobre uma casa põe **um** item ali, deitado na mesa; o resto volta para onde estava. Com o grip apertado, o gatilho põe um por vez e a mão continua com o resto.
+- Quando a receita fecha, o resultado **flutua** acima da grade, girando. Com a mão perto, ele mostra o nome e a quantidade.
+- **Grip no resultado:** fabrica um e o item vem para a mão. **Gatilho no resultado:** fabrica tudo, direto para o inventário.
+- Grip numa casa ocupada traz o que está nela de volta para a mão.
+- Ao se afastar (ou abrir outra tela, ou deixar a grade vazia), a mesa fecha e os itens da grade voltam para o inventário, como no jogo.
+- Funciona em qualquer servidor: por baixo é a mesa do jogo, aberta sem a tela, e o servidor confere a receita. Usar a mesa do jeito normal continua abrindo a tela do jogo.
+- Com a mesa aberta, a armadura e o crafting 2x2 da mochila esperam ela fechar (vibram "negado").
+
 ## 0.2.7-alpha (Minecraft 26.3)
 
 ### Arco na mão que o pegou ([#20](https://github.com/DemianGomes/handsonvr/issues/20))

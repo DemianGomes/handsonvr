@@ -7,6 +7,7 @@
     "InventoryMixin"
   ],
   "client": [
+    "MenuScreensMixin",
     "BackpackTrackerMixin",
     "SwingTrackerMixin",
     "VRArmHelperMixin"
