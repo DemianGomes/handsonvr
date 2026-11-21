@@ -408,7 +408,8 @@ public final class SelfTest {
             case 22 -> furnaces(client);
             case 23 -> throwing(client);
             case 24 -> dragAndHalf(client);
-            case 25 -> bowAimMarker(client);
+            case 25 -> pack07(client);
+            case 26 -> bowAimMarker(client);
             default -> { }
         }
     }
@@ -2828,6 +2829,287 @@ public final class SelfTest {
             handAway(1);
         }
         if (at(106)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ pacote 0.7: pulso, fogueira, armadura, baú, poções, multiplayer
+
+    private static BlockPos packPos;
+
+    private static void setPack(Minecraft client, net.minecraft.world.level.block.state.BlockState state) {
+        BlockPos at = packPos;
+        onServer(client, player -> {
+            player.level().setBlock(at, state, 3);
+            player.level().setBlock(at.above(), Blocks.AIR.defaultBlockState(), 3);
+        });
+    }
+
+    private static void pack07(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        Vec3 eye = p.getEyePosition();
+        com.handsonvr.chest.ChestStation chest = hc.chest();
+        com.handsonvr.brewing.BrewingStation brew = hc.brewing();
+        if (at(1)) {
+            section("Pulso, quantidade na mão, fogueira, armadura, baú, suporte de poções e multiplayer");
+            packPos = BlockPos.containing(p.getX(), p.getY(), p.getZ()).offset(0, 0, 1);
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.SAND, 32));
+                pinv.setItem(1, new ItemStack(Items.BEEF, 4));
+                pinv.setItem(9, new ItemStack(Items.IRON_HELMET));
+                pinv.setItem(10, new ItemStack(Items.IRON_CHESTPLATE));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SPEED, 2400));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.REGENERATION, 2400));
+                player.giveExperienceLevels(7);
+                player.hurtServer(player.level(), player.damageSources().generic(), 5f);
+                player.getFoodData().setFoodLevel(15);
+            });
+            inv.setSelectedSlot(0);
+            p.setYRot(0f);
+            p.setXRot(0f);
+            handAway(0);
+            handAway(1);
+        }
+        // --- o pulso esquerdo e a quantidade na mão
+        if (at(8)) {
+            SimulatedVr.setHand(1, eye.add(0.12, -0.32, 0.32), new Vec3(-1, 0, 0)); // pulso virado para cima, na frente
+            SimulatedVr.setHand(0, eye.add(-0.15, -0.3, 0.35), new Vec3(0, 0, 1));
+            check(com.handsonvr.render.WristHudRenderer.wristFacingHead(), "pulso esquerdo na frente, virado para cima: o relógio aparece");
+        }
+        if (at(9)) {
+            p.setXRot(35f); // olhando para o pulso, para a foto
+        }
+        if (at(11)) {
+            screenshot(client, "16-pulso");
+            p.setXRot(0f);
+            SimulatedVr.setHand(1, eye.add(0.12, 0.45, 0.3), new Vec3(-1, 0, 0)); // acima da cabeça
+        }
+        if (at(12)) {
+            check(!com.handsonvr.render.WristHudRenderer.wristFacingHead(), "pulso acima da cabeça (não virado para o rosto): o relógio some");
+            check(HandsOnConfig.get().handCount && p.getMainHandItem().getCount() == 32,
+                    "a quantidade da mão (32 de areia) aparece perto do dedão (print 16-pulso)");
+            handAway(1);
+            // fogueira na frente, acesa
+            setPack(client, Blocks.CAMPFIRE.defaultBlockState());
+            inv.setSelectedSlot(1); // carne
+        }
+        // --- fogueira
+        Vec3 fireTop = Vec3.atBottomCenterOf(packPos).add(0, 0.7, 0);
+        if (at(16)) {
+            pointAt(0, fireTop, new Vec3(0, -1, 0));
+            grip(client, 0, true); // segura a carne da mão
+        }
+        if (at(18)) {
+            grip(client, 0, false); // solta em cima da fogueira
+        }
+        if (at(24)) {
+            BlockPos at = packPos;
+            int[] beefOnFire = {0};
+            onServer(client, player -> {
+                if (player.level().getBlockEntity(at) instanceof net.minecraft.world.level.block.entity.CampfireBlockEntity fire) {
+                    beefOnFire[0] = (int) fire.getItems().stream().filter(s -> s.is(Items.BEEF)).count();
+                    probeCount = beefOnFire[0];
+                }
+            });
+        }
+        if (at(27)) {
+            check(probeCount == 1 && p.getMainHandItem().is(Items.BEEF) && p.getMainHandItem().getCount() == 3,
+                    "soltar a carne em cima da fogueira: uma vai para a fogueira e 3 ficam na mão");
+            setPack(client, Blocks.AIR.defaultBlockState());
+            inv.setSelectedSlot(0);
+        }
+        // --- armadura levada ao corpo
+        if (at(30)) {
+            check(openBackpack(client, 1), "mochila aberta");
+            pointBackpackSlot(0, 9); // capacete
+        }
+        if (at(32)) {
+            grip(client, 0, true);
+        }
+        if (at(34)) {
+            grip(client, 1, false); // fecha a mochila (a mão direita continua com o capacete)
+            pointAt(0, eye.add(0, 0.06, 0.08), new Vec3(0, 0, -1)); // na cabeça
+        }
+        if (at(36)) {
+            grip(client, 0, false);
+        }
+        if (at(40)) {
+            check(p.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET), "soltar o capacete na cabeça: vestiu");
+            check(openBackpack(client, 1), "mochila aberta de novo");
+            pointBackpackSlot(0, 10); // peitoral
+        }
+        if (at(42)) {
+            grip(client, 0, true);
+        }
+        if (at(44)) {
+            grip(client, 1, false);
+            pointAt(0, eye.add(0, -0.42, 0.2), new Vec3(0, 0, -1)); // no peito, na frente
+        }
+        if (at(46)) {
+            grip(client, 0, false);
+        }
+        if (at(50)) {
+            check(p.getItemBySlot(EquipmentSlot.CHEST).is(Items.IRON_CHESTPLATE), "soltar o peitoral no peito: vestiu");
+            BlockPos at = packPos;
+            onServer(client, player -> {
+                player.level().setBlock(at, Blocks.CHEST.defaultBlockState(), 3);
+                if (player.level().getBlockEntity(at) instanceof net.minecraft.world.level.block.entity.ChestBlockEntity box) {
+                    box.setItem(0, new ItemStack(Items.COBBLESTONE, 20));
+                    box.setItem(1, new ItemStack(Items.DIAMOND, 3));
+                }
+            });
+            p.setXRot(30f);
+        }
+        // --- baú
+        Vec3 chestTop = Vec3.atBottomCenterOf(packPos).add(0, 1.02, 0);
+        if (at(54)) {
+            pointAt(0, chestTop, new Vec3(0, -1, 0));
+            check(grip(client, 0, true), "grip encostado no baú: é do mod");
+        }
+        if (at(56)) {
+            grip(client, 0, false);
+        }
+        if (at(64)) {
+            check(chest.isOpen() && client.gui.screen() == null && chest.size() == 27,
+                    "o baú abriu sem a tela do jogo, com os 27 espaços numa janela acima dele (" + chest.last() + ")");
+            Panel panel = chest.panel();
+            double[] c = chest.slotCenter(0);
+            pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
+        }
+        if (at(66)) {
+            check(chest.hover(0) == 0, "a mão no primeiro espaço do baú: destacado");
+            grip(client, 0, true);
+        }
+        if (at(69)) {
+            check(p.getMainHandItem().is(Items.COBBLESTONE) && p.getMainHandItem().getCount() == 20 && chest.stack(0).isEmpty(),
+                    "grip no espaço: as 20 pedras vêm para a mão");
+            pointAway(client, 0);
+            grip(client, 0, false);
+            Panel panel = chest.panel();
+            double[] c = chest.slotCenter(1);
+            pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
+        }
+        if (at(72)) {
+            SimulatedVr.setTrigger(0, true);
+            grip(client, 0, true); // gatilho + grip: a metade
+        }
+        if (at(75)) {
+            check(p.getMainHandItem().is(Items.DIAMOND) && p.getMainHandItem().getCount() == 2 && chest.stack(1).getCount() == 1,
+                    "gatilho apertado + grip nos 3 diamantes: 2 vêm para a mão e 1 fica");
+            SimulatedVr.setTrigger(0, false);
+            pointAway(client, 0);
+            grip(client, 0, false);
+            inv.setSelectedSlot(0); // areia
+            Panel panel = chest.panel();
+            double[] c = chest.slotCenter(13);
+            pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
+        }
+        if (at(78)) {
+            grip(client, 0, true); // espaço vazio: segura a areia da mão
+        }
+        if (at(80)) {
+            grip(client, 0, false); // solta no espaço do meio
+        }
+        if (at(84)) {
+            check(chest.stack(13).is(Items.SAND) && chest.stack(13).getCount() == 32, "soltar a areia num espaço vazio do baú: as 32 entram");
+            photoPose(client, true);
+        }
+        if (at(88)) {
+            screenshot(client, "17-bau");
+        }
+        if (at(89)) {
+            photoPose(client, false);
+            pointAt(0, chestTop, new Vec3(0, -1, 0));
+        }
+        if (at(91)) {
+            grip(client, 0, true); // grip no baú de novo: fecha
+        }
+        if (at(93)) {
+            grip(client, 0, false);
+        }
+        if (at(98)) {
+            check(!chest.isOpen() && p.containerMenu == p.inventoryMenu, "grip no baú de novo: fecha (" + chest.last() + ")");
+            handAway(0);
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.setItem(1, net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION,
+                        net.minecraft.world.item.alchemy.Potions.WATER).copyWithCount(1));
+                pinv.setItem(2, new ItemStack(Items.BLAZE_POWDER, 2));
+                pinv.setItem(3, new ItemStack(Items.NETHER_WART, 1));
+            });
+            setPack(client, Blocks.BREWING_STAND.defaultBlockState());
+            p.setXRot(45f);
+        }
+        // --- suporte de poções
+        if (at(110)) {
+            check(brew.isOpen() && client.gui.screen() == null && p.containerMenu instanceof net.minecraft.world.inventory.BrewingStandMenu,
+                    "olhar para o suporte de poções perto: ele abre por baixo, sem a tela (" + brew.last() + ")");
+            inv.setSelectedSlot(1); // a garrafa de água
+            pointAt(0, brew.spot(0), new Vec3(-1, 0, 0));
+        }
+        if (at(112)) {
+            grip(client, 0, true);
+        }
+        if (at(114)) {
+            grip(client, 0, false);
+            inv.setSelectedSlot(2); // pó de blaze
+        }
+        if (at(116)) {
+            pointAt(0, brew.spot(com.handsonvr.brewing.BrewingStation.FUEL), new Vec3(0, 0, 1));
+        }
+        if (at(118)) {
+            grip(client, 0, true);
+        }
+        if (at(120)) {
+            grip(client, 0, false);
+            inv.setSelectedSlot(3); // verruga do Nether
+        }
+        if (at(122)) {
+            pointAt(0, brew.spot(com.handsonvr.brewing.BrewingStation.INGREDIENT), new Vec3(0, -1, 0));
+        }
+        if (at(124)) {
+            grip(client, 0, true);
+        }
+        if (at(126)) {
+            grip(client, 0, false);
+        }
+        if (at(134)) {
+            check(brew.stack(0).is(Items.POTION) && brew.stack(com.handsonvr.brewing.BrewingStation.FUEL).is(Items.BLAZE_POWDER)
+                            && brew.stack(com.handsonvr.brewing.BrewingStation.INGREDIENT).is(Items.NETHER_WART),
+                    "a garrafa num braço, o pó de blaze no meio da haste e a verruga no topo");
+            check(brew.brewTicks() > 0 && brew.fuel() > 0,
+                    "o suporte começa a preparar (faltam " + brew.brewTicks() + " ticks, combustível " + brew.fuel() + ")");
+            handAway(0);
+            photoPose(client, true);
+        }
+        if (at(138)) {
+            screenshot(client, "18-pocoes");
+        }
+        if (at(139)) {
+            photoPose(client, false);
+        }
+        // --- multiplayer: o estado chega ao servidor (o do próprio jogo, como no Essential/LAN)
+        if (at(142)) {
+            check(openBackpack(client, 1), "mochila aberta para o estado do multiplayer");
+        }
+        if (at(158)) {
+            com.handsonvr.net.PeerSync.State state = com.handsonvr.net.PeerSync.onServer(p.getUUID());
+            check(state != null && state.vr() && state.holsters().size() == Holster.values().length && state.backpackHand() == 1,
+                    "o servidor recebeu o estado deste jogador para mostrar aos outros: em VR, os 4 coldres e a mochila aberta na mão esquerda");
+            grip(client, 1, false);
+        }
+        if (at(162)) {
+            setPack(client, Blocks.AIR.defaultBlockState());
+            onServer(client, player -> player.removeAllEffects());
+            p.setXRot(0f);
+            handAway(0);
+            handAway(1);
+        }
+        if (at(168)) {
             next();
         }
     }

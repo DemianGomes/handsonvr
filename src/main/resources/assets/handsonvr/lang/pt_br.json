@@ -20,6 +20,8 @@
   "option.handsonvr.bow_aim": "Mira do arco",
   "option.handsonvr.throw": "Arremesso com a mão",
   "option.handsonvr.throw_power": "Força real (singleplayer)",
+  "option.handsonvr.wrist_hud": "Vida e fome no pulso",
+  "option.handsonvr.hand_count": "Quantidade na mão",
   "backpack.handsonvr.page": "Página %s/%s",
   "backpack.handsonvr.slots": "Espaços %s/%s",
   "radial.handsonvr.empty": "Mão vazia",

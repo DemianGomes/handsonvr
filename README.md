@@ -10,6 +10,9 @@ Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, F
 - **Mesa de trabalho imersiva:** com a mochila numa mão, ponha os itens na grade 3x3 em cima da mesa com a outra. Eles ficam deitados nas casas, o resultado flutua acima, o grip nele fabrica uma vez e grip + gatilho fabrica tudo, direto na sua mão.
 - **Fornalhas imersivas:** olhe para uma fornalha, um alto-forno ou um defumador e ponha os itens com a mão. Na fornalha, o que vai queimar fica na abertura de cima e o combustível na de baixo; no alto-forno e no defumador, o que vai cozinhar fica em cima do bloco. Acima dele aparece a barra de progresso da tela do jogo (a chama e a seta), e o que fica pronto flutua ao lado, para pegar com o grip. As fornalhas a até 10 blocos mostram o que têm.
 - **Arremesso com a mão:** segure uma bola de neve, um ovo, uma pérola do Ender, uma poção arremessável ou uma carga de vento com o grip, faça o movimento e solte. O item sai na direção da mão. Nos servidores, a velocidade é a do jogo; no singleplayer, a força do gesto conta.
+- **Pulso e mão:** vire o pulso esquerdo para o rosto e veja a vida, a armadura, a fome, a XP e os efeitos; a quantidade da pilha aparece perto do dedão.
+- **Fogueira, armadura, baú e poções:** solte a comida em cima da fogueira; leve o capacete à cabeça e o peitoral ao peito para vestir; grip no baú abre a tampa e o conteúdo aparece numa janela acima dele; o suporte de poções recebe garrafas, ingrediente e pó de blaze com as mãos.
+- **Multiplayer:** no mundo aberto pelo jogo (LAN ou Essential), quem tem o HandsOn vê os itens nos coldres e a mochila dos amigos em VR.
 - **Regra das mãos:**
   - O que você pega com o grip é emprestado: ao soltar, volta para o lugar.
   - O que você escolhe no radial fica na mão.

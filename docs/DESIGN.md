@@ -348,6 +348,59 @@ O que pede cuidado:
 - **Ação sem o jogador pedir:** a coleta para a mochila em servidor remoto (move o item da hotbar sozinha, como os mods de organizar inventário). Ela tem opção para desligar.
 - **Anticheat de servidor grande:** cliques no inventário andando, vários cliques no mesmo tick e a mira mudando de repente no arremesso podem gerar alerta, mesmo sem ser cheat.
 
+## 9. Pulso e quantidade na mão
+
+![O relógio no pulso esquerdo e a quantidade perto da mão direita](img/pulso.png)
+
+- **Pulso esquerdo:** vire a parte de cima do pulso esquerdo para o rosto, como quem olha um relógio. Aparecem a vida (corações), a armadura, a fome, a barra de XP com o nível e os ícones dos efeitos ativos, com os ícones do HUD do jogo, pequenos, num fundo escuro como o do chat. Com o pulso virado para outro lado, some.
+- **Quantidade na mão:** perto do dedão de cada mão aparece a quantidade da pilha que ela segura, como num espaço do inventário. O que é sozinho (espada, arco) não mostra nada.
+- É só desenho do cliente: os outros jogadores não veem.
+- Opções "Vida e fome no pulso" e "Quantidade na mão".
+
+## 10. Fogueira e armadura no corpo
+
+- **Fogueira:** com comida crua segura pelo grip, solte em cima da fogueira: um item vai para ela (pelo "usar" do jogo) e o resto volta para onde estava. O gatilho, com o grip apertado, põe um e a mão continua segurando. Como no jogo, a comida não sai antes de cozinhar; pronta, ela cai no chão e a coleta a leva para a mochila.
+- **Vestir armadura:** solte a peça na parte do corpo dela: o capacete na cabeça, o peitoral (ou o élitro) no peito, as calças na cintura e as botas abaixo dos joelhos, sempre na frente do corpo (os coldres ficam dos lados e atrás). A peça que estava vestida vai para o lugar de onde a nova saiu.
+
+## 11. Baú, barril e caixa de shulker
+
+![O baú aberto com a janela do jogo acima dele](img/bau.png)
+
+1. Encoste a mão no bloco e aperte o grip: a tampa abre (sem a tela) e o conteúdo aparece numa janela do jogo acima do bloco, virada para você.
+2. Os gestos são os da mochila:
+   - grip num espaço traz o item para a mão;
+   - com o gatilho já apertado, vem a metade;
+   - soltar o grip num espaço põe a pilha;
+   - o gatilho, com o grip apertado, põe um.
+3. Grip no bloco de novo, se afastar mais de 4,5 m ou abrir uma tela fecha.
+4. Vale para baús (simples e duplos), baús com armadilha, barris, baús do Ender e caixas de shulker.
+
+Por baixo é o menu do jogo, aberto como o jogador faria: o jogo anima a tampa para todo mundo, e funciona em qualquer servidor. Como fechar não perde nada, o baú cede o menu quando a mochila precisa da armadura ou do crafting 2x2.
+
+## 12. Suporte de poções
+
+![O suporte de poções com a barra de progresso](img/pocoes.png)
+
+- Abre sozinho ao olhar para ele de perto (ou ao levar um item até ele), como as fornalhas.
+- **Lugares**, os do próprio modelo do bloco:
+  - as três garrafas nos braços (leste, noroeste e sudoeste da haste);
+  - o ingrediente no topo da haste;
+  - o pó de blaze no meio dela.
+- O jogo já desenha as garrafas; o mod desenha o ingrediente girando no topo, o pó de blaze e o nome do que está sob a mão.
+- Acima, a plaquinha com as **bolhas**, a **seta** do preparo e a **barra de combustível** da tela do jogo.
+- Soltar o grip num lugar põe a pilha, o gatilho põe um, grip num lugar com item o traz para a mão. Cada lugar só aceita o que a tela aceitaria.
+
+## 13. Multiplayer: o que os outros veem
+
+| Quem olha | O que vê de um jogador em VR com o HandsOn |
+|---|---|
+| Jogador sem o HandsOn | O jogo normal: o item na mão e a armadura. Com o Vivecraft, também os braços e a cabeça do VR. |
+| Jogador com o HandsOn (em VR ou não) | Também os itens guardados nos coldres (ombros e quadris) e uma bolsa (o bundle do jogo) na mão de quem está com a mochila aberta. |
+
+- Isso só existe onde o servidor roda o HandsOn: o mundo aberto pelo próprio jogo (singleplayer aberto para LAN, ou o Essential, que hospeda no jogo de quem convida). Num servidor sem o mod, nada é mandado.
+- Os visuais de blocos (mesa, fornalhas, baú, suporte de poções) só aparecem para quem está em VR. Quem joga sem VR vê o jogo exatamente como sempre, mais os coldres e a mochila dos amigos em VR.
+- O que vai pela rede é só o que está nos coldres e se a mochila está aberta, a cada meio segundo e só quando muda.
+
 ## Testes sem VR
 
 O roteiro automático (`./gradlew prodClient`) cria um mundo plano e liga um "VR simulado". O teste posiciona as mãos e aperta grip, gatilho, X e B por código.
@@ -366,6 +419,7 @@ Ele confere:
 - a mira do arco: nasce desligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
 - a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado fabricando uma vez (4 tábuas na mão, 3 toras na mesa), o gatilho fabricando o resto na mesma mão (16 tábuas), o gatilho já apertado e depois o grip fabricando tudo (8 tochas), o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
 - as fornalhas: um defumador a uns 8 blocos mostrando ao vivo a carne, o carvão e o fogo (sem abrir), a fornalha abrindo sem a tela ao olhar para ela, o minério na abertura de cima (a pilha inteira) e o carvão na de baixo (um por vez com o gatilho), terra recusada nos dois lugares, a fornalha acendendo com a chama e a seta andando, os lingotes flutuando e indo para a mão com o grip, o minério voltando para a mão, a fornalha cedendo o menu ao crafting 2x2 da mochila, o defumador (carne em cima da chaminé, minério recusado), o alto-forno (minério por cima, carne recusada), fechar ao olhar para o outro lado, abrir de novo ao olhar e a tela normal ainda abrindo (prints `13-fornalha`, `14-defumador` e `15-alto-forno`).
+- o pacote 0.7: o pulso aparecendo virado para o rosto e sumindo acima da cabeça, a quantidade na mão (print `16-pulso`), a carne posta na fogueira (3 ficam na mão), o capacete e o peitoral vestidos levando ao corpo, o baú abrindo sem a tela, dando 20 pedras, a metade dos diamantes, recebendo 32 de areia e fechando (print `17-bau`), o suporte de poções abrindo ao olhar, recebendo a garrafa, o pó de blaze e a verruga e começando a preparar (print `18-pocoes`), e o servidor recebendo o estado dos coldres e da mochila.
 - distribuir e pegar metade: 10 pães viram 5 e 5 na mochila, 8 tábuas arrastadas pelo crafting 2x2 viram 2 em cada espaço, 9 canas arrastadas pela linha de cima da mesa viram 3 em cada casa (e o papel aparece), um toque do gatilho põe uma tábua só, 6 tábuas arrastadas pelas 3 casas de baixo viram 2 em cada, e o gatilho + grip numa casa com 3 canas traz 2.
 - o arremesso: quais itens são arremessáveis, a mira das poções descontando os 20° do jogo, uma bola de neve jogada para a frente com a mão rápida (o servidor a lança nessa direção, com a força real), a mão devagar não arremessando, uma bola da mochila jogada para a esquerda (as outras voltam para a mochila), uma poção com a mão esquerda saindo reta, o arremesso fraco saindo mais devagar, a força real desligada (a velocidade do jogo) e o arremesso desligado.
 
