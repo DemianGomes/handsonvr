@@ -112,6 +112,15 @@ public final class CraftingTable {
         return menu == null ? ItemStack.EMPTY : menu.getSlot(MENU_RESULT).getItem();
     }
 
+    /** Quantos itens o "fabricar tudo" (grip + gatilho) dá com a grade de agora (ex.: 4 toras, 16 tábuas). */
+    public int resultTotal() {
+        ItemStack[] grid = new ItemStack[9];
+        for (int i = 0; i < 9; i++) {
+            grid[i] = cellStack(i);
+        }
+        return InvOps.craftTotal(resultStack(), grid);
+    }
+
     public boolean gridEmpty() {
         for (int i = 0; i < 9; i++) {
             if (!cellStack(i).isEmpty()) {

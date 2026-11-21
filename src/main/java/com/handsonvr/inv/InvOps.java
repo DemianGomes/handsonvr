@@ -267,6 +267,23 @@ public final class InvOps {
         }
     }
 
+    /**
+     * Quantos itens o "fabricar tudo" (o Shift+clique) faria com esta grade: o resultado de uma receita vezes quantas
+     * vezes a grade dá (cada fabricação gasta um item de cada espaço ocupado). Ex.: 4 toras dão 4 x 4 = 16 tábuas.
+     */
+    public static int craftTotal(ItemStack result, ItemStack... grid) {
+        if (result.isEmpty()) {
+            return 0;
+        }
+        int times = Integer.MAX_VALUE;
+        for (ItemStack s : grid) {
+            if (!s.isEmpty()) {
+                times = Math.min(times, s.getCount());
+            }
+        }
+        return times == Integer.MAX_VALUE ? result.getCount() : result.getCount() * times;
+    }
+
     /** Primeiro espaço vazio do menu em [from, to), ou -1. */
     public static int firstEmpty(LocalPlayer p, int from, int to) {
         for (int i = from; i < to; i++) {
