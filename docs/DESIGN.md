@@ -225,6 +225,8 @@ Com o HandsOn, **o arco fica na mão que o pegou, e a flecha aparece na outra**:
 
 ### Mira do arco (opcional)
 
+![A mira do jogo na parede, onde a flecha vai acertar](img/mira-do-arco.png)
+
 Nos ajustes, "Mira do arco" (desligada por padrão). Ligada, com a corda puxada, a mira do jogo (`hud/crosshair`) aparece no ponto em que a flecha vai acertar. A conta segue o jogo com o arco do Vivecraft:
 
 - a flecha sai da mão que puxa a corda, na direção dela para a mão do arco;
