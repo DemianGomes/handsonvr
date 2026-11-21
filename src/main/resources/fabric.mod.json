@@ -3,7 +3,7 @@
   "id": "handsonvr",
   "version": "${version}",
   "name": "HandsOn VR",
-  "description": "Add-on for Vivecraft that makes the inventory feel like a native VR game: physical holsters (right shoulder and hips), a backpack on your left shoulder (inventory pages, 2x2 crafting, armor and a drop zone, no screen), a radial hotbar on B/X, an immersive crafting table (place items on the 3x3 grid on top of the table, grab the floating result), and grip-to-borrow items that return when you let go. Client-side only.",
+  "description": "Add-on for Vivecraft that makes the inventory feel like a native VR game: physical holsters (right shoulder and hips), a backpack on your left shoulder (inventory pages, 2x2 crafting, armor and a drop zone, no screen), a radial hotbar on B/X, an immersive crafting table (place items on the 3x3 grid on top of the table, grab the floating result), immersive furnaces, blast furnaces and smokers (items in the block, the game's progress bar above it), and grip-to-borrow items that return when you let go. Client-side only.",
   "authors": [
     "Antigravity Pair"
   ],

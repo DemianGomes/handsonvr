@@ -2,6 +2,23 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.4.0-alpha (Minecraft 26.3)
+
+### Fornalhas imersivas: fornalha, alto-forno e defumador ([#34](https://github.com/DemianGomes/handsonvr/issues/34))
+
+- Olhe para uma fornalha perto: ela abre por baixo, sem a tela, e mostra o que tem dentro. Leve um item até ela com o grip.
+  - **Soltar o grip** num lugar põe a pilha inteira.
+  - **Grip + gatilho** põe um item por vez.
+  - **Grip** num lugar com item o traz de volta para a mão.
+- **Fornalha:** o que vai queimar fica em pé na abertura de cima da frente; o combustível, na abertura de baixo, onde aparece o fogo.
+- **Alto-forno:** carregado por cima, como um de verdade. O minério fica deitado no topo e o combustível vai na grade de fogo da frente.
+- **Defumador:** a comida fica deitada em cima da chaminé, como numa grelha. O combustível vai no fogo da frente.
+- **Barra de progresso:** acima do bloco, virada para você, aparecem a chama (quanto ainda queima o combustível) e a seta (quanto o item atual já cozinhou), recortadas da própria tela da fornalha do jogo.
+- **Resultado:** o que fica pronto flutua à direita da seta, com a quantidade. O grip nele leva tudo para a mão, com a experiência do jogo.
+- A entrada aceita só o que cozinha naquele bloco e o combustível só o que queima. O resto vibra "negado".
+- A fornalha fecha ao olhar para outro lado, ao se afastar ou ao mexer na armadura/crafting 2x2 da mochila. Os itens ficam nela, como no jogo.
+- Usar a fornalha do jeito normal continua abrindo a tela do jogo.
+
 ## 0.3.4-alpha (Minecraft 26.3)
 
 ### Resultado do crafting: grip sozinho fabrica uma vez ([#32](https://github.com/DemianGomes/handsonvr/issues/32))

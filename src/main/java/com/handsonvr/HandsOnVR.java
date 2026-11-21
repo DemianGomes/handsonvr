@@ -81,6 +81,8 @@ public class HandsOnVR implements ClientModInitializer {
             renderSafely(context.poseStack(), "mira do arco (desenho)", () -> com.handsonvr.render.BowAimRenderer.render(context));
             renderSafely(context.poseStack(), "mesa de trabalho (desenho)",
                     () -> com.handsonvr.table.CraftingTableRenderer.render(context, HANDS));
+            renderSafely(context.poseStack(), "fornalha (desenho)",
+                    () -> com.handsonvr.furnace.FurnaceRenderer.render(context, HANDS));
         });
 
         // Botão "Coldres VR" no menu de pausa (Y no controle): os ajustes sem precisar de tecla.
@@ -105,9 +107,10 @@ public class HandsOnVR implements ClientModInitializer {
         return HANDS.holsters();
     }
 
-    /** Mixin do MenuScreens: o menu que o servidor abriu é o da mesa imersiva? Então fica sem tela (true). */
+    /** Mixin do MenuScreens: o menu que o servidor abriu é o da mesa ou de uma fornalha imersiva? Então fica sem tela. */
     public static boolean openHiddenMenu(net.minecraft.world.inventory.MenuType<?> type, Minecraft client, int containerId) {
-        return call("mesa de trabalho (abrir)", () -> HANDS.table().onOpenScreen(type, client, containerId));
+        return call("mesa de trabalho (abrir)", () -> HANDS.table().onOpenScreen(type, client, containerId))
+                || call("fornalha (abrir)", () -> HANDS.furnace().onOpenScreen(type, client, containerId));
     }
 
     /** Grip apertado (VivecraftInput). true = foi nosso, o grip não troca a hotbar. */
