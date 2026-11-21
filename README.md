@@ -12,7 +12,7 @@ Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, F
 
 ![Mochila aberta](docs/img/mochila.png)
 
-O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O histórico de versões está no [CHANGELOG](CHANGELOG.md).
+O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O padrão visual (tudo com a cara do Minecraft) está em [docs/VISUAL.md](docs/VISUAL.md). O histórico de versões está no [CHANGELOG](CHANGELOG.md).
 
 ## Controles (Quest 2)
 

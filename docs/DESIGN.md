@@ -47,7 +47,7 @@ A mão só fica vazia se houver para onde ir:
 - **Mão direita:** precisa existir um espaço vazio na hotbar. O mod seleciona esse espaço.
 - **Mão esquerda:** o item volta para o espaço de onde o radial o tirou. Se a mão continuar ocupada, o item vai para um espaço vazio do inventário.
 
-Sem espaço livre, a opção "mão vazia" do radial fica apagada e o controle vibra em sinal de "negado".
+Sem espaço livre, a opção "mão vazia" do radial mostra a barreira do jogo e o controle vibra em sinal de "negado".
 
 ## 1. Coldres físicos
 
@@ -75,7 +75,7 @@ O item que essa mão segurava (por exemplo, uma tocha) **some** enquanto ela seg
 
 ### Layout
 
-A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é o do **inventário do Minecraft**. Dentro da borda de lona da mochila há uma janela cinza com relevo, e todos os espaços são quadrados como no jogo (fundo cinza, linha escura em cima e à esquerda, clara embaixo e à direita).
+A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é o do **inventário do Minecraft** (ver o [padrão visual](VISUAL.md)). Dentro da borda de lona da mochila há uma janela cinza com relevo, e todos os espaços são quadrados como no jogo (fundo cinza, linha escura em cima e à esquerda, clara embaixo e à direita).
 
 ```
 ┌──────────────────────────────────────┐
@@ -125,10 +125,23 @@ A mochila pode ser solta enquanto a outra mão segura um item. O item continua n
 ## 3. Menu radial da hotbar (X ou B)
 
 - **Abrir:** segure B para a mão direita ou X para a mão esquerda. O menu abre em volta da mão, virado para o rosto, com a hotbar (9 espaços) em círculo e a **mão vazia** no centro.
+- **Acompanha o jogador:** o menu fica preso à área de jogo do Vivecraft. Andar, cair ou virar com o analógico o leva junto. Mexer a cabeça ou se inclinar para alcançar um espaço não o move.
 - **Escolher:** passe a mão sobre uma opção. Ela fica destacada e o controle vibra. Ao soltar o botão, o item fica equipado na mão.
 - **Mão direita:** seleciona o espaço da hotbar.
 - **Mão esquerda:** troca o item da hotbar com a mão secundária. Ao escolher outro item ou a mão vazia, o anterior volta para o espaço dele na hotbar.
-- **Mostrador:** o espaço selecionado da mão direita e o item que está na mão esquerda aparecem marcados.
+
+### Visual: a hotbar do jogo
+
+![Menu radial](img/radial.png)
+
+O radial segue o [padrão visual](VISUAL.md) com a cara da **hotbar**:
+
+- Cada espaço é uma casa da hotbar do jogo: moldura de pedra e fundo escuro translúcido.
+- A **moldura de seleção** da hotbar fica no espaço sob a mão. Sem a mão em cima, ela fica no item que está na mão (como quando você gira a roda do mouse).
+- O **nome do item** sob a mão aparece na caixa de dica do jogo, com a cor da raridade.
+- O item da **mão esquerda** leva o ícone do escudo no canto, o mesmo do espaço da mão secundária no inventário.
+- No centro, a **mão vazia** é uma casa vazia. Sem espaço livre para esvaziar a mão, ela mostra a barreira do jogo.
+- A quantidade usa a fonte e a sombra do jogo, como na hotbar.
 
 ### Levar um item da mochila para a hotbar
 
@@ -173,7 +186,7 @@ Ele confere:
 - as zonas dos coldres, inclusive pontos da borda;
 - sacar e guardar;
 - abrir a mochila, pegar, mover, juntar pilhas, colocar um item, descartar tudo, descartar um, crafting, armadura e páginas;
-- o radial: equipar nas duas mãos, mão vazia, mão vazia com o inventário cheio e levar itens da mochila para a hotbar;
+- o radial: equipar nas duas mãos, mão vazia, mão vazia com o inventário cheio, levar itens da mochila para a hotbar e andar com ele aberto (ele vai junto e a escolha continua funcionando);
 - o caso do inventário 100% cheio;
 - guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
 
