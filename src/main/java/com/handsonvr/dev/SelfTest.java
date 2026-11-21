@@ -404,6 +404,7 @@ public final class SelfTest {
             case 19 -> pickupOrder(client);
             case 20 -> bowHands(client);
             case 21 -> tableCrafting(client);
+            case 22 -> bowAimMarker(client);
             default -> { }
         }
     }
@@ -2101,8 +2102,74 @@ public final class SelfTest {
             handAway(1);
         }
         if (at(142)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ mira do arco (opcional)
+
+    private static BlockPos wallAt;
+
+    private static void bowAimMarker(Minecraft client) {
+        LocalPlayer p = client.player;
+        Vec3 eye = p.getEyePosition();
+        if (at(1)) {
+            section("Mira do arco (opcional)");
+            check(!HandsOnConfig.get().bowAim && com.handsonvr.hands.BowAim.predict(client) == null,
+                    "a mira do arco nasce desligada");
+            check(com.handsonvr.hands.BowAim.power(0) == 0f && com.handsonvr.hands.BowAim.power(20) == 1f
+                            && Math.abs(com.handsonvr.hands.BowAim.power(10) - 0.4167f) < 0.001f,
+                    "força do arco pelo tempo puxando, como no jogo (0, 0,42 em meio segundo, 1 em um segundo)");
+            p.setYRot(0f);
+            p.setXRot(0f);
+            // Uma parede de pedra 10 blocos à frente, na altura dos olhos.
+            wallAt = BlockPos.containing(p.getX(), eye.y, p.getZ() + 10);
+            BlockPos wall = wallAt;
+            onServer(client, player -> {
+                for (int dx = -2; dx <= 2; dx++) {
+                    for (int dy = -3; dy <= 2; dy++) {
+                        player.level().setBlock(wall.offset(dx, dy, 0), Blocks.STONE.defaultBlockState(), 3);
+                    }
+                }
+            });
+        }
+        if (at(10)) {
+            Vec3 strong = com.handsonvr.hands.BowAim.trace(client.level, p, eye, new Vec3(0, 0, 3));
+            check(strong != null && Math.abs(strong.z - wallAt.getZ()) < 0.01 && strong.y < eye.y && strong.y > eye.y - 0.6,
+                    "puxão inteiro: a flecha acerta a parede a 10 blocos um pouco abaixo da mira (" + fmt3(strong) + ")");
+            Vec3 weak = com.handsonvr.hands.BowAim.trace(client.level, p, eye, new Vec3(0, 0, 0.6));
+            check(weak != null && Math.abs(weak.y - p.getY()) < 0.01 && weak.z < wallAt.getZ(),
+                    "puxão fraco: a flecha cai no chão antes da parede (" + fmt3(weak) + ")");
+            HandsOnConfig.get().bowAim = true;
+            com.handsonvr.hands.BowAim.debugShot = new com.handsonvr.hands.BowAim.Shot(eye.add(0.1, -0.2, 0.3), new Vec3(0.05, 0.05, 2.4));
+        }
+        if (at(12)) {
+            Vec3 hit = com.handsonvr.hands.BowAim.predict(client);
+            check(hit != null && Math.abs(hit.z - wallAt.getZ()) < 0.01, "ligada e com a corda puxada: a mira aparece na parede (" + fmt3(hit) + ")");
+        }
+        if (at(16)) {
+            screenshot(client, "12-mira-do-arco");
+        }
+        if (at(18)) {
+            HandsOnConfig.get().bowAim = false;
+            check(com.handsonvr.hands.BowAim.predict(client) == null, "desligada de novo: sem mira");
+            com.handsonvr.hands.BowAim.debugShot = null;
+            BlockPos wall = wallAt;
+            onServer(client, player -> {
+                for (int dx = -2; dx <= 2; dx++) {
+                    for (int dy = -3; dy <= 2; dy++) {
+                        player.level().setBlock(wall.offset(dx, dy, 0), Blocks.AIR.defaultBlockState(), 3);
+                    }
+                }
+            });
+        }
+        if (at(22)) {
             finish(client);
         }
+    }
+
+    private static String fmt3(Vec3 v) {
+        return v == null ? "nada" : String.format(Locale.ROOT, "%.2f, %.2f, %.2f", v.x, v.y, v.z);
     }
 
     private static boolean hasMixin(Class<?> c) {
