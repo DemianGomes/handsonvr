@@ -3,6 +3,7 @@ package com.handsonvr.hands;
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
 import com.handsonvr.backpack.Backpack;
+import com.handsonvr.furnace.FurnaceStation;
 import com.handsonvr.holster.Holster;
 import com.handsonvr.holster.HolsterManager;
 import com.handsonvr.input.GripState;
@@ -36,17 +37,18 @@ public final class HandsController {
     private final Backpack backpack = new Backpack();
     private final RadialMenu radial = new RadialMenu();
     private final CraftingTable table = new CraftingTable();
+    private final FurnaceStation furnace = new FurnaceStation();
     /** Espaço da hotbar (0-8) de onde veio o item que o radial pôs na mão esquerda; -1 = nenhum. */
     private int offSource = -1;
     /** O aperto do botão do radial foi nosso (o soltar também é). */
     private final boolean[] menuConsumed = new boolean[2];
 
     /** De onde vem o resultado que a mão pegou com o grip. */
-    public enum ResultSource { NONE, BACKPACK, TABLE }
+    public enum ResultSource { NONE, BACKPACK, TABLE, FURNACE }
 
     /**
-     * O resultado (do crafting 2x2 ou da mesa) que cada mão pegou com o grip, enquanto o grip continua apertado: o
-     * gatilho com a mão no resultado fabrica o resto para ela.
+     * O resultado (do crafting 2x2, da mesa ou da fornalha) que cada mão pegou com o grip, enquanto o grip continua
+     * apertado: o gatilho com a mão no resultado fabrica (ou pega) o resto para ela.
      */
     private final ResultSource[] resultHold = {ResultSource.NONE, ResultSource.NONE};
 
@@ -95,6 +97,10 @@ public final class HandsController {
         return table;
     }
 
+    public FurnaceStation furnace() {
+        return furnace;
+    }
+
     public int offSource() {
         return offSource;
     }
@@ -126,6 +132,7 @@ public final class HandsController {
         backpack.reset();
         radial.close();
         table.reset();
+        furnace.reset();
         offSource = -1;
         menuConsumed[0] = menuConsumed[1] = false;
         resultHold[0] = resultHold[1] = ResultSource.NONE;
@@ -139,9 +146,20 @@ public final class HandsController {
         return backpack.holder() == hand;
     }
 
-    /** O golpe com o braço do Vivecraft fica desligado (mexendo na mochila, no radial ou na mesa de trabalho). */
+    /** O golpe com o braço do Vivecraft fica desligado (mexendo na mochila, no radial, na mesa ou numa fornalha). */
     public boolean blocksSwing() {
-        return backpack.isOpen() || radial.isOpen() || table.blocksSwing();
+        return backpack.isOpen() || radial.isOpen() || table.blocksSwing() || furnace.blocksSwing();
+    }
+
+    /** Alguma mão segura um item pego da armadura ou do crafting 2x2 (espaços que não existem no menu de um bloco)? */
+    private boolean grabbingOutsideMenus() {
+        for (int hand = 0; hand < 2; hand++) {
+            GrabSystem.Grab g = grabs.get(hand);
+            if (g != null && g.source() < InvOps.MAIN_START) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -260,7 +278,18 @@ public final class HandsController {
             return true;
         }
         if (onTable >= 0 && !table.cellStack(onTable).isEmpty()) {
-            tableToHand(client, hand, table.take(client, onTable), "tirou da mesa a casa " + onTable);
+            blockToHand(client, hand, table.take(client, onTable), "tirou da mesa a casa " + onTable);
+            return true;
+        }
+        // 3b) Fornalha: o resultado (vem para a mão, com a experiência do jogo), ou a entrada/o combustível com item
+        //     (o item volta para a mão).
+        int onFurnace = furnace.targetAt(tip);
+        if (onFurnace == FurnaceStation.RESULT) {
+            gripResult(client, hand, ResultSource.FURNACE);
+            return true;
+        }
+        if (onFurnace >= 0 && !furnace.stack(onFurnace).isEmpty()) {
+            blockToHand(client, hand, furnace.take(client, onFurnace), "tirou da fornalha o lugar " + onFurnace);
             return true;
         }
         // 4) Zonas do corpo: mochila (ombro esquerdo) ou um coldre com item (sacar).
@@ -300,6 +329,9 @@ public final class HandsController {
         if (table.nearResult(tip)) {
             return ResultSource.TABLE;
         }
+        if (furnace.nearResult(tip)) {
+            return ResultSource.FURNACE;
+        }
         if (backpack.isOpen() && backpack.holder() != hand) {
             Backpack.Element e = backpack.elementAt(tip);
             if (e != null && e.kind() == Backpack.Kind.CRAFT_OUT) {
@@ -312,6 +344,7 @@ public final class HandsController {
     private ItemStack resultStack(LocalPlayer p, ResultSource source) {
         return switch (source) {
             case TABLE -> table.resultStack();
+            case FURNACE -> furnace.resultStack();
             case BACKPACK -> InvOps.reachable(p, InvOps.RESULT) ? InvOps.stack(p, InvOps.RESULT) : ItemStack.EMPTY;
             default -> ItemStack.EMPTY;
         };
@@ -417,7 +450,11 @@ public final class HandsController {
         if (job == null) {
             return;
         }
-        boolean open = job.source == ResultSource.TABLE ? table.isOpen() : backpack.isOpen();
+        boolean open = switch (job.source) {
+            case TABLE -> table.isOpen();
+            case FURNACE -> furnace.isOpen();
+            default -> backpack.isOpen();
+        };
         if (p == null || !InvOps.ready(client) || client.gui.screen() != null || !open) {
             finishCraft(client);
             return;
@@ -438,8 +475,11 @@ public final class HandsController {
         if (!t.isEmpty() && (!ItemStack.isSameItemSameComponents(t, result) || t.getCount() + result.getCount() > t.getMaxStackSize())) {
             target = overflowSlot(p, result);
         }
-        boolean crafted = target >= 0
-                && (job.source == ResultSource.TABLE ? table.craftInto(client, target) : InvOps.craftInto(client, target));
+        boolean crafted = target >= 0 && switch (job.source) {
+            case TABLE -> table.craftInto(client, target);
+            case FURNACE -> furnace.takeResultInto(client, target); // o que está pronto (não fabrica nada)
+            default -> InvOps.craftInto(client, target);
+        };
         if (!crafted) {
             finishCraft(client);
             return;
@@ -500,7 +540,7 @@ public final class HandsController {
      * O item que saiu da mesa (tirado de uma casa) foi para o espaço {@code slot} do inventário: a mão o pega dali,
      * como em todo o mod (soltar decide para onde ele vai; longe de tudo, fica no inventário).
      */
-    private void tableToHand(Minecraft client, int hand, int slot, String what) {
+    private void blockToHand(Minecraft client, int hand, int slot, String what) {
         LocalPlayer p = client.player;
         if (slot < 0) {
             refuse(hand); // nada para fabricar, ou sem espaço no inventário
@@ -686,6 +726,19 @@ public final class HandsController {
             }
             return;
         }
+        // Fornalha: soltar na entrada ou no combustível põe a pilha inteira (um item diferente troca de lugar).
+        int spot = furnace.targetAt(tip);
+        if (spot == FurnaceStation.INPUT || spot == FurnaceStation.FUEL) {
+            grabs.end(client, hand);
+            if (furnace.place(client, hand, g.source(), spot, true)) {
+                VrBridge.pulse(hand, 0.02f);
+                action("pôs a pilha na fornalha, lugar " + spot);
+            } else {
+                refuse(hand);
+                action("a fornalha recusou (lugar " + spot + ")");
+            }
+            return;
+        }
         Holster zone = holsters.refreshZone(hand);
         grabs.end(client, hand);
         // Por cima do ombro, como no Saints & Sinners: soltar no ombro da mochila guarda o item nela.
@@ -824,6 +877,17 @@ public final class HandsController {
                 }
                 return true;
             }
+            // Fornalha: gatilho na entrada ou no combustível põe UM item.
+            int spot = furnace.targetAt(tip);
+            if (spot == FurnaceStation.INPUT || spot == FurnaceStation.FUEL) {
+                if (furnace.place(client, hand, handSlot, spot, false)) {
+                    VrBridge.pulse(hand, 0.01f);
+                    action("pôs um na fornalha (gatilho), lugar " + spot);
+                } else {
+                    refuse(hand);
+                }
+                return true;
+            }
             return false; // pegou um item e está longe dos menus: o gatilho usa o item normalmente
         }
         if (backpack.isOpen()) {
@@ -843,8 +907,9 @@ public final class HandsController {
         if (radial.isOpen() && radial.targetAt(tip) != RadialMenu.NONE) {
             return true;
         }
-        // Gatilho sozinho no resultado da mesa: nada (o resultado sai com grip + gatilho).
-        if (table.targetAt(tip) == CraftingTable.RESULT) {
+        // Gatilho sozinho no resultado da mesa: nada (o resultado sai com o grip). Numa fornalha também: o gatilho não
+        // quebra o bloco em que a mão está mexendo.
+        if (table.targetAt(tip) == CraftingTable.RESULT || furnace.targetAt(tip) != FurnaceStation.NONE) {
             return true;
         }
         return false;
@@ -1094,7 +1159,31 @@ public final class HandsController {
         holsters.tick(client);
         BowHand.tick(client);
         tableTick(client);
+        furnaceTick(client);
         craftTick(client);
+    }
+
+    /**
+     * As fornalhas: abre sozinha a que o jogador olha (se nada mais usa o inventário agora), o lugar sob cada mão (vibra
+     * ao entrar) e, com um item na mão sobre a entrada ou o combustível, abre na hora.
+     */
+    private void furnaceTick(Minecraft client) {
+        LocalPlayer p = client.player;
+        boolean canAuto = InvOps.ready(client) && p.containerMenu == p.inventoryMenu && !table.isOpen()
+                && !table.isWaiting() && craftJob == null && !grabbingOutsideMenus();
+        boolean inUse = craftJob != null && craftJob.source == ResultSource.FURNACE;
+        furnace.tick(client, canAuto, inUse);
+        for (int hand = 0; hand < 2; hand++) {
+            int target = backpack.holder() == hand || !VrBridge.isVRActive() ? FurnaceStation.NONE
+                    : furnace.targetAt(VrBridge.pointer(hand));
+            if (furnace.updateHover(hand, target)) {
+                VrBridge.pulse(hand, 0.005f);
+            }
+            if ((target == FurnaceStation.INPUT || target == FurnaceStation.FUEL) && grabs.isGrabbing(hand)
+                    && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
+                furnace.ensureOpen(client, true);
+            }
+        }
     }
 
     /** A mesa de trabalho: a casa ou o resultado sob cada mão (vibra ao entrar) e, com um item na mão sobre a mesa, já

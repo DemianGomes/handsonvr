@@ -137,8 +137,8 @@ public final class CraftingTable {
 
     public void reset() {
         pos = null;
+        InvOps.clearHidden(menu);
         menu = null;
-        InvOps.setHidden(null);
         expectUntil = -1;
         queue.clear();
         hover[0] = hover[1] = NONE;
@@ -312,7 +312,11 @@ public final class CraftingTable {
         }
         LocalPlayer p = client.player;
         if (pos == null || p == null || client.gameMode == null || !canOpen || client.gui.screen() != null
-                || p.containerMenu != p.inventoryMenu || p.isSecondaryUseActive() || ticks < retryAfter) {
+                || p.isSecondaryUseActive() || ticks < retryAfter) {
+            return false;
+        }
+        // Uma fornalha imersiva aberta cede o menu (ela não perde nada ao fechar).
+        if (p.containerMenu != p.inventoryMenu && !InvOps.releaseHidden(client)) {
             return false;
         }
         forward = facing(pos);
@@ -356,8 +360,8 @@ public final class CraftingTable {
         if (menu != null) {
             last = "mesa fechada: " + why;
         }
+        InvOps.clearHidden(menu);
         menu = null;
-        InvOps.setHidden(null);
         expectUntil = -1;
         queue.clear();
         idle = 0;

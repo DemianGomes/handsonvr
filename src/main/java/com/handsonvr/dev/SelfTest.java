@@ -349,7 +349,8 @@ public final class SelfTest {
         if (screen == null || client.player == null || step < 2 || (testOpensScreens
                 && (screen instanceof net.minecraft.client.gui.screens.PauseScreen
                 || screen instanceof com.handsonvr.screen.HandsOnScreen))
-                || (allowCraftingScreen && screen instanceof net.minecraft.client.gui.screens.inventory.CraftingScreen)) {
+                || (allowCraftingScreen && screen instanceof net.minecraft.client.gui.screens.inventory.CraftingScreen)
+                || (allowFurnaceScreen && screen instanceof net.minecraft.client.gui.screens.inventory.AbstractFurnaceScreen<?>)) {
             return;
         }
         if (strayScreens.add(screen.getClass().getName())) {
@@ -404,7 +405,8 @@ public final class SelfTest {
             case 19 -> pickupOrder(client);
             case 20 -> bowHands(client);
             case 21 -> tableCrafting(client);
-            case 22 -> bowAimMarker(client);
+            case 22 -> furnaces(client);
+            case 23 -> bowAimMarker(client);
             default -> { }
         }
     }
@@ -2135,6 +2137,273 @@ public final class SelfTest {
             handAway(1);
         }
         if (at(168)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ fornalhas imersivas
+
+    private static BlockPos furnacePos;
+    /** O teste abre a tela da fornalha do jeito normal: ela não é fechada como tela de outro mod. */
+    private static boolean allowFurnaceScreen = false;
+
+    /** Ponta da mão num lugar da fornalha (entrada ou combustível), um pouco fora da face, entrando nela. */
+    private static void pointFurnace(int hand, int target) {
+        Panel plane = hands().furnace().spotPlane(target);
+        pointAt(hand, plane.world(0, 0, 0.05), plane.normal().reverse());
+    }
+
+    /**
+     * Foto para a documentação: sem o HUD (como o F1), sem avisos e um passo para trás, para caber o bloco, a barra de
+     * progresso e o resultado. {@code false} volta ao normal.
+     */
+    private static void photoPose(Minecraft client, boolean on) {
+        LocalPlayer p = client.player;
+        if (client.gui.hud.isHidden() != on) {
+            client.gui.hud.toggle();
+        }
+        if (on) {
+            client.gui.toastManager().clear();
+            client.gui.hud.getChat().clearMessages(false);
+        }
+        p.setPos(p.getX(), p.getY(), p.getZ() + (on ? -1 : 1));
+        p.setXRot(on ? 30f : 45f);
+    }
+
+    private static void setFurnaceBlock(Minecraft client, net.minecraft.world.level.block.Block block) {
+        BlockPos at = furnacePos;
+        onServer(client, player -> player.level().setBlock(at, block.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.AbstractFurnaceBlock.FACING, net.minecraft.core.Direction.NORTH), 3));
+    }
+
+    private static void furnaces(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        com.handsonvr.furnace.FurnaceStation f = hc.furnace();
+        int input = com.handsonvr.furnace.FurnaceStation.INPUT, fuel = com.handsonvr.furnace.FurnaceStation.FUEL;
+        if (at(1)) {
+            section("Fornalhas: fornalha, alto-forno e defumador");
+            furnacePos = BlockPos.containing(p.getX(), p.getY(), p.getZ()).offset(0, 0, 1); // onde estava a mesa
+            BlockPos at = furnacePos;
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(9, new ItemStack(Items.RAW_IRON, 8));
+                pinv.setItem(10, new ItemStack(Items.COAL, 4));
+                pinv.setItem(11, new ItemStack(Items.BEEF, 2));
+                pinv.setItem(12, new ItemStack(Items.DIRT, 3));
+                player.level().setBlock(at.above(), Blocks.AIR.defaultBlockState(), 3);
+            });
+            setFurnaceBlock(client, Blocks.FURNACE); // de frente para o jogador
+            inv.setSelectedSlot(0);
+            p.setYRot(0f);
+            p.setXRot(45f); // olhando para a fornalha, embaixo à frente
+            handAway(0);
+            handAway(1);
+        }
+        if (at(12)) {
+            check(furnacePos.equals(f.pos()) && f.kind() == com.handsonvr.furnace.FurnaceStation.Kind.FURNACE && f.isOpen()
+                            && client.gui.screen() == null && p.containerMenu instanceof net.minecraft.world.inventory.FurnaceMenu,
+                    "olhar para a fornalha perto: ela abre por baixo, sem a tela do jogo (" + f.last() + ")");
+            check(InvOps.reachable(p, InvOps.ARMOR_START) && InvOps.reachable(p, InvOps.CRAFT_START),
+                    "com a fornalha aberta, a armadura e o crafting 2x2 da mochila continuam valendo (ela cede o menu)");
+            check(openBackpack(client, 1), "mochila aberta na mão esquerda");
+            pointBackpackSlot(0, 9); // minério de ferro
+        }
+        if (at(14)) {
+            grip(client, 0, true);
+        }
+        if (at(16)) {
+            check(p.getMainHandItem().is(Items.RAW_IRON), "a mão direita pegou o minério da mochila");
+            pointFurnace(0, input);
+        }
+        if (at(18)) {
+            check(f.hover(0) == input, "minério na abertura de cima: o lugar da entrada é destacado");
+            grip(client, 0, false); // solta: a pilha inteira
+        }
+        if (at(24)) {
+            check(f.stack(input).is(Items.RAW_IRON) && f.stack(input).getCount() == 8 && total(inv, Items.RAW_IRON) == 0
+                            && p.getMainHandItem().is(Items.IRON_SWORD),
+                    "soltar na abertura de cima: os 8 minérios entram para queimar e a espada volta para a mão");
+            pointBackpackSlot(0, 10); // carvão
+        }
+        if (at(26)) {
+            grip(client, 0, true);
+        }
+        if (at(28)) {
+            pointFurnace(0, fuel);
+        }
+        if (at(30)) {
+            check(f.hover(0) == fuel && hc.onTrigger(client, 0), "carvão na abertura de baixo: o gatilho é da fornalha");
+        }
+        if (at(32)) {
+            hc.onTrigger(client, 0);
+        }
+        if (at(36)) {
+            // O primeiro carvão já começou a queimar (o jogo tira um da pilha ao acender).
+            check(f.stack(fuel).is(Items.COAL) && f.stack(fuel).getCount() + (f.isLit() ? 1 : 0) == 2
+                            && p.getMainHandItem().getCount() == 2,
+                    "grip + gatilho no combustível: um carvão por vez (2 na fornalha, um já queimando; 2 na mão)");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(40)) {
+            check(total(inv, Items.COAL) == 2, "soltar longe: os outros 2 carvões voltam para a mochila");
+            check(!f.place(client, 0, 12, fuel, true) && !f.place(client, 0, 12, input, false) && total(inv, Items.DIRT) == 3,
+                    "terra não queima nem cozinha: a fornalha recusa nos dois lugares");
+            grip(client, 1, false); // fecha a mochila
+        }
+        if (at(64)) {
+            check(f.isLit() && f.litProgress() > 0f && f.burnProgress() > 0f && f.burnProgress() < 1f,
+                    String.format(Locale.ROOT, "a fornalha acende e cozinha: chama %.2f, seta %.2f", f.litProgress(), f.burnProgress()));
+            BlockPos at = furnacePos;
+            onServer(client, player -> {
+                if (player.level().getBlockEntity(at) instanceof net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity be) {
+                    be.setItem(2, new ItemStack(Items.IRON_INGOT, 3)); // como se já tivesse cozinhado 3
+                }
+            });
+        }
+        if (at(66)) {
+            photoPose(client, true);
+        }
+        if (at(70)) {
+            check(f.resultStack().is(Items.IRON_INGOT) && f.resultStack().getCount() == 3,
+                    "o que ficou pronto flutua à direita da seta (" + describe(f.resultStack()) + ")");
+            screenshot(client, "13-fornalha");
+        }
+        if (at(71)) {
+            photoPose(client, false);
+            pointAt(0, f.resultCenter(), new Vec3(0, 0, 1));
+        }
+        if (at(73)) {
+            check(f.hover(0) == com.handsonvr.furnace.FurnaceStation.RESULT, "a mão no resultado: destacado");
+            grip(client, 0, true);
+        }
+        if (at(80)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(!hc.isCrafting() && p.getMainHandItem().is(Items.IRON_INGOT) && p.getMainHandItem().getCount() == 3
+                            && f.resultStack().isEmpty() && slot(p, InvOps.HOTBAR_START).is(Items.IRON_SWORD),
+                    "grip no resultado: os 3 lingotes vão direto para a mão direita (a espada ficou na hotbar)");
+            check(g != null && g.origin() == GrabSystem.Origin.HAND, "com o grip ainda apertado, a mão segura os lingotes");
+            pointAway(client, 0);
+            grip(client, 0, false);
+            check(p.getMainHandItem().is(Items.IRON_INGOT), "soltar longe: os lingotes continuam na mão");
+            inv.setSelectedSlot(0);
+            pointFurnace(0, input);
+        }
+        if (at(82)) {
+            grip(client, 0, true); // grip na entrada com minério: volta para a mão
+        }
+        if (at(86)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && p.getMainHandItem().is(Items.RAW_IRON) && f.stack(input).isEmpty(),
+                    "grip na entrada: o minério volta para a mão (" + describe(p.getMainHandItem()) + ")");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(90)) {
+            check(total(inv, Items.RAW_IRON) >= 7 && p.getMainHandItem().is(Items.IRON_SWORD),
+                    "soltar longe: o minério fica na mochila");
+            // O crafting 2x2 da mochila com a fornalha aberta: ela cede o menu na hora.
+            check(InvOps.placeOne(client, 12, InvOps.CRAFT_START) && slot(p, InvOps.CRAFT_START).is(Items.DIRT)
+                            && !f.isOpen() && p.containerMenu == p.inventoryMenu,
+                    "pôr terra no crafting 2x2 com a fornalha aberta: a fornalha fecha e a terra entra (" + f.last() + ")");
+            InvOps.quickMove(client, InvOps.CRAFT_START);
+        }
+        if (at(96)) {
+            check(slot(p, InvOps.CRAFT_START).isEmpty() && total(inv, Items.DIRT) == 3 && !f.isOpen(),
+                    "a terra volta e a fornalha espera um pouco antes de abrir de novo sozinha");
+            setFurnaceBlock(client, Blocks.SMOKER);
+            clearDrops(client);
+        }
+        // --- defumador: a comida em cima da chaminé
+        if (at(100)) {
+            check(openBackpack(client, 1), "mochila aberta de novo");
+            pointBackpackSlot(0, 11); // carne
+        }
+        if (at(102)) {
+            grip(client, 0, true);
+        }
+        if (at(104)) {
+            pointFurnace(0, input);
+        }
+        if (at(106)) {
+            check(f.kind() == com.handsonvr.furnace.FurnaceStation.Kind.SMOKER && f.hover(0) == input
+                            && (f.isOpen() || f.isWaiting()),
+                    "carne sobre a chaminé do defumador: o lugar é destacado e ele abre na hora (" + f.last() + ")");
+        }
+        if (at(114)) {
+            grip(client, 0, false);
+        }
+        if (at(120)) {
+            check(f.stack(input).is(Items.BEEF) && f.stack(input).getCount() == 2, "soltar: a carne fica deitada em cima do defumador");
+            check(!f.accepts(input, new ItemStack(Items.RAW_IRON)) && f.accepts(fuel, new ItemStack(Items.COAL)),
+                    "o defumador não aceita minério na entrada");
+            check(f.place(client, 0, InvOps.fromInventory(find(inv, Items.COAL)), fuel, false), "um carvão no fogo da frente");
+            grip(client, 1, false);
+            handAway(0);
+        }
+        if (at(136)) {
+            photoPose(client, true);
+        }
+        if (at(140)) {
+            check(f.isLit(), "o defumador acende com o carvão no fogo da frente");
+            screenshot(client, "14-defumador");
+        }
+        if (at(141)) {
+            photoPose(client, false);
+        }
+        // --- alto-forno: o minério por cima
+        if (at(142)) {
+            setFurnaceBlock(client, Blocks.BLAST_FURNACE);
+            clearDrops(client);
+        }
+        if (at(150)) {
+            check(f.kind() == com.handsonvr.furnace.FurnaceStation.Kind.BLAST_FURNACE, "o alto-forno no lugar do defumador é reconhecido");
+            // Sem a mão: o lugar pede o menu e o item entra quando ele abre.
+            check(f.place(client, 0, InvOps.fromInventory(find(inv, Items.RAW_IRON)), input, true), "minério por cima do alto-forno");
+        }
+        if (at(160)) {
+            check(f.isOpen() && f.stack(input).is(Items.RAW_IRON), "o alto-forno abriu e o minério ficou deitado no topo");
+            check(!f.accepts(input, new ItemStack(Items.BEEF)), "o alto-forno não aceita carne");
+            f.place(client, 0, InvOps.fromInventory(find(inv, Items.COAL)), fuel, false);
+        }
+        if (at(172)) {
+            photoPose(client, true);
+        }
+        if (at(176)) {
+            check(f.isLit(), "o alto-forno acende com o carvão na grade da frente");
+            screenshot(client, "15-alto-forno");
+        }
+        if (at(177)) {
+            photoPose(client, false);
+            p.setYRot(180f); // olha para o outro lado
+        }
+        if (at(270)) {
+            check(!f.isOpen() && p.containerMenu == p.inventoryMenu, "olhar para o outro lado: o alto-forno fecha (" + f.last() + ")");
+            p.setYRot(0f);
+        }
+        if (at(290)) {
+            check(f.isOpen() && f.stack(input).is(Items.RAW_IRON), "olhar de novo: abre sozinho e o minério continua lá");
+            allowFurnaceScreen = true;
+            client.gameMode.useItemOn(p, net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.phys.BlockHitResult(
+                    f.frontCenter(), net.minecraft.core.Direction.NORTH, furnacePos, false));
+        }
+        if (at(300)) {
+            check(client.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.AbstractFurnaceScreen<?> && !f.isOpen(),
+                    "usar o alto-forno do jeito normal ainda abre a tela do jogo");
+            p.closeContainer();
+            allowFurnaceScreen = false;
+            BlockPos at = furnacePos;
+            onServer(client, player -> player.level().setBlock(at, Blocks.AIR.defaultBlockState(), 3));
+            clearDrops(client);
+            p.setXRot(0f);
+            handAway(0);
+            handAway(1);
+        }
+        if (at(306)) {
             next();
         }
     }

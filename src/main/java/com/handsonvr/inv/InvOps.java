@@ -16,10 +16,12 @@ import net.minecraft.world.inventory.ContainerInput;
  * crafting, 1-4 grade 2x2, 5-8 armadura (cabeça, peito, pernas, pés), 9-35 inventário principal, 36-44 hotbar,
  * 45 mão secundária.
  *
- * <p>A mesa de trabalho imersiva ({@link com.handsonvr.table.CraftingTable}) abre o menu da mesa no servidor sem a
- * tela ("menu escondido"). Enquanto ele está aberto, os cliques do inventário vão para ele: o inventário principal e a
- * hotbar existem lá (um espaço adiante: 10-36 e 37-45) e a troca com a mão secundária continua (botão 40). A armadura,
- * o crafting 2x2 e o resultado dele não existem nesse menu ({@link #reachable}).
+ * <p>A mesa de trabalho e as fornalhas imersivas ({@link com.handsonvr.table.CraftingTable},
+ * {@link com.handsonvr.furnace.FurnaceStation}) abrem o menu do bloco no servidor sem a tela ("menu escondido").
+ * Enquanto ele está aberto, os cliques do inventário vão para ele: o inventário principal e a hotbar existem lá (em
+ * outros índices, traduzidos por {@link #hiddenIndex}) e a troca com a mão secundária continua (botão 40). A armadura,
+ * o crafting 2x2 e o resultado dele não existem nesse menu. Com a mesa, eles esperam ela fechar ({@link #reachable});
+ * a fornalha, que não perde nada ao fechar, cede o menu na hora ({@link #prepare}).
  */
 public final class InvOps {
     private InvOps() {}
@@ -28,11 +30,71 @@ public final class InvOps {
     /** Botão do clique de troca para a mão secundária (tecla F). */
     public static final int OFFHAND_BUTTON = 40;
 
-    /** O menu da mesa de trabalho aberto sem tela pelo mod (null = nenhum). */
+    /** O menu de um bloco aberto sem tela pelo mod (null = nenhum). */
     private static AbstractContainerMenu hidden;
+    /** Fecha o menu escondido quando o inventário inteiro é preciso (null = não pode: a mesa devolveria a grade). */
+    private static Runnable hiddenRelease;
+    /** Espaço do inventário (0-40) -> espaço do menu escondido (-1 = não existe nele). */
+    private static int[] hiddenMap = new int[0];
 
     public static void setHidden(AbstractContainerMenu menu) {
+        setHidden(menu, null);
+    }
+
+    /** O menu escondido agora; {@code release} fecha ele sem perder nada (null se fechar mudaria algo). */
+    public static void setHidden(AbstractContainerMenu menu, Runnable release) {
         hidden = menu;
+        hiddenRelease = menu == null ? null : release;
+        hiddenMap = new int[Inventory.SLOT_OFFHAND + 1];
+        java.util.Arrays.fill(hiddenMap, -1);
+        if (menu != null) {
+            for (int i = 0; i < menu.slots.size(); i++) {
+                net.minecraft.world.inventory.Slot s = menu.slots.get(i);
+                int c = s.getContainerSlot();
+                if (s.container instanceof Inventory && c >= 0 && c < hiddenMap.length && hiddenMap[c] < 0) {
+                    hiddenMap[c] = i;
+                }
+            }
+        }
+    }
+
+    /** Esquece o menu escondido, se ainda for este (outro bloco pode já ter aberto o dele). */
+    public static void clearHidden(AbstractContainerMenu menu) {
+        if (menu != null && hidden == menu) {
+            setHidden(null);
+        }
+    }
+
+    /**
+     * Fecha o menu escondido, se ele pode fechar sem perder nada (a fornalha). Retorna true se o menu do jogador ficou
+     * ativo (ou já estava).
+     */
+    public static boolean releaseHidden(Minecraft client) {
+        LocalPlayer p = client.player;
+        if (p == null) {
+            return false;
+        }
+        if (hiddenOpen(p) && hiddenRelease != null) {
+            hiddenRelease.run();
+        }
+        return p.containerMenu == p.inventoryMenu;
+    }
+
+    /**
+     * Antes de uma operação com estes espaços: se algum não existe no menu escondido e ele pode fechar sem perder nada
+     * (a fornalha), fecha agora, para a operação inteira acontecer no menu do jogador.
+     */
+    private static void prepare(Minecraft client, int... slots) {
+        LocalPlayer p = client.player;
+        if (!hiddenOpen(p) || hiddenRelease == null) {
+            return;
+        }
+        for (int slot : slots) {
+            if (slot != AbstractContainerMenu.SLOT_CLICKED_OUTSIDE && hiddenIndex(slot) < 0) {
+                releaseHidden(client);
+                return;
+            }
+        }
     }
 
     /** O menu escondido está aberto agora (é o menu ativo do jogador)? */
@@ -51,18 +113,20 @@ public final class InvOps {
 
     /**
      * Este espaço do menu do jogador pode ser pego/colocado agora? Sempre, menos com o menu escondido da mesa aberto:
-     * aí só o inventário principal e a hotbar (a mão secundária só pela troca, {@link #swap}).
+     * aí só o inventário principal e a hotbar (a mão secundária só pela troca, {@link #swap}). Com o da fornalha, sim:
+     * ele fecha antes ({@link #prepare}).
      */
     public static boolean reachable(LocalPlayer p, int handlerSlot) {
         if (p == null || !hiddenOpen(p)) {
             return true;
         }
-        return handlerSlot >= MAIN_START && handlerSlot < OFFHAND;
+        return hiddenIndex(handlerSlot) >= 0 || hiddenRelease != null;
     }
 
-    /** Espaço do menu do jogador -> espaço do menu da mesa (-1 se não existe lá). */
+    /** Espaço do menu do jogador -> espaço do menu escondido (-1 se não existe lá). */
     public static int hiddenIndex(int handlerSlot) {
-        return handlerSlot >= MAIN_START && handlerSlot < OFFHAND ? handlerSlot + 1 : -1;
+        int inv = toInventory(handlerSlot);
+        return inv < 0 || inv >= hiddenMap.length ? -1 : hiddenMap[inv];
     }
 
     /** Espaço do menu em que a mão está: hotbar selecionada (0) ou mão secundária (1). */
@@ -119,6 +183,10 @@ public final class InvOps {
      */
     private static void click(Minecraft client, int slot, int button, ContainerInput type) {
         LocalPlayer p = client.player;
+        if (hiddenOpen(p) && hiddenRelease != null && slot != AbstractContainerMenu.SLOT_CLICKED_OUTSIDE
+                && !(type == ContainerInput.SWAP && slot == OFFHAND) && hiddenIndex(slot) < 0) {
+            releaseHidden(client); // a fornalha cede o menu: o clique vai para o menu do jogador
+        }
         AbstractContainerMenu menu = p.containerMenu;
         if (menu != p.inventoryMenu) {
             if (!hiddenOpen(p)) {
@@ -153,6 +221,9 @@ public final class InvOps {
 
     /** Troca o espaço com a hotbar ({@code button} 0-8) ou com a mão secundária (40). */
     public static void swap(Minecraft client, int handlerSlot, int button) {
+        if (handlerSlot != OFFHAND) {
+            prepare(client, handlerSlot);
+        }
         click(client, handlerSlot, button, ContainerInput.SWAP);
     }
 
@@ -163,6 +234,7 @@ public final class InvOps {
 
     /** Joga fora um item ({@code all} = false) ou a pilha toda do espaço. */
     public static void throwFrom(Minecraft client, int handlerSlot, boolean all) {
+        prepare(client, handlerSlot);
         if (!stack(client.player, handlerSlot).isEmpty() && cursor(client.player).isEmpty()) {
             click(client, handlerSlot, all ? 1 : 0, ContainerInput.THROW);
         }
@@ -170,6 +242,7 @@ public final class InvOps {
 
     /** Shift + clique (do crafting/armadura para o inventário; no resultado, fabrica o máximo). */
     public static void quickMove(Minecraft client, int handlerSlot) {
+        prepare(client, handlerSlot);
         click(client, handlerSlot, 0, ContainerInput.QUICK_MOVE);
     }
 
@@ -180,6 +253,7 @@ public final class InvOps {
      */
     public static boolean moveStack(Minecraft client, int from, int to) {
         LocalPlayer p = client.player;
+        prepare(client, from, to);
         if (from == to || to == RESULT || stack(p, from).isEmpty() || !cursor(p).isEmpty() || !reachable(p, from)
                 || !reachable(p, to)) {
             return false;
@@ -200,6 +274,7 @@ public final class InvOps {
      */
     public static boolean placeOne(Minecraft client, int from, int to) {
         LocalPlayer p = client.player;
+        prepare(client, from, to);
         ItemStack source = stack(p, from);
         ItemStack target = stack(p, to);
         if (from == to || to == RESULT || source.isEmpty() || !cursor(p).isEmpty() || !reachable(p, from)
@@ -229,6 +304,7 @@ public final class InvOps {
      */
     public static boolean craftInto(Minecraft client, int target) {
         LocalPlayer p = client.player;
+        prepare(client, RESULT, target);
         if (stack(p, RESULT).isEmpty() || !cursor(p).isEmpty() || !reachable(p, RESULT) || !reachable(p, target)) {
             return false;
         }

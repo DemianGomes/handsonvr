@@ -8,8 +8,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.item.ItemStackRenderState;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -26,8 +24,6 @@ public final class CraftingTableRenderer {
 
     /** Item deitado: o ícone ocupa a casa (2 pixels da textura e as linhas); o bloco vira um cubo de uns 2 pixels. */
     private static final float FLAT_SIZE = 0.135f, BLOCK_SIZE = 0.26f;
-    /** Altura do ícone deitado (o que fica por cima dele começa aqui). */
-    private static final float FLAT_TOP = 0.006f;
     /** O realce da casa sob a mão: o branco do realce de espaço do jogo (slot_highlight), translúcido. */
     private static final int HIGHLIGHT = 0x60FFFFFF;
     /** Resultado: tamanho (modelo de item no chão), maior com a mão perto; giro (graus por tick) e balanço (m). */
@@ -109,23 +105,7 @@ public final class CraftingTableRenderer {
      * para longe; um bloco vira um cubo pequeno apoiado na mesa.
      */
     private static float lying(Draw d, Minecraft client, ItemStack stack, float x, float y, int light) {
-        ItemStackRenderState state = new ItemStackRenderState();
-        client.getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.GUI, client.level, null, 0);
-        if (state.isEmpty()) {
-            return FLAT_TOP;
-        }
-        if (state.usesBlockLight()) {
-            // Bloco: o modelo "fixo" (como num suporte) é um cubo de meio tamanho, centrado; sobe meio cubo.
-            d.item(stack, ItemDisplayContext.FIXED, x, y, BLOCK_SIZE * 0.25f + 0.001f, BLOCK_SIZE, light);
-            return BLOCK_SIZE * 0.5f + 0.001f; // o topo do cubo
-        }
-        PoseStack ms = d.pose();
-        ms.pushPose();
-        ms.translate(x, y, 0.004f);
-        ms.scale(FLAT_SIZE, FLAT_SIZE, FLAT_SIZE * 0.2f);
-        state.submit(ms, d.collector(), light, OverlayTexture.NO_OVERLAY, 0);
-        ms.popPose();
-        return FLAT_TOP;
+        return com.handsonvr.render.BlockItem.lying(d, client, stack, x, y, light, FLAT_SIZE, BLOCK_SIZE);
     }
 
     /**

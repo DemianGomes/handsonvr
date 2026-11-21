@@ -266,6 +266,43 @@ Com a mão sobre a mesa, o golpe com o braço do Vivecraft fica desligado, para 
 
 ![Carvão e vareta deitados nas casas, a casa sob a mão clareada e a tocha flutuando](img/mesa-tocha.png)
 
+## 7. Fornalhas (imersivas)
+
+A fornalha comum, o alto-forno e o defumador também são usados com as mãos, sem a tela do jogo, do mesmo jeito que a mesa de trabalho.
+
+![A fornalha com o minério na abertura de cima, o carvão na de baixo, a barra de progresso e os lingotes flutuando](img/fornalha.png)
+
+1. Chegue perto de uma fornalha e olhe para ela: ela "abre" por baixo (sem a tela) e mostra o que tem dentro.
+2. Pegue um item (grip) e leve-o ao lugar dele. O lugar sob a mão clareia e o controle vibra. Solte o grip para pôr a **pilha inteira**. Com o grip apertado, o **gatilho** põe **um** item por vez.
+3. Acima do bloco, virada para você, aparece a **barra de progresso** da tela do jogo, recortada da própria textura da tela:
+   - a **chama** mostra quanto ainda queima o combustível;
+   - a **seta** mostra quanto o item atual já cozinhou.
+4. O que fica pronto **flutua à direita da seta**, com a quantidade. **Grip** nele leva tudo o que está pronto para a mão que pegou, com a experiência do jogo (como o clique na tela). Na mão direita, o resultado se junta ao que ela já tem do mesmo item; senão, ocupa um espaço vazio da hotbar, como no crafting.
+5. **Grip na entrada ou no combustível com item:** o item volta para a mão.
+
+| Bloco | O que vai cozinhar | Combustível |
+|---|---|---|
+| Fornalha | Em pé, na abertura de cima da frente | Em pé, na abertura de baixo da frente (onde aparece o fogo) |
+| Alto-forno | Deitado no topo. O alto-forno é carregado por cima, como um de verdade. | Na grade de fogo da frente |
+| Defumador | Deitado em cima da chaminé (o quadrado escuro do topo), como numa grelha | No fogo da frente |
+
+A frente do alto-forno e a do defumador não têm duas aberturas como a da fornalha. Por isso o que vai cozinhar fica no topo deles, que também fica mais perto da mão de quem está em pé.
+
+![O defumador com a carne em cima da chaminé](img/defumador.png)
+
+![O alto-forno com o minério no topo e o carvão na grade de fogo](img/alto-forno.png)
+
+| Detalhe | Como é |
+|---|---|
+| O que cada lugar aceita | A entrada aceita só o que cozinha naquele bloco (minério no alto-forno, comida no defumador). O combustível aceita só o que queima. O resto vibra "negado". |
+| Quando abre | Ao olhar para uma fornalha a até 2,4 m (até 45° do centro da vista), ou ao levar um item até ela. Com várias perto, vale a mais no centro da vista. |
+| Quando fecha | Olhando para outro lado por 3 s, olhando para outra fornalha, ao se afastar mais de 4 m ou ao abrir uma tela. Os itens ficam na fornalha, como no jogo. |
+| Mochila junto | A mochila funciona com a fornalha aberta. Mexer na armadura ou no crafting 2x2 fecha a fornalha na hora (ela não perde nada); depois, ela espera 5 s antes de abrir sozinha de novo. |
+| Mesa de trabalho perto | Só um bloco fica aberto por vez: a mesa, ao receber um item, fecha a fornalha. |
+| A tela normal | Usar a fornalha do jeito de sempre (o "usar" apontando para ela) continua abrindo a tela do jogo. |
+
+Por baixo, é a fornalha do jogo: o mod a "usa" como o jogador faria e fica com o menu sem a tela, como na mesa. O conteúdo, o progresso e o resultado são os do servidor, e tudo usa os cliques normais do menu. Funciona em qualquer servidor.
+
 ## Testes sem VR
 
 O roteiro automático (`./gradlew prodClient`) cria um mundo plano e liga um "VR simulado". O teste posiciona as mãos e aperta grip, gatilho, X e B por código.
@@ -283,6 +320,7 @@ Ele confere:
 - o arco: pego pela mão esquerda, vai para o espaço da mão principal e o "Reverse Bow" do Vivecraft fica desligado; pego pela direita (ou pelo B), fica ligado; pelo X, desligado; sem o arco na mão, volta ao que era.
 - a mira do arco: nasce desligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
 - a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado fabricando uma vez (4 tábuas na mão, 3 toras na mesa), o gatilho fabricando o resto na mesma mão (16 tábuas), o gatilho já apertado e depois o grip fabricando tudo (8 tochas), o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
+- as fornalhas: a fornalha abrindo sem a tela ao olhar para ela, o minério na abertura de cima (a pilha inteira) e o carvão na de baixo (um por vez com o gatilho), terra recusada nos dois lugares, a fornalha acendendo com a chama e a seta andando, os lingotes flutuando e indo para a mão com o grip, o minério voltando para a mão, a fornalha cedendo o menu ao crafting 2x2 da mochila, o defumador (carne em cima da chaminé, minério recusado), o alto-forno (minério por cima, carne recusada), fechar ao olhar para o outro lado, abrir de novo ao olhar e a tela normal ainda abrindo (prints `13-fornalha`, `14-defumador` e `15-alto-forno`).
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 

@@ -12,9 +12,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * O servidor mandou abrir um menu (ClientboundOpenScreenPacket). Se é o da mesa de trabalho que o mod pediu (a mesa
- * imersiva), o mod fica com o menu e a tela não abre. Qualquer outro menu, ou a mesa usada normalmente, abre a tela
- * como sempre.
+ * O servidor mandou abrir um menu (ClientboundOpenScreenPacket). Se é o da mesa de trabalho ou da fornalha que o mod
+ * pediu (os blocos imersivos), o mod fica com o menu e a tela não abre. Qualquer outro menu, ou o bloco usado
+ * normalmente, abre a tela como sempre.
  */
 @Mixin(MenuScreens.class)
 public abstract class MenuScreensMixin {

@@ -122,6 +122,38 @@ public final class Sprite {
     }
 
     /**
+     * Um pedaço de uma textura de tela inteira (como {@code textures/gui/container/furnace.png}, de 256x256 no jogo),
+     * em pixels da tela: {@code u, v, w, h}. Com um resource pack em alta resolução, o recorte acompanha a escala. Null
+     * se a textura não existir ou não for quadrada e múltipla de 256.
+     */
+    public static Sprite guiCrop(String texture, int u, int v, int w, int h) {
+        return cached("crop:" + texture + ":" + u + "," + v + "," + w + "," + h, () -> {
+            Sprite sheet = cached("tex:" + texture, () -> read(Identifier.withDefaultNamespace(texture), 4096));
+            if (sheet == null || sheet.width % 256 != 0 || sheet.height != sheet.width) {
+                return Optional.empty();
+            }
+            int k = sheet.width / 256;
+            return Optional.ofNullable(sheet.crop(u * k, v * k, w * k, h * k));
+        });
+    }
+
+    /** Um pedaço deste sprite (x, y, largura, altura em pixels dele), ou null se ficar vazio. */
+    public Sprite crop(int x, int y, int w, int h) {
+        int x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(width, x + w), y1 = Math.min(height, y + h);
+        if (x1 <= x0 || y1 <= y0) {
+            return null;
+        }
+        int cw = x1 - x0, ch = y1 - y0;
+        int[] px = new int[cw * ch];
+        for (int j = 0; j < ch; j++) {
+            for (int i = 0; i < cw; i++) {
+                px[j * cw + i] = argb[(y0 + j) * width + x0 + i];
+            }
+        }
+        return new Sprite(cw, ch, px);
+    }
+
+    /**
      * O sprite guardado com essa chave, lido na primeira vez. (Sem {@code computeIfAbsent}: ler um sprite pode ler
      * outro, e o HashMap não aceita mudar dentro do computeIfAbsent.)
      */
