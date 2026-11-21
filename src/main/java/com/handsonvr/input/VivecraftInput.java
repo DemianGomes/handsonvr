@@ -2,6 +2,7 @@ package com.handsonvr.input;
 
 import com.handsonvr.HandsOnConfig;
 import com.handsonvr.HandsOnVR;
+import com.handsonvr.hands.BowHand;
 import net.minecraft.client.Minecraft;
 import org.vivecraft.client.VivecraftVRMod;
 import org.vivecraft.client_vr.provider.ControllerType;
@@ -209,12 +210,21 @@ public final class VivecraftInput {
     }
 
     private static final class LeftTriggerListener implements VRInputAction.KeyListener {
+        private boolean consumed = false;
+
         @Override
         public boolean onPressed(ControllerType controller) {
+            consumed = press();
+            return consumed;
+        }
+
+        private boolean press() {
             if (HandsOnVR.call("gatilho esquerdo", () -> HandsOnVR.hands().onTrigger(mc(), 1))) {
                 return true;
             }
-            if (!HandsOnConfig.get().leftTriggerOffhandUse) {
+            // Com o arco na mão direita, a esquerda é a da flecha: o gatilho dela encaixa e puxa a flecha (Vivecraft).
+            if (!HandsOnConfig.get().leftTriggerOffhandUse
+                    || HandsOnVR.call("gatilho esquerdo (arco)", () -> BowHand.isArrowHand(mc(), 1))) {
                 return false;
             }
             HandsOnVR.guard("gatilho esquerdo", () -> OffhandUse.use(mc()));
@@ -223,7 +233,9 @@ public final class VivecraftInput {
 
         @Override
         public boolean onUnpressed(ControllerType controller) {
-            return HandsOnConfig.get().leftTriggerOffhandUse;
+            boolean was = consumed;
+            consumed = false;
+            return was;
         }
 
         @Override

@@ -246,7 +246,7 @@ public final class HolsterManager {
         if (other != null && other.origin() == GrabSystem.Origin.HOLSTER && other.holster() == h) {
             return -1; // a outra mão está com ele
         }
-        int reserved = other == null ? -1 : InvOps.toInventory(InvOps.handSlot(player, 1 - hand));
+        int reserved = other == null ? -1 : InvOps.toInventory(GrabSystem.itemSlot(player, other));
         Inventory inv = player.getInventory();
         if (b.slot() != reserved && b.slot() >= 0 && b.slot() < inv.getContainerSize() && sameItem(inv.getItem(b.slot()), b, false)) {
             return b.slot();

@@ -2,6 +2,15 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.2.7-alpha (Minecraft 26.3)
+
+### Arco na mão que o pegou ([#20](https://github.com/DemianGomes/handsonvr/issues/20))
+
+- O arco fica na mão que o pegou (grip na mochila ou num coldre, B ou X no radial) e a flecha aparece na outra. Antes, pegar o arco com a mão direita trazia as flechas para ela e mandava o arco para a esquerda, que podia estar segurando a mochila.
+- Pego pela mão esquerda, o arco também vai para o espaço da mão principal, para o Vivecraft usar as flechas do inventário. O item da mão direita espera no lugar do arco.
+- O mod liga e desliga sozinho o "Reverse Bow" do Vivecraft enquanto o arco está na mão. Sem o arco (ou com uma tela aberta), a sua escolha volta.
+- O gatilho da mão da flecha fica sempre com o Vivecraft (encaixar e puxar a flecha).
+
 ## 0.2.6-alpha (Minecraft 26.3)
 
 ### Itens coletados vão primeiro para a mochila ([#19](https://github.com/DemianGomes/handsonvr/issues/19))

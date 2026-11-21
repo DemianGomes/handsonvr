@@ -195,9 +195,33 @@ Exemplo com as duas mãos:
 
 1. A mão esquerda está com uma tocha e a direita com uma espada, as duas equipadas pelo radial.
 2. A esquerda pega a mochila: a tocha some.
-3. A direita pega o arco da mochila: a espada some e o arco aparece.
-4. A esquerda solta a mochila: a mochila some, a tocha volta e o arco continua na mão direita.
+3. A direita pega o arco da mochila: a espada some e o arco aparece na mão direita (seção 5).
+4. A esquerda solta a mochila: a mochila some e a flecha aparece nela, pronta para puxar a corda. A tocha continua na mão esquerda, escondida enquanto o arco estiver na direita.
 5. A direita solta o grip: o arco volta para a mochila e a espada volta para a mão.
+
+## 5. Arco
+
+O arco do Vivecraft ("Roomscale Bow") funciona assim:
+
+- o arco é desenhado num controle e a flecha no outro;
+- para atirar, encoste a mão da flecha na corda do arco (o controle vibra quando a flecha encaixa), segure o gatilho dessa mão, puxe para trás e solte o gatilho;
+- o arco precisa estar no espaço da mão principal para usar as flechas do inventário.
+
+Sozinho, o Vivecraft não segue a mão que pegou o arco: ele sempre desenha o arco no controle esquerdo e a flecha no direito. Só a opção "Reverse Bow" dele inverte isso. Por isso, pegar o arco com a mão direita trazia as flechas para ela.
+
+Com o HandsOn, **o arco fica na mão que o pegou, e a flecha aparece na outra**:
+
+| Quem pegou | Onde o arco fica no inventário | O que o mod faz no Vivecraft |
+|---|---|---|
+| Mão direita (grip na mochila ou num coldre, B no radial) | Espaço da mão principal | Liga o "Reverse Bow": arco na direita, flecha na esquerda |
+| Mão esquerda (grip na mochila ou num coldre, X no radial) | Espaço da mão principal, para o Vivecraft usar as flechas do inventário. O item da mão direita espera no lugar do arco, como em toda pegada. | Desliga o "Reverse Bow": arco na esquerda, flecha na direita |
+
+- Sem o arco na mão (ou com uma tela aberta, como os ajustes do Vivecraft), a escolha do jogador no "Reverse Bow" volta.
+- Segurar o próprio item com o grip não troca o arco de mão (apertar o grip da mão da flecha não o faz pular para ela).
+- O gatilho da mão da flecha é sempre do Vivecraft. Com o arco na direita, o gatilho esquerdo não usa o item da mão esquerda.
+- O arco pego com o grip continua emprestado: ele volta para onde estava quando o grip solta. Para atirar, segure o grip da mão do arco, ou ponha o arco na hotbar e escolha pelo radial.
+- A mão que segura a mochila esconde o que estiver nela, inclusive a flecha: feche a mochila antes de atirar.
+- Num servidor com um Vivecraft antigo, o "Reverse Bow" não funciona e o arco fica sempre na esquerda.
 
 ## Testes sem VR
 
@@ -213,7 +237,8 @@ Ele confere:
 - o caso do inventário 100% cheio;
 - guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
 - a coleta: um item recebido e um coletado do chão vão para o inventário principal com a hotbar livre, juntam com a pilha igual da hotbar, vão para a hotbar com o inventário cheio, seguem o jogo com a opção desligada e, num servidor remoto (simulado), são levados da hotbar para o inventário.
+- o arco: pego pela mão esquerda, vai para o espaço da mão principal e o "Reverse Bow" do Vivecraft fica desligado; pego pela direita (ou pelo B), fica ligado; pelo X, desligado; sem o arco na mão, volta ao que era.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 
-O `./gradlew prodClientNullVr` liga o Vivecraft de verdade com o "VR nulo" e confere a ligação com os controles: grips, gatilhos, X e B. Confere também que o analógico direito ficou com o Vivecraft.
+O `./gradlew prodClientNullVr` liga o Vivecraft de verdade com o "VR nulo" e confere a ligação com os controles: grips, gatilhos, X e B. Confere também que o analógico direito ficou com o Vivecraft. E, com o arco, que o Vivecraft vê o arco na mão principal e que o gatilho da mão da flecha fica com ele.
