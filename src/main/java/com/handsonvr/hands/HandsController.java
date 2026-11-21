@@ -238,7 +238,7 @@ public final class HandsController {
     /** Grip solto. Retorna true se foi nosso. */
     public boolean onGripReleased(Minecraft client, int hand) {
         if (backpack.holder() == hand) {
-            backpack.close(client);
+            closeBackpack(client);
             action("mochila fechada");
             return true;
         }
@@ -270,18 +270,17 @@ public final class HandsController {
             return;
         }
         switch (e.kind()) {
-            case SLOT -> {
+            // Como em todo lugar, o grip pega emprestado: o item vem para a mão (inclusive a armadura vestida e o que
+            // está no crafting) e soltar decide para onde ele vai.
+            case SLOT, CRAFT_IN, ARMOR -> {
                 if (isLocked(p, e.handler())) {
                     refuse(hand);
-                } else if (grabs.begin(client, hand, e.handler(), GrabSystem.Origin.BACKPACK, null)) {
+                } else if (grabs.begin(client, hand, e.handler(), GrabSystem.Origin.BACKPACK, null,
+                        hand == 0 ? emptyHotbarFor(p) : -1)) {
                     action("pegou da mochila o espaço " + e.handler());
-                }
-            }
-            case CRAFT_IN, ARMOR -> {
-                if (!InvOps.stack(p, e.handler()).isEmpty()) {
-                    InvOps.quickMove(client, e.handler());
-                    VrBridge.pulse(hand, 0.02f);
-                    action("devolveu ao inventário o espaço " + e.handler());
+                } else if (!InvOps.stack(p, e.handler()).isEmpty()) {
+                    refuse(hand); // a mão esquerda ocupada (ou a hotbar cheia) não segura uma armadura
+                    action("não deu para pegar o espaço " + e.handler());
                 }
             }
             case CRAFT_OUT -> {
@@ -294,6 +293,27 @@ public final class HandsController {
             case NEXT -> flip(hand, 1);
             default -> { }
         }
+    }
+
+    /**
+     * Levar a pilha de {@code from} para {@code to} deixa tudo num lugar válido? Num espaço ocupado por outro item, ele
+     * vai para {@code from}: não pode se {@code from} for de armadura e o item não for vestível (terra no pé).
+     */
+    private boolean exchangeFits(LocalPlayer p, int from, int to) {
+        ItemStack target = InvOps.stack(p, to);
+        return target.isEmpty() || ItemStack.isSameItemSameComponents(target, InvOps.stack(p, from))
+                || p.inventoryMenu.getSlot(from).mayPlace(target);
+    }
+
+    /** Fecha a mochila. Um item pego do crafting volta para lá antes: o que sobra no crafting vai para o inventário. */
+    private void closeBackpack(Minecraft client) {
+        for (int h = 0; h < 2 && InvOps.ready(client); h++) {
+            GrabSystem.Grab g = grabs.get(h);
+            if (g != null && g.source() >= InvOps.CRAFT_START && g.source() < InvOps.ARMOR_START) {
+                grabs.end(client, h);
+            }
+        }
+        backpack.close(client);
     }
 
     private void flip(int hand, int direction) {
@@ -322,7 +342,7 @@ public final class HandsController {
             if (target >= 0) {
                 grabs.end(client, hand);
                 int slot = InvOps.HOTBAR_START + target;
-                if (target == offSource || isLocked(p, slot)) {
+                if (target == offSource || isLocked(p, slot) || !exchangeFits(p, g.source(), slot)) {
                     refuse(hand);
                 } else {
                     InvOps.moveStack(client, g.source(), slot);
@@ -342,7 +362,7 @@ public final class HandsController {
             }
             if (e != null && e.isSlotLike()) {
                 grabs.end(client, hand);
-                if (isLocked(p, e.handler())) {
+                if (isLocked(p, e.handler()) || !exchangeFits(p, g.source(), e.handler())) {
                     refuse(hand);
                 } else {
                     InvOps.moveStack(client, g.source(), e.handler());
@@ -354,7 +374,8 @@ public final class HandsController {
         Holster zone = holsters.refreshZone(hand);
         grabs.end(client, hand);
         // Por cima do ombro, como no Saints & Sinners: soltar no ombro da mochila guarda o item nela.
-        if (zone != null && zone.isBackpack(config) && !backpack.isOpen() && g.source() >= InvOps.HOTBAR_START) {
+        if (zone != null && zone.isBackpack(config) && !backpack.isOpen()
+                && (g.source() >= InvOps.HOTBAR_START || g.source() < InvOps.MAIN_START)) {
             if (storeInBackpack(client, g.source())) {
                 VrBridge.pulse(hand, 0.05f);
                 action("guardou na mochila (por cima do ombro)");
@@ -665,7 +686,7 @@ public final class HandsController {
         if (!vr || client.gui.screen() != null) {
             radial.close();
             if (backpack.isOpen()) {
-                backpack.close(client);
+                closeBackpack(client);
             }
         }
         // O item da mão seguro com o grip mudou (analógico trocou a hotbar, o item acabou): solta, sem guardar nada.
@@ -685,7 +706,7 @@ public final class HandsController {
         }
         if (vr && backpack.isOpen()) {
             if (!GripState.isHeld(backpack.holder())) {
-                backpack.close(client);
+                closeBackpack(client);
                 action("mochila fechada");
             } else {
                 backpack.computePanel();
