@@ -45,8 +45,8 @@ public final class HandsOnConfig {
     // ---- controles
     /** Gatilho esquerdo usa o item da mão esquerda (coloca tocha/bloco, usa) em vez do teleporte. */
     public boolean leftTriggerOffhandUse = true;
-    /** Analógico direito para os lados troca o item da hotbar (em vez de girar a câmera em saltos). */
-    public boolean rightStickHotbar = true;
+    // O analógico direito é sempre do Vivecraft (girar a câmera). Até a 0.2.4 ele podia trocar a hotbar
+    // ("rightStickHotbar"); uma configuração antiga com esse campo é lida sem erro e o campo é ignorado.
 
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("handsonvr.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();

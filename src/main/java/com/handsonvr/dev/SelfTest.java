@@ -9,7 +9,6 @@ import com.handsonvr.holster.BodyFrame;
 import com.handsonvr.holster.Holster;
 import com.handsonvr.holster.HolsterManager;
 import com.handsonvr.holster.HolsterStorage;
-import com.handsonvr.input.HotbarScroll;
 import com.handsonvr.input.OffhandUse;
 import com.handsonvr.input.VivecraftInput;
 import com.handsonvr.inv.InvOps;
@@ -327,8 +326,8 @@ public final class SelfTest {
 
     /**
      * Com -Dhandsonvr.selftest.nullvr=true o Vivecraft roda o VR de verdade com o "VR nulo" (sem óculos): as ações dos
-     * controles existem, e o teste dispara os avisos de aperto que o controle dispararia (grips, gatilhos, A, B, X,
-     * analógico direito) para conferir a ligação com o Vivecraft.
+     * controles existem, e o teste dispara os avisos de aperto que o controle dispararia (grips, gatilhos, A, B e X)
+     * para conferir a ligação com o Vivecraft (e que o analógico direito ficou com ele).
      */
     private static final boolean NULL_VR = Boolean.getBoolean("handsonvr.selftest.nullvr");
 
@@ -1605,10 +1604,10 @@ public final class SelfTest {
             check(p.getMainHandItem().is(Items.APPLE) && p.getMainHandItem().getCount() == 4 && inv.getSelectedSlot() == 0,
                     "soltar fora das zonas: a maçã continua na mão");
         }
-        // --- trocar de item (analógico) segurando o grip: o item antigo não é guardado depois
+        // --- trocar de item (a hotbar mudou) segurando o grip: o item antigo não é guardado depois
         if (at(203)) {
             grip(client, 0, true);
-            HotbarScroll.scroll(client, 1);
+            inv.setSelectedSlot((inv.getSelectedSlot() + 1) % 9);
         }
         if (at(206)) {
             check(hc.grabs().get(0) == null, "trocar de item com o grip apertado: o grip solta o item antigo");
@@ -1658,12 +1657,6 @@ public final class SelfTest {
                 info("Vivecraft ausente: mixins do Vivecraft não conferidos");
             }
             inv.setSelectedSlot(0);
-            HotbarScroll.scroll(client, 1);
-            boolean forward = inv.getSelectedSlot() == 1;
-            HotbarScroll.scroll(client, -1);
-            HotbarScroll.scroll(client, -1);
-            check(forward && inv.getSelectedSlot() == 8, "analógico direito: próximo/anterior da hotbar (dando a volta)");
-            inv.setSelectedSlot(0);
             check(SimulatedVr.pulseCount(0) > 0 && SimulatedVr.pulseCount(1) > 0,
                     "vibração nas duas mãos (" + SimulatedVr.pulseCount(0) + "/" + SimulatedVr.pulseCount(1) + ")");
         }
@@ -1708,15 +1701,15 @@ public final class SelfTest {
         LocalPlayer p = client.player;
         Inventory inv = p.getInventory();
         switch (step) {
-            case 2 -> { // o VR (nulo) ligou e as 8 ações estão sendo escutadas
+            case 2 -> { // o VR (nulo) ligou e as 7 ações estão sendo escutadas
                 int listening = VivecraftInput.debugListening();
-                if (listening == 8) {
-                    pass("VR nulo do Vivecraft ligado: escutando grips, gatilhos, A, B, X e analógico direito (8 ações)");
+                if (listening == 7) {
+                    pass("VR nulo do Vivecraft ligado: escutando grips, gatilhos, A, B e X (7 ações)");
                     info("B = " + VivecraftInput.debugName("radialMain") + ", X = " + VivecraftInput.debugName("radialOff")
                             + ", gatilho direito = " + VivecraftInput.debugName("attack"));
                     next();
                 } else if (stepTicks > 400) {
-                    fail("VR nulo: ações escutadas " + listening + "/8 (VR ativo: "
+                    fail("VR nulo: ações escutadas " + listening + "/7 (VR ativo: "
                             + org.vivecraft.api.client.VRClientAPI.instance().isVRActive() + ")");
                     finish(client);
                 }
@@ -1862,15 +1855,15 @@ public final class SelfTest {
                     next();
                 }
             }
-            case 7 -> { // analógico direito: hotbar
+            case 7 -> { // analógico direito: é do Vivecraft (gira a câmera), não troca mais a hotbar
                 if (at(1)) {
                     inv.setSelectedSlot(0);
                     boolean consumed = VivecraftInput.debugNotify("rotate", true, 0.9f);
                     VivecraftInput.debugNotify("rotate", false, 0.9f);
-                    check(consumed && inv.getSelectedSlot() == 1, "Vivecraft: analógico direito para a direita = próximo da hotbar");
-                    VivecraftInput.debugNotify("rotate", true, -0.9f);
+                    boolean consumedLeft = VivecraftInput.debugNotify("rotate", true, -0.9f);
                     VivecraftInput.debugNotify("rotate", false, -0.9f);
-                    check(inv.getSelectedSlot() == 0, "Vivecraft: analógico direito para a esquerda = anterior da hotbar");
+                    check(!"-".equals(VivecraftInput.debugName("rotate")) && !consumed && !consumedLeft && inv.getSelectedSlot() == 0,
+                            "Vivecraft: o analógico direito não é do mod (gira a câmera; a hotbar não muda)");
                 }
                 if (at(5)) {
                     boolean backpack = org.vivecraft.client_vr.ClientDataHolderVR.getInstance().backpackTracker.isActive(p);

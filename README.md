@@ -23,7 +23,7 @@ O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O padrão visual (t
 | Gatilho com o grip apertado | Coloca um item por vez num espaço ou na zona de descarte. |
 | B / X | Menu radial da hotbar da mão direita / esquerda. |
 | Gatilho esquerdo | Usa o item da mão esquerda. |
-| Analógico direito para os lados | Troca o item da hotbar. |
+| Analógico direito | Gira a câmera, como no Vivecraft. A hotbar fica com o menu radial (B/X). |
 
 Tudo pode ser ligado e desligado em **Coldres VR**, no menu de pausa.
 

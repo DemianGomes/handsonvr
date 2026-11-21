@@ -2,6 +2,14 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.2.5-alpha (Minecraft 26.3)
+
+### Analógico direito volta a girar a câmera ([#18](https://github.com/DemianGomes/handsonvr/issues/18))
+
+- O analógico direito é de novo só do Vivecraft: gira a câmera. Antes, para os lados, ele trocava o item da hotbar.
+- A hotbar fica com o menu radial (B/X).
+- Saiu a opção "Analógico dir.: hotbar" dos ajustes. Uma configuração antiga com ela é ignorada.
+
 ## 0.2.4-alpha (Minecraft 26.3)
 
 ### Grip na armadura vestida traz a peça para a mão ([#15](https://github.com/DemianGomes/handsonvr/issues/15))

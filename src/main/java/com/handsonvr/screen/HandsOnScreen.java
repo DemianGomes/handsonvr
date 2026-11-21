@@ -55,7 +55,6 @@ public class HandsOnScreen extends Screen {
                 v -> config.disableBackpackWithShoulders = v);
         y += 24;
         toggle(left, y, w, "option.handsonvr.left_trigger", config.leftTriggerOffhandUse, v -> config.leftTriggerOffhandUse = v);
-        toggle(right, y, w, "option.handsonvr.right_stick", config.rightStickHotbar, v -> config.rightStickHotbar = v);
         y += 30;
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).bounds(width / 2 - 100, y, 200, 20).build());
     }
