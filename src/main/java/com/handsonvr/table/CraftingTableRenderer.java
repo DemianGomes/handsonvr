@@ -26,6 +26,8 @@ public final class CraftingTableRenderer {
 
     /** Item deitado: o ícone ocupa a casa (2 pixels da textura e as linhas); o bloco vira um cubo de uns 2 pixels. */
     private static final float FLAT_SIZE = 0.135f, BLOCK_SIZE = 0.26f;
+    /** Altura do ícone deitado (o que fica por cima dele começa aqui). */
+    private static final float FLAT_TOP = 0.006f;
     /** O realce da casa sob a mão: o branco do realce de espaço do jogo (slot_highlight), translúcido. */
     private static final int HIGHLIGHT = 0x60FFFFFF;
     /** Resultado: tamanho (modelo de item no chão), maior com a mão perto; giro (graus por tick) e balanço (m). */
@@ -67,10 +69,10 @@ public final class CraftingTableRenderer {
                 d.rect(x - px, y - px, x + px, y + px, 0.002f, HIGHLIGHT);
             }
             if (!stack.isEmpty()) {
-                lying(d, client, stack, x, y, light);
+                float itemTop = lying(d, client, stack, x, y, light);
                 // A quantidade, como no inventário (números do jogo com a sombra), no canto da casa mais perto do jogador, à
-                // direita; deitada na mesa.
-                d.mcCount(stack, x + cell / 2f - CELL_COUNT / 2f, y - cell / 2f + CELL_COUNT / 2f, CELL_COUNT, 0.006f);
+                // direita; deitada logo acima do item (um bloco é um cubo: por cima dele, senão o cubo cobre os números).
+                d.mcCount(stack, x + cell / 2f - CELL_COUNT / 2f, y - cell / 2f + CELL_COUNT / 2f, CELL_COUNT, itemTop + 0.004f);
             }
         }
         ms.popPose();
@@ -106,16 +108,16 @@ public final class CraftingTableRenderer {
      * Um item deitado na casa: o ícone (modelo de inventário, achatado) com a frente para cima e o topo do desenho
      * para longe; um bloco vira um cubo pequeno apoiado na mesa.
      */
-    private static void lying(Draw d, Minecraft client, ItemStack stack, float x, float y, int light) {
+    private static float lying(Draw d, Minecraft client, ItemStack stack, float x, float y, int light) {
         ItemStackRenderState state = new ItemStackRenderState();
         client.getItemModelResolver().updateForTopItem(state, stack, ItemDisplayContext.GUI, client.level, null, 0);
         if (state.isEmpty()) {
-            return;
+            return FLAT_TOP;
         }
         if (state.usesBlockLight()) {
             // Bloco: o modelo "fixo" (como num suporte) é um cubo de meio tamanho, centrado; sobe meio cubo.
             d.item(stack, ItemDisplayContext.FIXED, x, y, BLOCK_SIZE * 0.25f + 0.001f, BLOCK_SIZE, light);
-            return;
+            return BLOCK_SIZE * 0.5f + 0.001f; // o topo do cubo
         }
         PoseStack ms = d.pose();
         ms.pushPose();
@@ -123,6 +125,7 @@ public final class CraftingTableRenderer {
         ms.scale(FLAT_SIZE, FLAT_SIZE, FLAT_SIZE * 0.2f);
         state.submit(ms, d.collector(), light, OverlayTexture.NO_OVERLAY, 0);
         ms.popPose();
+        return FLAT_TOP;
     }
 
     /**
