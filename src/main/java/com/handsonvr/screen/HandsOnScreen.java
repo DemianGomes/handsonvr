@@ -58,6 +58,9 @@ public class HandsOnScreen extends Screen {
         toggle(right, y, w, "option.handsonvr.pickup_main", config.pickupToMain, v -> config.pickupToMain = v);
         y += 24;
         toggle(left, y, w, "option.handsonvr.bow_aim", config.bowAim, v -> config.bowAim = v);
+        toggle(right, y, w, "option.handsonvr.throw", config.physicalThrow, v -> config.physicalThrow = v);
+        y += 24;
+        toggle(left, y, w, "option.handsonvr.throw_power", config.throwRealPower, v -> config.throwRealPower = v);
         y += 30;
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, b -> onClose()).bounds(width / 2 - 100, y, 200, 20).build());
     }

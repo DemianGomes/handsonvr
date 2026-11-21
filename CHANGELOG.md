@@ -2,6 +2,19 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.5.0-alpha (Minecraft 26.3)
+
+### Arremesso com a mão ([#36](https://github.com/DemianGomes/handsonvr/issues/36))
+
+- Bola de neve, ovo, pérola do Ender, poção arremessável e persistente, frasco de experiência e carga de vento podem ser jogados com o movimento do braço: segure com o grip, faça o movimento e **solte o grip**. Sai um item, na direção em que a mão estava indo.
+- Funciona com o item da mão ou pego de um coldre, da mochila ou do radial. O resto da pilha volta para onde estava.
+- Um movimento devagar não arremessa. O gatilho continua arremessando do jeito do Vivecraft.
+- A direção é medida no quarto: andar ou girar não entortam o arremesso. As poções e o frasco de experiência saem retos (o mod desconta os 20° para cima do jogo).
+- **Nos servidores**, a velocidade e a gravidade são as do jogo: o gesto escolhe só a direção, como mirar com o mouse. Nada muda no servidor e ele não precisa do mod.
+- **Força real, só no singleplayer** (ligada por padrão): a força do gesto muda a velocidade. Fraco cai perto; forte vai um pouco além.
+- Duas opções novas nos ajustes: "Arremesso com a mão" e "Força real (singleplayer)".
+- O design ganhou uma seção sobre servidores: o que o mod manda ao servidor e o que pode gerar alerta de anticheat.
+
 ## 0.4.0-alpha (Minecraft 26.3)
 
 ### Fornalhas imersivas: fornalha, alto-forno e defumador ([#34](https://github.com/DemianGomes/handsonvr/issues/34))

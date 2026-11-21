@@ -54,6 +54,18 @@ public final class HandsOnConfig {
      */
     public boolean bowAim = false;
 
+    /**
+     * Arremesso com a mão: com um item arremessável seguro pelo grip, soltar o grip com a mão rápida joga o item na
+     * direção do movimento (bola de neve, ovo, pérola, poções, frasco de experiência, carga de vento).
+     */
+    public boolean physicalThrow = true;
+
+    /**
+     * Força real do arremesso, só no singleplayer (o servidor é o do próprio jogo): a força do gesto muda a velocidade
+     * do item. Em servidor remoto a velocidade é sempre a do jogo.
+     */
+    public boolean throwRealPower = true;
+
     // ---- controles
     /** Gatilho esquerdo usa o item da mão esquerda (coloca tocha/bloco, usa) em vez do teleporte. */
     public boolean leftTriggerOffhandUse = true;

@@ -20,6 +20,7 @@ O objetivo é deixar o inventário do Minecraft com cara de jogo nativo de VR: o
 | Grip (dedo do meio) | Pegar algo enquanto estiver apertado: item de um coldre, a mochila ou um item da mochila ou do radial. Em qualquer outro lugar, **segura o item da própria mão**. |
 | Soltar o grip | Devolve o item ao lugar de onde veio. Se a mão estiver sobre um espaço, coloca a pilha inteira nele. Num coldre, guarda o item ali; no ombro esquerdo, guarda na mochila. |
 | Gatilho (indicador), com o grip apertado sobre um espaço | Coloca **um** item no espaço. Na zona de descarte, solta **um** item no chão. |
+| Soltar o grip no meio de um arremesso | Joga **um** item arremessável (bola de neve, ovo, pérola, poção arremessável, carga de vento) na direção do movimento. |
 | B (mão direita) | Enquanto estiver apertado, mostra o menu radial da mão direita. |
 | X (mão esquerda) | Enquanto estiver apertado, mostra o menu radial da mão esquerda. |
 | Analógico direito | Do Vivecraft: gira a câmera. O mod não usa (até a 0.2.4, trocava a hotbar). |
@@ -303,6 +304,44 @@ A frente do alto-forno e a do defumador não têm duas aberturas como a da forna
 
 Por baixo, é a fornalha do jogo: o mod a "usa" como o jogador faria e fica com o menu sem a tela, como na mesa. O conteúdo, o progresso e o resultado são os do servidor, e tudo usa os cliques normais do menu. Funciona em qualquer servidor.
 
+## 8. Arremesso com a mão
+
+Bola de neve, ovo, pérola do Ender, poção arremessável e persistente, frasco de experiência e carga de vento são jogados com o movimento do braço.
+
+1. Segure o item com o grip: o da própria mão, ou pegue de um coldre, da mochila ou do radial.
+2. Faça o movimento de arremesso e **solte o grip** no meio dele. Sai **um** item, na direção em que a mão estava indo, e o controle vibra.
+3. O resto da pilha segue a regra de sempre: volta para o coldre ou a mochila de onde veio, ou fica na mão.
+4. Um movimento devagar (menos de 2 m/s) não arremessa: soltar faz o de sempre.
+5. O gatilho com o item na mão continua arremessando do jeito do Vivecraft, para onde o controle aponta.
+
+| Detalhe | Como é |
+|---|---|
+| Direção | A velocidade da mão nos últimos 0,1 s antes de soltar, medida no quarto. Andar ou girar com o analógico não entortam o arremesso. |
+| Como sai | Pelo "usar item" do jogo, com a mira trocada pela direção do gesto (a mesma função do Vivecraft que o golpe de espada dele usa). Funciona com e sem o Vivecraft no servidor. |
+| Poções e frasco de experiência | O jogo os joga 20° acima da mira. O mod desconta isso, e eles saem na direção da mão. |
+| Velocidade em servidores | Sempre a do jogo: 1,5 bloco por tick para bola de neve, ovo, pérola e carga de vento; 0,5 para as poções; 0,7 para o frasco. O gesto escolhe só a direção e o momento, como mirar com o mouse. |
+| Força real (singleplayer) | No singleplayer o servidor é o do próprio jogo, então a força do gesto muda a velocidade. A mão a 6 m/s dá a força do jogo; mais devagar, o item cai perto (até 35% da força); mais rápido, vai um pouco além (até 130%). Opção "Força real (singleplayer)", ligada por padrão. Em servidor remoto nunca muda nada. |
+| Recarga | A pérola do Ender e a carga de vento esperam a recarga do jogo. Durante ela, soltar não arremessa. |
+| Desligar | "Arremesso com a mão" nos ajustes. |
+| Ainda não | O tridente, que carrega antes de lançar. |
+
+### Servidores: isso é cheat?
+
+O mod só manda ao servidor os mesmos pacotes de um jogador de computador: os cliques da tela de inventário, trocar o item da mão, "usar item" com uma mira. Nada sai mais rápido, mais longe ou de um jeito impossível no teclado e mouse.
+
+| Recurso | Equivale a |
+|---|---|
+| Coldres e radial | As teclas 1-9 e F |
+| Mochila | Os cliques da tela de inventário |
+| Fabricar tudo | O Shift+clique |
+| Arremesso com a mão | Mirar com o mouse e clicar |
+
+O que pede cuidado:
+
+- **Informação que o jogo não dá:** a mira do arco (desligada por padrão). Servidores de PvP costumam proibir esse tipo de ajuda.
+- **Ação sem o jogador pedir:** a coleta para a mochila em servidor remoto (move o item da hotbar sozinha, como os mods de organizar inventário). Ela tem opção para desligar.
+- **Anticheat de servidor grande:** cliques no inventário andando, vários cliques no mesmo tick e a mira mudando de repente no arremesso podem gerar alerta, mesmo sem ser cheat.
+
 ## Testes sem VR
 
 O roteiro automático (`./gradlew prodClient`) cria um mundo plano e liga um "VR simulado". O teste posiciona as mãos e aperta grip, gatilho, X e B por código.
@@ -321,7 +360,8 @@ Ele confere:
 - a mira do arco: nasce desligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
 - a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado fabricando uma vez (4 tábuas na mão, 3 toras na mesa), o gatilho fabricando o resto na mesma mão (16 tábuas), o gatilho já apertado e depois o grip fabricando tudo (8 tochas), o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
 - as fornalhas: a fornalha abrindo sem a tela ao olhar para ela, o minério na abertura de cima (a pilha inteira) e o carvão na de baixo (um por vez com o gatilho), terra recusada nos dois lugares, a fornalha acendendo com a chama e a seta andando, os lingotes flutuando e indo para a mão com o grip, o minério voltando para a mão, a fornalha cedendo o menu ao crafting 2x2 da mochila, o defumador (carne em cima da chaminé, minério recusado), o alto-forno (minério por cima, carne recusada), fechar ao olhar para o outro lado, abrir de novo ao olhar e a tela normal ainda abrindo (prints `13-fornalha`, `14-defumador` e `15-alto-forno`).
+- o arremesso: quais itens são arremessáveis, a mira das poções descontando os 20° do jogo, uma bola de neve jogada para a frente com a mão rápida (o servidor a lança nessa direção, com a força real), a mão devagar não arremessando, uma bola da mochila jogada para a esquerda (as outras voltam para a mochila), uma poção com a mão esquerda saindo reta, o arremesso fraco saindo mais devagar, a força real desligada (a velocidade do jogo) e o arremesso desligado.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 
-O `./gradlew prodClientNullVr` liga o Vivecraft de verdade com o "VR nulo" e confere a ligação com os controles: grips, gatilhos, X e B. Confere também que o analógico direito ficou com o Vivecraft. E, com o arco, que o Vivecraft vê o arco na mão principal e que o gatilho da mão da flecha fica com ele.
+O `./gradlew prodClientNullVr` liga o Vivecraft de verdade com o "VR nulo" e confere a ligação com os controles: grips, gatilhos, X e B. Confere também que o analógico direito ficou com o Vivecraft. E, com o arco, que o Vivecraft vê o arco na mão principal e que o gatilho da mão da flecha fica com ele. E, no arremesso, que a direção do gesto chega ao servidor pela mira do Vivecraft, e não a mira do controle.
