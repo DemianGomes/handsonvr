@@ -20,6 +20,8 @@ O objetivo é deixar o inventário do Minecraft com cara de jogo nativo de VR: o
 | Grip (dedo do meio) | Pegar algo enquanto estiver apertado: item de um coldre, a mochila ou um item da mochila ou do radial. Em qualquer outro lugar, **segura o item da própria mão**. |
 | Soltar o grip | Devolve o item ao lugar de onde veio. Se a mão estiver sobre um espaço, coloca a pilha inteira nele. Num coldre, guarda o item ali; no ombro esquerdo, guarda na mochila. |
 | Gatilho (indicador), com o grip apertado sobre um espaço | Coloca **um** item no espaço. Na zona de descarte, solta **um** item no chão. |
+| Gatilho segurado, passando a mão por vários espaços (com o grip apertado) | Ao soltar o gatilho, **divide a pilha igualmente** entre os espaços marcados, como arrastar na tela do jogo. Vale na mesa de trabalho e na mochila. |
+| Gatilho apertado + grip num espaço com itens | Pega **a metade** (como o clique direito da tela do jogo). |
 | Soltar o grip no meio de um arremesso | Joga **um** item arremessável (bola de neve, ovo, pérola, poção arremessável, carga de vento) na direção do movimento. |
 | B (mão direita) | Enquanto estiver apertado, mostra o menu radial da mão direita. |
 | X (mão esquerda) | Enquanto estiver apertado, mostra o menu radial da mão esquerda. |
@@ -130,7 +132,9 @@ A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é 
 | Soltar o item da mão sobre um espaço | Guarda o item ali: num espaço vazio, ocupa; sobre uma pilha igual, junta; sobre outro item, troca (o outro vai para a mão). |
 | Soltar o grip sobre outro espaço | Coloca a pilha toda nesse espaço. Pilhas iguais se juntam; diferentes trocam de lugar. |
 | Soltar o grip longe da mochila | O item volta para o espaço de onde veio. |
-| Gatilho com o grip apertado sobre um espaço | Coloca um item por vez (por exemplo, uma tábua em cada espaço do crafting). |
+| Gatilho com o grip apertado sobre um espaço | Coloca um item por vez (por exemplo, uma tábua em cada espaço do crafting). O item entra ao soltar o gatilho. |
+| Gatilho segurado passando por vários espaços (inventário ou crafting) | Ao soltar o gatilho, a pilha se divide igualmente entre os espaços marcados (eles clareiam e o controle vibra em cada um). O que sobrar fica na mão. |
+| Gatilho apertado + grip num espaço com itens | Vem a metade para a mão (arredondada para cima); a outra metade fica. |
 | Soltar o grip na zona de descarte | Solta a pilha inteira no chão (64 de areia, ou a espada). |
 | Gatilho com o grip apertado na zona de descarte | Solta um item por vez. |
 | Grip ou gatilho numa seta | Troca de página. |
@@ -248,7 +252,8 @@ A nossa versão da mesa do ImmersiveMC: fabricar em cima da própria mesa, sem a
 4. Quando a receita fecha, o item que será fabricado aparece **flutuando** acima da grade, girando devagar. Ao lado dele aparece o **total** que o grip + gatilho vai fabricar (4 toras: 16 tábuas), como a quantidade de um espaço do inventário. Com a mão perto, ele cresce um pouco e mostra o nome e o total na caixa de dica do jogo. Cada casa com mais de um item mostra a quantidade no canto mais perto do jogador, deitada na mesa.
 5. **Grip no item flutuante:** fabrica **uma vez** e o resultado vai para a **mão que o pegou**, como no crafting da mochila: um pack de toras dá 4 tábuas na mão e sobram 63 toras na mesa. Com o grip ainda apertado, soltar num coldre, na mochila, no radial ou numa casa da mesa guarda o resultado ali; em outro lugar, ele fica na mão.
 6. **Gatilho com o grip no item flutuante:** fabrica **tudo** o que a grade der (como o Shift+clique da tela do jogo: 4 toras dão 16 tábuas), juntando na mesma mão. Dá para apertar o grip e depois o gatilho (uma vez, depois o resto) ou o gatilho e depois o grip (tudo de uma vez). Gatilho sem o grip não fabrica.
-7. **Grip numa casa ocupada:** o que está nela volta para a mão.
+7. **Grip numa casa ocupada:** o que está nela volta para a mão. Com o **gatilho já apertado**, vem só **a metade** (arredondada para cima, como o clique direito da tela do jogo).
+8. **Distribuir:** segurando a pilha, aperte o gatilho numa casa e, **sem soltar o gatilho**, passe a mão pelas outras. Cada casa marcada clareia e o controle vibra. Ao soltar o gatilho, a pilha se divide igualmente entre elas, como arrastar na tela do jogo: 9 canas pela linha de cima viram 3 em cada casa. O que sobrar fica na mão. Soltar o gatilho na mesma casa em que apertou põe um item só.
 
 | Detalhe | Como é |
 |---|---|
@@ -361,6 +366,7 @@ Ele confere:
 - a mira do arco: nasce desligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
 - a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado fabricando uma vez (4 tábuas na mão, 3 toras na mesa), o gatilho fabricando o resto na mesma mão (16 tábuas), o gatilho já apertado e depois o grip fabricando tudo (8 tochas), o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
 - as fornalhas: um defumador a uns 8 blocos mostrando ao vivo a carne, o carvão e o fogo (sem abrir), a fornalha abrindo sem a tela ao olhar para ela, o minério na abertura de cima (a pilha inteira) e o carvão na de baixo (um por vez com o gatilho), terra recusada nos dois lugares, a fornalha acendendo com a chama e a seta andando, os lingotes flutuando e indo para a mão com o grip, o minério voltando para a mão, a fornalha cedendo o menu ao crafting 2x2 da mochila, o defumador (carne em cima da chaminé, minério recusado), o alto-forno (minério por cima, carne recusada), fechar ao olhar para o outro lado, abrir de novo ao olhar e a tela normal ainda abrindo (prints `13-fornalha`, `14-defumador` e `15-alto-forno`).
+- distribuir e pegar metade: 10 pães viram 5 e 5 na mochila, 8 tábuas arrastadas pelo crafting 2x2 viram 2 em cada espaço, 9 canas arrastadas pela linha de cima da mesa viram 3 em cada casa (e o papel aparece), um toque do gatilho põe uma tábua só, 6 tábuas arrastadas pelas 3 casas de baixo viram 2 em cada, e o gatilho + grip numa casa com 3 canas traz 2.
 - o arremesso: quais itens são arremessáveis, a mira das poções descontando os 20° do jogo, uma bola de neve jogada para a frente com a mão rápida (o servidor a lança nessa direção, com a força real), a mão devagar não arremessando, uma bola da mochila jogada para a esquerda (as outras voltam para a mochila), uma poção com a mão esquerda saindo reta, o arremesso fraco saindo mais devagar, a força real desligada (a velocidade do jogo) e o arremesso desligado.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.

@@ -59,7 +59,8 @@ public final class CraftingTableRenderer {
         for (int i = 0; i < 9; i++) {
             float x = (i % 3 - 1) * cell, y = (1 - i / 3) * cell;
             ItemStack stack = table.cellStack(i);
-            boolean hovered = table.hover(0) == i || table.hover(1) == i;
+            boolean hovered = table.hover(0) == i || table.hover(1) == i
+                    || hands.dragMarked(HandsController.DragKind.TABLE, i); // marcada pelo arrastar com o gatilho
             if (hovered && (holding || !stack.isEmpty())) {
                 // Só o miolo da casa (2 pixels), entre as linhas da textura.
                 d.rect(x - px, y - px, x + px, y + px, 0.002f, HIGHLIGHT);

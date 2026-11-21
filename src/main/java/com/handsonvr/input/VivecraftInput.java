@@ -183,7 +183,8 @@ public final class VivecraftInput {
         public boolean onUnpressed(ControllerType controller) {
             boolean was = consumed;
             consumed = false;
-            return was;
+            boolean dragged = HandsOnVR.call("gatilho direito (soltar)", () -> HandsOnVR.hands().onTriggerReleased(mc(), 0));
+            return was || dragged;
         }
 
         @Override
@@ -240,7 +241,8 @@ public final class VivecraftInput {
         public boolean onUnpressed(ControllerType controller) {
             boolean was = consumed;
             consumed = false;
-            return was;
+            boolean dragged = HandsOnVR.call("gatilho esquerdo (soltar)", () -> HandsOnVR.hands().onTriggerReleased(mc(), 1));
+            return was || dragged;
         }
 
         @Override

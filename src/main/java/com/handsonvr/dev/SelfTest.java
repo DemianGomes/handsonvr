@@ -407,7 +407,8 @@ public final class SelfTest {
             case 21 -> tableCrafting(client);
             case 22 -> furnaces(client);
             case 23 -> throwing(client);
-            case 24 -> bowAimMarker(client);
+            case 24 -> dragAndHalf(client);
+            case 25 -> bowAimMarker(client);
             default -> { }
         }
     }
@@ -2479,6 +2480,9 @@ public final class SelfTest {
         if (at(t0 + 5)) {
             probeThrown(client);
         }
+        if (at(t0 + 7) && probeCount == 0) {
+            probeThrown(client); // o servidor ainda não tinha lançado: confere de novo
+        }
     }
 
     private static String speedOf(com.handsonvr.hands.ThrowGesture.Throw t) {
@@ -2620,6 +2624,210 @@ public final class SelfTest {
             handAway(1);
         }
         if (at(88)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ distribuir arrastando e pegar metade
+
+    private static boolean cellIs(com.handsonvr.table.CraftingTable table, int cell, Item item, int count) {
+        return table.cellStack(cell).is(item) && table.cellStack(cell).getCount() == count;
+    }
+
+    private static void dragAndHalf(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        com.handsonvr.table.CraftingTable table = hc.table();
+        HandsController.DragKind TABLE = HandsController.DragKind.TABLE, BACKPACK = HandsController.DragKind.BACKPACK;
+        if (at(1)) {
+            section("Distribuir arrastando e pegar metade");
+            tablePos = BlockPos.containing(p.getX(), p.getY(), p.getZ()).offset(0, 0, 1);
+            BlockPos at = tablePos;
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(9, new ItemStack(Items.SUGAR_CANE, 9));
+                pinv.setItem(10, new ItemStack(Items.OAK_PLANKS, 7));
+                pinv.setItem(12, new ItemStack(Items.BREAD, 10));
+                pinv.setItem(13, new ItemStack(Items.BIRCH_PLANKS, 8)); // outra madeira: não se junta às tábuas da mesa
+                player.level().setBlock(at, Blocks.CRAFTING_TABLE.defaultBlockState(), 3);
+                player.level().setBlock(at.above(), Blocks.AIR.defaultBlockState(), 3);
+            });
+            inv.setSelectedSlot(0);
+            p.setYRot(0f);
+            p.setXRot(38f);
+            handAway(0);
+            handAway(1);
+        }
+        // --- mochila: metade
+        if (at(6)) {
+            check(openBackpack(client, 1), "mochila aberta na mão esquerda");
+            pointBackpackSlot(0, 12); // 10 pães
+        }
+        if (at(8)) {
+            SimulatedVr.setTrigger(0, true);
+            grip(client, 0, true); // gatilho apertado + grip: a metade
+        }
+        if (at(11)) {
+            check(p.getMainHandItem().is(Items.BREAD) && p.getMainHandItem().getCount() == 5 && slot(p, 12).getCount() == 5,
+                    "na mochila, gatilho apertado + grip em 10 pães: 5 vêm para a mão e 5 ficam");
+            SimulatedVr.setTrigger(0, false);
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        // --- mochila: arrastar pelo crafting 2x2
+        if (at(14)) {
+            pointBackpackSlot(0, 13); // 8 tábuas
+        }
+        if (at(16)) {
+            grip(client, 0, true);
+        }
+        if (at(18)) {
+            pointBackpackSlot(0, InvOps.CRAFT_START);
+        }
+        if (at(20)) {
+            SimulatedVr.setTrigger(0, true);
+            check(hc.onTrigger(client, 0), "gatilho no crafting 2x2 com as tábuas: começa a arrastar");
+        }
+        for (int k = 1; k <= 3; k++) {
+            if (at(20 + 2 * k)) {
+                pointBackpackSlot(0, InvOps.CRAFT_START + k);
+            }
+        }
+        if (at(28)) {
+            boolean marked = true;
+            for (int k = 0; k < 4; k++) {
+                marked &= hc.dragMarked(BACKPACK, InvOps.CRAFT_START + k);
+            }
+            check(marked, "passando pelo crafting 2x2: os 4 espaços ficam marcados");
+            SimulatedVr.setTrigger(0, false);
+            hc.onTriggerReleased(client, 0);
+        }
+        if (at(32)) {
+            boolean two = true;
+            for (int k = 0; k < 4; k++) {
+                two &= slot(p, InvOps.CRAFT_START + k).is(Items.BIRCH_PLANKS) && slot(p, InvOps.CRAFT_START + k).getCount() == 2;
+            }
+            check(two && slot(p, InvOps.RESULT).is(Items.CRAFTING_TABLE),
+                    "soltar o gatilho: as 8 tábuas viram 2 em cada espaço e a mesa de trabalho aparece no resultado");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(34)) {
+            grip(client, 1, false); // fecha a mochila: o crafting 2x2 volta para o inventário
+        }
+        // --- mesa: 9 canas arrastadas pela linha de cima
+        if (at(38)) {
+            check(openBackpack(client, 1), "mochila aberta de novo");
+            pointBackpackSlot(0, 9); // 9 canas
+        }
+        if (at(40)) {
+            grip(client, 0, true);
+        }
+        if (at(42)) {
+            pointTable(0, table.cellCenter(0).add(0, 0.03, 0));
+        }
+        if (at(52)) {
+            check(table.isOpen() && p.getMainHandItem().is(Items.SUGAR_CANE), "canas sobre a mesa: ela abriu");
+            SimulatedVr.setTrigger(0, true);
+            check(hc.onTrigger(client, 0), "gatilho na casa de cima à esquerda: começa a arrastar");
+        }
+        if (at(54)) {
+            pointTable(0, table.cellCenter(1).add(0, 0.03, 0));
+        }
+        if (at(56)) {
+            pointTable(0, table.cellCenter(2).add(0, 0.03, 0));
+        }
+        if (at(58)) {
+            check(hc.dragMarked(TABLE, 0) && hc.dragMarked(TABLE, 1) && hc.dragMarked(TABLE, 2) && !hc.dragMarked(TABLE, 4),
+                    "passando pela linha de cima: as 3 casas ficam marcadas (e só elas)");
+            SimulatedVr.setTrigger(0, false);
+            hc.onTriggerReleased(client, 0);
+        }
+        if (at(62)) {
+            check(cellIs(table, 0, Items.SUGAR_CANE, 3) && cellIs(table, 1, Items.SUGAR_CANE, 3) && cellIs(table, 2, Items.SUGAR_CANE, 3)
+                            && total(inv, Items.SUGAR_CANE) == 0,
+                    "soltar o gatilho: as 9 canas viram 3 em cada casa da linha de cima (" + table.last() + ")");
+            check(table.resultStack().is(Items.PAPER) && table.resultTotal() == 9,
+                    "e o papel aparece: " + table.resultTotal() + " no total");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        // --- mesa: um toque = um; arrastar pelas 3 de baixo = divide o resto
+        if (at(64)) {
+            pointBackpackSlot(0, 10); // 7 tábuas
+        }
+        if (at(66)) {
+            grip(client, 0, true);
+        }
+        if (at(68)) {
+            pointTable(0, table.cellCenter(4).add(0, 0.03, 0));
+        }
+        if (at(70)) {
+            SimulatedVr.setTrigger(0, true);
+            hc.onTrigger(client, 0);
+        }
+        if (at(71)) {
+            SimulatedVr.setTrigger(0, false);
+            hc.onTriggerReleased(client, 0);
+        }
+        if (at(74)) {
+            check(cellIs(table, 4, Items.OAK_PLANKS, 1) && p.getMainHandItem().is(Items.OAK_PLANKS) && p.getMainHandItem().getCount() == 6,
+                    "um toque do gatilho, sem arrastar: uma tábua na casa do meio e 6 na mão (casa: " + describe(table.cellStack(4))
+                            + ", mão: " + describe(p.getMainHandItem()) + ", " + hc.lastAction() + ")");
+            pointTable(0, table.cellCenter(6).add(0, 0.03, 0));
+        }
+        if (at(76)) {
+            SimulatedVr.setTrigger(0, true);
+            hc.onTrigger(client, 0);
+        }
+        if (at(78)) {
+            pointTable(0, table.cellCenter(7).add(0, 0.03, 0));
+        }
+        if (at(80)) {
+            pointTable(0, table.cellCenter(8).add(0, 0.03, 0));
+        }
+        if (at(82)) {
+            SimulatedVr.setTrigger(0, false);
+            hc.onTriggerReleased(client, 0);
+        }
+        if (at(86)) {
+            check(cellIs(table, 6, Items.OAK_PLANKS, 2) && cellIs(table, 7, Items.OAK_PLANKS, 2) && cellIs(table, 8, Items.OAK_PLANKS, 2)
+                            && !p.getMainHandItem().is(Items.OAK_PLANKS),
+                    "arrastando pelas 3 casas de baixo: as 6 tábuas da mão viram 2 em cada");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(88)) {
+            grip(client, 1, false); // fecha a mochila
+            inv.setSelectedSlot(0);
+            pointTable(0, table.cellCenter(0).add(0, 0.03, 0)); // 3 canas
+        }
+        // --- mesa: metade
+        if (at(92)) {
+            SimulatedVr.setTrigger(0, true);
+            grip(client, 0, true);
+        }
+        if (at(95)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && p.getMainHandItem().is(Items.SUGAR_CANE) && p.getMainHandItem().getCount() == 2
+                            && cellIs(table, 0, Items.SUGAR_CANE, 1),
+                    "na mesa, gatilho apertado + grip numa casa com 3 canas: 2 vêm para a mão (a metade, para cima) e 1 fica");
+            SimulatedVr.setTrigger(0, false);
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(98)) {
+            BlockPos at = tablePos;
+            onServer(client, player -> player.level().setBlock(at, Blocks.AIR.defaultBlockState(), 3));
+            clearDrops(client);
+            p.setXRot(0f);
+            handAway(0);
+            handAway(1);
+        }
+        if (at(106)) {
             next();
         }
     }
@@ -2961,7 +3169,10 @@ public final class SelfTest {
                 if (at(10)) {
                     probeThrown(client);
                 }
-                if (at(14)) {
+                if (at(12) && probeCount == 0) {
+                    probeThrown(client); // o servidor ainda não tinha lançado: confere de novo
+                }
+                if (at(16)) {
                     check(com.handsonvr.hands.ThrowGesture.last != null && probeVel != null && probeVel.normalize().x > 0.85
                                     && p.getMainHandItem().getCount() == 15,
                             "Vivecraft: o arremesso sai para onde a mão ia (a esquerda), não para a mira do controle ("

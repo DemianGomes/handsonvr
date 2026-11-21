@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.CraftingMenu;
 import net.minecraft.world.inventory.MenuType;
@@ -436,6 +437,61 @@ public final class CraftingTable {
         InvOps.clickHidden(client, menuSlot, 0, ContainerInput.PICKUP);
         InvOps.clickHidden(client, MENU_GRID + cell, all ? 0 : 1, ContainerInput.PICKUP);
         InvOps.clickHidden(client, menuSlot, 0, ContainerInput.PICKUP);
+    }
+
+    /**
+     * Divide a pilha do espaço {@code from} (menu do jogador) igualmente entre as casas, como arrastar a pilha pela
+     * grade na tela do jogo: cada casa recebe a mesma quantidade e o que sobra volta. Retorna true se algo saiu.
+     */
+    public boolean distribute(Minecraft client, int from, List<Integer> cells) {
+        LocalPlayer p = client.player;
+        ItemStack before = InvOps.stack(p, from).copy();
+        if (menu == null || p.containerMenu != menu || before.isEmpty() || cells.isEmpty() || !InvOps.cursor(p).isEmpty()
+                || !(from >= InvOps.MAIN_START && from <= InvOps.OFFHAND)) {
+            return false;
+        }
+        boolean offhand = from == InvOps.OFFHAND;
+        int temp = InvOps.HOTBAR_START;
+        if (offhand) {
+            InvOps.swap(client, temp, InvOps.OFFHAND_BUTTON); // a mão secundária não existe no menu da mesa
+        }
+        int src = InvOps.hiddenIndex(offhand ? temp : from);
+        InvOps.clickHidden(client, src, 0, ContainerInput.PICKUP);
+        InvOps.clickHidden(client, AbstractContainerMenu.SLOT_CLICKED_OUTSIDE, AbstractContainerMenu.getQuickcraftMask(
+                AbstractContainerMenu.QUICKCRAFT_HEADER_START, AbstractContainerMenu.QUICKCRAFT_TYPE_CHARITABLE), ContainerInput.QUICK_CRAFT);
+        for (int cell : cells) {
+            InvOps.clickHidden(client, MENU_GRID + cell, AbstractContainerMenu.getQuickcraftMask(
+                    AbstractContainerMenu.QUICKCRAFT_HEADER_CONTINUE, AbstractContainerMenu.QUICKCRAFT_TYPE_CHARITABLE), ContainerInput.QUICK_CRAFT);
+        }
+        InvOps.clickHidden(client, AbstractContainerMenu.SLOT_CLICKED_OUTSIDE, AbstractContainerMenu.getQuickcraftMask(
+                AbstractContainerMenu.QUICKCRAFT_HEADER_END, AbstractContainerMenu.QUICKCRAFT_TYPE_CHARITABLE), ContainerInput.QUICK_CRAFT);
+        if (!InvOps.cursor(p).isEmpty()) {
+            InvOps.clickHidden(client, src, 0, ContainerInput.PICKUP);
+        }
+        if (offhand) {
+            InvOps.swap(client, temp, InvOps.OFFHAND_BUTTON);
+        }
+        InvOps.flushCursor(client);
+        boolean moved = !ItemStack.matches(before, InvOps.stack(p, from));
+        last = moved ? "distribuiu em " + cells.size() + " casas" : "não distribuiu";
+        return moved;
+    }
+
+    /**
+     * Tira a METADE da casa (arredondada para cima, como o clique direito da tela do jogo) para o espaço vazio {@code to}
+     * do menu do jogador. Retorna {@code to}, ou -1 se não deu.
+     */
+    public int takeHalf(Minecraft client, int cell, int to) {
+        LocalPlayer p = client.player;
+        if (menu == null || cellStack(cell).isEmpty() || p.containerMenu != menu || !InvOps.cursor(p).isEmpty()
+                || InvOps.hiddenIndex(to) < 0 || !InvOps.stack(p, to).isEmpty()) {
+            return -1;
+        }
+        InvOps.clickHidden(client, MENU_GRID + cell, 1, ContainerInput.PICKUP);
+        InvOps.clickHidden(client, InvOps.hiddenIndex(to), 0, ContainerInput.PICKUP);
+        InvOps.flushCursor(client);
+        last = "tirou a metade da casa " + cell;
+        return InvOps.stack(p, to).isEmpty() ? -1 : to;
     }
 
     /**
