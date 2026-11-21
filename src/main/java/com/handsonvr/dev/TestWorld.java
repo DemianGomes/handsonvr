@@ -159,6 +159,36 @@ public final class TestWorld {
                     });
                 }
                 if (ticks == 50) {
+                    server(client, (server, level, player) -> {
+                        // Bagunça: um bloco na praça, uma moldura a menos, um baú esvaziado, um item na mão, longe do início.
+                        level.setBlock(at(0, 0, 3), Blocks.DIRT.defaultBlockState(), 3);
+                        level.getEntitiesOfClass(ItemFrame.class, new AABB(at(7, 1, -3))).forEach(f -> f.discard());
+                        if (level.getBlockEntity(at(1, 0, 6)) instanceof ChestBlockEntity chest) {
+                            chest.setItem(0, ItemStack.EMPTY);
+                        }
+                        player.getInventory().setItem(0, new ItemStack(Items.DIAMOND, 5));
+                        player.teleportTo(level, origin.getX() + 5.5, origin.getY(), origin.getZ() + 5.5, Set.of(), 90f, 0f, false);
+                    });
+                }
+                if (ticks == 60) {
+                    server(client, (server, level, player) -> {
+                        BlockState reset = level.getBlockState(resetButton);
+                        ((ButtonBlock) reset.getBlock()).press(reset, level, resetButton, player);
+                    });
+                }
+                if (ticks == 80) {
+                    server(client, (server, level, player) -> {
+                        int frames = level.getEntitiesOfClass(ItemFrame.class, templateBox()).size();
+                        boolean block = level.getBlockState(at(0, 0, 3)).isAir();
+                        boolean chest = level.getBlockEntity(at(1, 0, 6)) instanceof ChestBlockEntity c && c.getItem(0).is(Items.RAW_IRON);
+                        boolean empty = player.getInventory().isEmpty();
+                        boolean home = player.position().distanceTo(net.minecraft.world.phys.Vec3.atBottomCenterOf(origin)) < 1.0;
+                        log((frames == 13 && block && chest && empty && home ? "OK" : "FALHA") + ": o botão de resetar voltou tudo ("
+                                + frames + " molduras, bloco da praça " + (block ? "sumiu" : "ficou") + ", baú " + (chest ? "cheio" : "vazio")
+                                + ", inventário " + (empty ? "vazio" : "com itens") + ", jogador " + (home ? "no início" : "longe") + ")");
+                    });
+                }
+                if (ticks == 90) {
                     next();
                 }
             }
@@ -261,6 +291,8 @@ public final class TestWorld {
         buildWorkshop();
         buildArmory();
         buildCombat(server);
+        buildReset();
+        saveTemplate(server);
         built = true;
         log("OK: mundo montado (origem " + origin.toShortString() + ")");
     }
@@ -309,6 +341,95 @@ public final class TestWorld {
         }
         sign(7, 2, 1, Direction.WEST, "ARSENAL", "de diamante");
         sign(7, 0, -3, Direction.WEST, "Bata na", "moldura", "para pegar");
+    }
+
+    // ------------------------------------------------------------------ resetar tudo
+
+    /** O estado inicial (blocos, baús, molduras), gravado no mundo: o botão de resetar o recoloca. */
+    private static final net.minecraft.resources.Identifier TEMPLATE =
+            net.minecraft.resources.Identifier.fromNamespaceAndPath("handsonvr", "mundo_de_testes");
+    private static BlockPos resetButton;
+
+    /** A área que o reset recoloca: do fim da pista de tiro até além da oficina, do subsolo até 20 blocos acima. */
+    private static BlockPos templateMin() {
+        return at(-60, -3, -30);
+    }
+
+    private static final net.minecraft.core.Vec3i TEMPLATE_SIZE = new net.minecraft.core.Vec3i(91, 24, 61);
+
+    private static AABB templateBox() {
+        BlockPos min = templateMin();
+        return new AABB(min.getX(), min.getY(), min.getZ(), min.getX() + TEMPLATE_SIZE.getX(), min.getY() + TEMPLATE_SIZE.getY(),
+                min.getZ() + TEMPLATE_SIZE.getZ());
+    }
+
+    /**
+     * Grava a área como ficou (blocos, o que tem nos baús e fornalhas, as molduras) em
+     * {@code generated/handsonvr/structures/mundo_de_testes.nbt}, dentro do mundo. Os blocos de comando ficam de fora: o
+     * reset não mexe neles (nem na corrente que está rodando, nem nos botões dos zumbis).
+     */
+    private static void saveTemplate(MinecraftServer server) {
+        var manager = server.getStructureTemplateManager();
+        var template = manager.getOrCreate(TEMPLATE);
+        template.fillFromWorld(level, templateMin(), TEMPLATE_SIZE, true, List.of(Blocks.COMMAND_BLOCK, Blocks.CHAIN_COMMAND_BLOCK));
+        boolean saved = manager.save(TEMPLATE);
+        log((saved ? "OK" : "FALHA") + ": estado inicial gravado para o botão de resetar");
+    }
+
+    /** O que o botão de resetar faz, na ordem (uma corrente de blocos de comando, tudo no mesmo tick). */
+    private static List<String> resetCommands() {
+        BlockPos min = templateMin();
+        String box = "x=" + min.getX() + ",y=" + min.getY() + ",z=" + min.getZ() + ",dx=" + (TEMPLATE_SIZE.getX() - 1)
+                + ",dy=" + (TEMPLATE_SIZE.getY() - 1) + ",dz=" + (TEMPLATE_SIZE.getZ() - 1);
+        String spawn = origin.getX() + " " + origin.getY() + " " + origin.getZ();
+        return List.of(
+                "kill @e[type=!minecraft:player," + box + "]", // zumbis, itens no chão, flechas e as molduras (voltam já)
+                "place template " + TEMPLATE + " " + min.getX() + " " + min.getY() + " " + min.getZ(),
+                "kill @e[type=minecraft:item," + box + "]",
+                "kill @e[type=minecraft:experience_orb," + box + "]",
+                "clear @a",
+                "effect clear @a",
+                "effect give @a minecraft:instant_health 1 10 true",
+                "effect give @a minecraft:saturation 1 10 true",
+                "xp set @a 0 levels",
+                "xp set @a 0 points",
+                "spawnpoint @a " + spawn,
+                "tp @a " + (origin.getX() + 0.5) + " " + origin.getY() + " " + (origin.getZ() + 0.5) + " 0 0",
+                "time set noon",
+                "weather clear",
+                "gamemode survival @a");
+    }
+
+    /** Atrás do jogador (norte): o pilar com o botão de resetar e a corrente de blocos de comando embaixo do chão. */
+    private static void buildReset() {
+        int x = 3, z = -5;
+        fill(x, 0, z, x, 1, z, Blocks.RED_NETHER_BRICKS.defaultBlockState());
+        set(x, 2, z, Blocks.LANTERN.defaultBlockState());
+        set(x, 0, z + 1, Blocks.POLISHED_BLACKSTONE_BUTTON.defaultBlockState()
+                .setValue(ButtonBlock.FACE, AttachFace.WALL).setValue(ButtonBlock.FACING, Direction.SOUTH));
+        sign(x, 1, z + 1, Direction.SOUTH, "RESETAR", "TUDO", "mundo, baús e", "inventário");
+        resetButton = at(x, 0, z + 1);
+        List<String> commands = resetCommands();
+        // O primeiro embaixo do pilar (o botão o liga), virado para baixo; a corrente segue para o oeste, embaixo do chão.
+        set(x, -1, z, Blocks.COMMAND_BLOCK.defaultBlockState().setValue(net.minecraft.world.level.block.CommandBlock.FACING, Direction.DOWN));
+        commandAt(at(x, -1, z), commands.get(0), false);
+        for (int i = 1; i < commands.size(); i++) {
+            int cx = x - (i - 1);
+            set(cx, -2, z, Blocks.CHAIN_COMMAND_BLOCK.defaultBlockState()
+                    .setValue(net.minecraft.world.level.block.CommandBlock.FACING, Direction.WEST));
+            commandAt(at(cx, -2, z), commands.get(i), true);
+        }
+    }
+
+    private static void commandAt(BlockPos pos, String command, boolean alwaysActive) {
+        if (level.getBlockEntity(pos) instanceof CommandBlockEntity cb) {
+            cb.getCommandBlock().setCommand(command);
+            cb.getCommandBlock().setTrackOutput(false);
+            if (alwaysActive) {
+                cb.setAutomatic(true);
+            }
+            cb.setChanged();
+        }
     }
 
     /** À direita (oeste): molduras de combate, o baú de flechas e arremessáveis e os botões dos zumbis. */
@@ -442,8 +563,9 @@ public final class TestWorld {
                 {1.5, 1.5, -90f, 8f}, // arsenal (leste)
                 {-3.5, 2.5, 90f, 4f}, // botões e pista (oeste)
                 {-1.5, 1.5, 135f, 10f}, // combate (noroeste)
+                {3.5, -1.5, 180f, 15f}, // o botão de resetar (norte)
         };
-        String[] names = {"mundo-oficina", "mundo-arsenal", "mundo-pista", "mundo-combate"};
+        String[] names = {"mundo-oficina", "mundo-arsenal", "mundo-pista", "mundo-combate", "mundo-reset"};
         if (ticks == 1 && !client.gui.hud.isHidden()) {
             client.gui.hud.toggle();
         }
