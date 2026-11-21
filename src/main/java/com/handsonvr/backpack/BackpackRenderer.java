@@ -179,7 +179,10 @@ public final class BackpackRenderer {
                 // fica logo à frente dele, como no jogo (senão a quina do bloco cobre os números).
                 float itemZ = 0.004f + itemSize * 0.1f;
                 d.item(stack, x, y, itemZ, itemSize);
-                d.mcCount(stack, x, y, size, itemZ + itemSize * 0.13f);
+                // No resultado, o total que o "fabricar tudo" (grip + gatilho) dá, não só o de uma receita.
+                ItemStack shown = e.kind() == Backpack.Kind.CRAFT_OUT && !stack.isEmpty() ? stack.copyWithCount(InvOps.craftTotal(stack,
+                        InvOps.stack(p, 1), InvOps.stack(p, 2), InvOps.stack(p, 3), InvOps.stack(p, 4))) : stack;
+                d.mcCount(shown, x, y, size, itemZ + itemSize * 0.13f);
             }
             case DROP -> {
                 d.mcSlot(x, y, size, 0.002f, hovered);

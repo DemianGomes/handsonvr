@@ -50,7 +50,7 @@ Em VR, entrar num alvo também vibra o controle. Esse estado não tem equivalent
   - moldura roxa de 1 pixel, de `#5000FF` em cima a `#28007F` embaixo (já misturadas com o fundo: `#24005B` e `#180033`);
   - texto branco, a 3 pixels da moldura;
   - o nome do item com a cor da raridade (`getStyledHoverName`).
-- **Quantidade:** números da fonte de bitmap (`textures/font/ascii.png`), brancos com a sombra `#3F3F3F` um pixel para baixo e para a direita, no canto de baixo à direita do espaço, na posição exata do jogo (`Draw.mcCount`).
+- **Quantidade:** números da fonte de bitmap (`textures/font/ascii.png`), brancos com a sombra `#3F3F3F` um pixel para baixo e para a direita, no canto de baixo à direita do espaço, na posição exata do jogo (`Draw.mcCount`). Na mesa de trabalho, a quantidade de cada casa fica deitada no canto mais perto do jogador, e a do resultado flutuante (o total que o "fabricar tudo" dá) fica à frente dele, virada para o rosto. No resultado do crafting da mochila, o número também é o total.
 - **Ícone em vez de texto** sempre que o jogo usa ícone (armadura vazia, mão secundária). Nada de "D", "E", "Cabeça".
 
 ## 6. Itens

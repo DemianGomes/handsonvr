@@ -1980,6 +1980,7 @@ public final class SelfTest {
                     "soltar sobre a casa: as 4 toras ficam deitadas na mesa e a espada volta para a mão");
             check(table.resultStack().is(Items.OAK_PLANKS) && table.resultStack().getCount() == 4,
                     "a receita fecha: as tábuas flutuam acima da grade (" + describe(table.resultStack()) + " por vez)");
+            check(table.resultTotal() == 16, "o resultado mostra o total que o grip + gatilho dá: 4 toras, " + table.resultTotal() + " tábuas");
             grip(client, 1, false); // fecha a mochila
             pointTable(0, table.resultCenter());
             p.setXRot(38f);
@@ -2070,6 +2071,7 @@ public final class SelfTest {
             check(table.cellStack(1).is(Items.COAL) && table.cellStack(1).getCount() == 2 && table.cellStack(4).is(Items.STICK)
                             && table.resultStack().is(Items.TORCH) && table.resultStack().getCount() == 4,
                     "carvão em cima da vareta: as tochas flutuam (" + describe(table.resultStack()) + ")");
+            check(table.resultTotal() == 4, "total das tochas: 2 carvões e 1 vareta fabricam uma vez só (" + table.resultTotal() + ")");
         }
         if (at(100)) {
             screenshot(client, "11-mesa-tocha");

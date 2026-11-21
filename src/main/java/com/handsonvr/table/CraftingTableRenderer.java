@@ -34,6 +34,9 @@ public final class CraftingTableRenderer {
     private static final float TOOLTIP_PX = 0.0027f;
     /** A caixa de dica fica acima do resultado e um pouco à frente dele (m). */
     private static final double TOOLTIP_ABOVE = 0.15, TOOLTIP_FRONT = 0.10;
+    /** Quantidade: o "espaço" de cada casa (os números têm 8/18 dele: uns 4 cm) e o do resultado; à frente do item (m). */
+    private static final float CELL_COUNT = 0.09f, RESULT_COUNT = 0.13f;
+    private static final double COUNT_FRONT = 0.09;
 
     public static void render(LevelRenderContext context, HandsController hands) {
         Minecraft client = Minecraft.getInstance();
@@ -65,6 +68,9 @@ public final class CraftingTableRenderer {
             }
             if (!stack.isEmpty()) {
                 lying(d, client, stack, x, y, light);
+                // A quantidade, como no inventário (números do jogo com a sombra), no canto da casa mais perto do jogador, à
+                // direita; deitada na mesa.
+                d.mcCount(stack, x + cell / 2f - CELL_COUNT / 2f, y - cell / 2f + CELL_COUNT / 2f, CELL_COUNT, 0.006f);
             }
         }
         ms.popPose();
@@ -72,6 +78,7 @@ public final class CraftingTableRenderer {
         // --- o resultado, flutuando
         ItemStack result = table.resultStack();
         if (!result.isEmpty()) {
+            int total = table.resultTotal(); // o que o "fabricar tudo" (grip + gatilho) dá
             boolean hovered = table.hover(0) == CraftingTable.RESULT || table.hover(1) == CraftingTable.RESULT;
             long time = client.level.getGameTime();
             float t = time + client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
@@ -82,12 +89,15 @@ public final class CraftingTableRenderer {
             d.item(result, ItemDisplayContext.GROUND, 0f, 0f, 0f, RESULT_SIZE * (hovered ? HOVER_SCALE : 1f), light);
             ms.popPose();
             VrBridge.Pose head = VrBridge.head();
+            if (head != null) {
+                resultCount(d, ms, camera, result.copyWithCount(total), c, head.position());
+            }
             if (hovered && head != null) {
                 // Acima do item e um pouco à frente dele (para o rosto), para o item não cobrir a caixa.
                 Vec3 toEye = head.position().subtract(c);
                 Vec3 flat = new Vec3(toEye.x, 0, toEye.z);
                 Vec3 front = flat.lengthSqr() < 1.0e-6 ? Vec3.ZERO : flat.normalize().scale(TOOLTIP_FRONT);
-                tooltip(d, ms, camera, result, c.add(0, TOOLTIP_ABOVE, 0).add(front), head.position());
+                tooltip(d, ms, camera, result.copyWithCount(total), c.add(0, TOOLTIP_ABOVE, 0).add(front), head.position());
             }
         }
     }
@@ -112,6 +122,24 @@ public final class CraftingTableRenderer {
         ms.translate(x, y, 0.004f);
         ms.scale(FLAT_SIZE, FLAT_SIZE, FLAT_SIZE * 0.2f);
         state.submit(ms, d.collector(), light, OverlayTexture.NO_OVERLAY, 0);
+        ms.popPose();
+    }
+
+    /**
+     * O total do resultado, como a quantidade de um espaço do inventário: no canto de baixo à direita de um "espaço"
+     * do tamanho do item, um pouco à frente dele, virado para o rosto.
+     */
+    private static void resultCount(Draw d, PoseStack ms, Vec3 camera, ItemStack shown, Vec3 c, Vec3 eye) {
+        if (shown.getCount() <= 1) {
+            return;
+        }
+        Vec3 toEye = eye.subtract(c);
+        Vec3 at = toEye.lengthSqr() < 1.0e-6 ? c : c.add(toEye.normalize().scale(COUNT_FRONT));
+        Panel p = Panel.facing(at, eye, 0, 1.0);
+        ms.pushPose();
+        ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
+        ms.rotate(p.rotation());
+        d.mcCount(shown, 0f, 0f, RESULT_COUNT, 0f);
         ms.popPose();
     }
 
