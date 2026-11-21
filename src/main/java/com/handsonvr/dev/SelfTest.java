@@ -918,9 +918,106 @@ public final class SelfTest {
         if (at(112)) {
             check(!bp.isOpen() && slot(p, InvOps.CRAFT_START).isEmpty() && total(p.getInventory(), Items.OAK_PLANKS) == 12,
                     "fechar a mochila: a sobra do crafting voltou para o inventário (12 tábuas)");
+        }
+        // Grip na armadura vestida: ela vem para a mão (#15). A mão tem a espada, que não pode ir para a cabeça: a mão
+        // principal usa um espaço vazio da hotbar enquanto segura o capacete.
+        if (at(115)) {
+            section("Mochila: grip na armadura vestida e no crafting");
+            check(openBackpack(client, 1), "mochila aberta de novo");
+            armorSelected = p.getInventory().getSelectedSlot();
+            pointBackpackSlot(0, InvOps.ARMOR_START);
+        }
+        if (at(118)) {
+            check(grip(client, 0, true) && p.getMainHandItem().is(Items.IRON_HELMET)
+                            && p.getItemBySlot(EquipmentSlot.HEAD).isEmpty()
+                            && slot(p, InvOps.HOTBAR_START + armorSelected).is(Items.STONE_SWORD),
+                    "grip no capacete vestido: ele vem para a mão (a espada espera no espaço dela)");
+            check(hc.displayStack(p, InvOps.ARMOR_START).isEmpty(), "o espaço da cabeça aparece vazio enquanto a mão segura");
+            pointAway(client, 0);
+        }
+        if (at(120)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(127)) {
+            check(p.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET) && p.getMainHandItem().is(Items.STONE_SWORD)
+                            && p.getInventory().getSelectedSlot() == armorSelected,
+                    "soltar longe: o capacete volta para a cabeça e a espada para a mão");
+            armorTarget = InvOps.firstEmpty(p, InvOps.MAIN_START, InvOps.MAIN_START + 9);
+            info("espaço vazio da página 1 para o capacete: " + armorTarget);
+            pointBackpackSlot(0, InvOps.ARMOR_START);
+        }
+        if (at(129)) {
+            grip(client, 0, true);
+            pointBackpackSlot(0, armorTarget);
+        }
+        if (at(131)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(138)) {
+            check(slot(p, armorTarget).is(Items.IRON_HELMET) && p.getItemBySlot(EquipmentSlot.HEAD).isEmpty()
+                            && p.getMainHandItem().is(Items.STONE_SWORD),
+                    "soltar o capacete num espaço vazio da mochila: tirou e guardou ali");
+            pointBackpackSlot(0, armorTarget);
+        }
+        if (at(140)) {
+            grip(client, 0, true);
+            pointBackpackSlot(0, InvOps.ARMOR_START);
+        }
+        if (at(142)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(149)) {
+            check(p.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET), "e de volta para a cabeça");
+            pointBackpackSlot(0, InvOps.ARMOR_START);
+        }
+        if (at(151)) {
+            grip(client, 0, true);
+            pointBackpackSlot(0, 11); // as tábuas: não podem ir para a cabeça
+            armorPulses = SimulatedVr.pulseCount(0);
+        }
+        if (at(153)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(160)) {
+            check(p.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET) && slot(p, 11).is(Items.OAK_PLANKS)
+                            && slot(p, 11).getCount() == 12 && SimulatedVr.pulseCount(0) > armorPulses,
+                    "soltar o capacete sobre as tábuas: recusado com vibração, nada saiu do lugar");
+            pointBackpackSlot(0, 11);
+        }
+        // Grip no crafting: a tábua vem para a mão (antes ia direto para o inventário).
+        if (at(162)) {
+            grip(client, 0, true);
+            pointBackpackSlot(0, InvOps.CRAFT_START);
+        }
+        if (at(165)) {
+            hc.onTrigger(client, 0);
+            pointAway(client, 0);
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(172)) {
+            check(slot(p, InvOps.CRAFT_START).getCount() == 1 && slot(p, 11).getCount() == 11, "uma tábua no crafting");
+            pointBackpackSlot(0, InvOps.CRAFT_START);
+        }
+        if (at(174)) {
+            check(grip(client, 0, true) && p.getMainHandItem().is(Items.OAK_PLANKS) && p.getMainHandItem().getCount() == 1,
+                    "grip no crafting: a tábua vem para a mão");
+            pointBackpackSlot(0, 11);
+        }
+        if (at(176)) {
+            SimulatedVr.setGrip(0, false);
+        }
+        if (at(183)) {
+            check(slot(p, InvOps.CRAFT_START).isEmpty() && slot(p, 11).getCount() == 12 && p.getMainHandItem().is(Items.STONE_SWORD),
+                    "soltar sobre as tábuas: juntou (12 de novo)");
+            SimulatedVr.setGrip(1, false);
+        }
+        if (at(192)) {
+            check(!bp.isOpen(), "mochila fechada");
             next();
         }
     }
+
+    private static int armorSelected, armorTarget, armorPulses;
 
     // ------------------------------------------------------------------ radial
 
