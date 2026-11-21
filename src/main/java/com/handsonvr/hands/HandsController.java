@@ -80,6 +80,7 @@ public final class HandsController {
     public void onLeave() {
         holsters.onLeave();
         resetState();
+        BowHand.restore();
     }
 
     private void resetState() {
@@ -106,7 +107,7 @@ public final class HandsController {
     public boolean isLocked(LocalPlayer p, int handlerSlot) {
         for (int hand = 0; hand < 2; hand++) {
             GrabSystem.Grab g = grabs.get(hand);
-            if (g != null && (g.source() == handlerSlot || InvOps.handSlot(p, hand) == handlerSlot)) {
+            if (g != null && (g.source() == handlerSlot || GrabSystem.itemSlot(p, g) == handlerSlot)) {
                 return true;
             }
         }
@@ -127,16 +128,16 @@ public final class HandsController {
         if (offSource >= 0 && handlerSlot == InvOps.HOTBAR_START + offSource) {
             return realHandStack(p, 1);
         }
-        GrabSystem.Grab main = grabs.get(0);
+        GrabSystem.Grab main = grabs.inHandSlot(0);
         if (main != null && main.mode() == GrabSystem.Mode.SWAPPED && handlerSlot == InvOps.handSlot(p, 0)) {
             return InvOps.stack(p, main.source()); // o que a mão tinha antes (guardado no lugar do item pego)
         }
         return InvOps.stack(p, handlerSlot);
     }
 
-    /** O item "de verdade" da mão (sem contar o pego com o grip, que é emprestado). */
+    /** O item "de verdade" do espaço da mão (sem contar o pego com o grip, que é emprestado). */
     private ItemStack realHandStack(LocalPlayer p, int hand) {
-        GrabSystem.Grab g = grabs.get(hand);
+        GrabSystem.Grab g = grabs.inHandSlot(hand);
         if (g != null && g.mode() == GrabSystem.Mode.SWAPPED) {
             return InvOps.stack(p, g.source());
         }
@@ -355,7 +356,7 @@ public final class HandsController {
         if (backpack.isOpen() && backpack.holder() != hand) {
             Backpack.Element e = backpack.elementAt(tip);
             if (e != null && e.kind() == Backpack.Kind.DROP) {
-                InvOps.throwFrom(client, InvOps.handSlot(p, hand), true);
+                InvOps.throwFrom(client, GrabSystem.itemSlot(p, g), true);
                 grabs.end(client, hand);
                 action("descartou a pilha");
                 return;
@@ -437,8 +438,8 @@ public final class HandsController {
             return true;
         }
         Vec3 tip = VrBridge.pointer(hand);
-        int handSlot = InvOps.handSlot(p, hand);
         if (grabs.isGrabbing(hand)) {
+            int handSlot = GrabSystem.itemSlot(p, grabs.get(hand)); // onde o item pego está
             if (radial.isOpen()) {
                 int target = radial.targetAt(tip);
                 if (target >= 0) {
@@ -565,8 +566,8 @@ public final class HandsController {
     /** Mão principal: seleciona o espaço da hotbar ({@link RadialMenu#CENTER} = mão vazia). */
     public boolean equipMain(Minecraft client, int target) {
         LocalPlayer p = client.player;
-        if (grabs.isGrabbing(0)) {
-            return false;
+        if (grabs.isGrabbing(0) || grabs.inHandSlot(0) != null) {
+            return false; // a mão principal (ou o espaço dela, com o arco da mão esquerda) está ocupada
         }
         if (target == RadialMenu.CENTER) {
             if (InvOps.stack(p, InvOps.handSlot(p, 0)).isEmpty()) {
@@ -589,6 +590,9 @@ public final class HandsController {
             return false;
         }
         p.getInventory().setSelectedSlot(target);
+        if (BowHand.isBow(InvOps.stack(p, InvOps.HOTBAR_START + target))) {
+            BowHand.took(0); // escolhido pela mão direita: o arco fica nela
+        }
         return true;
     }
 
@@ -607,6 +611,13 @@ public final class HandsController {
         int slot = InvOps.HOTBAR_START + target;
         if (isLocked(p, slot)) {
             return false;
+        }
+        if (BowHand.isBow(InvOps.stack(p, slot)) && !grabs.isGrabbing(0) && grabs.inHandSlot(0) == null) {
+            // Arco: vai para o espaço da mão principal (o Vivecraft usa as flechas do inventário) e aparece na esquerda.
+            unequipOff(client);
+            p.getInventory().setSelectedSlot(target);
+            BowHand.took(1);
+            return true;
         }
         unequipOff(client);
         if (InvOps.stack(p, slot).isEmpty()) {
@@ -739,5 +750,6 @@ public final class HandsController {
             offSource = -1; // o item acabou (tochas usadas): nada a devolver
         }
         holsters.tick(client);
+        BowHand.tick(client);
     }
 }
