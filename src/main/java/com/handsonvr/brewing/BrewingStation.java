@@ -38,7 +38,7 @@ public final class BrewingStation {
     /** Onde fica cada lugar no bloco (x, y, z de 0 a 1) e o raio do toque (m). */
     private static final double[][] SPOTS = {
             {0.75, 0.30, 0.50}, {0.31, 0.30, 0.31}, {0.31, 0.30, 0.69}, {0.50, 1.02, 0.50}, {0.50, 0.62, 0.50}};
-    private static final double[] REACH = {0.13, 0.13, 0.13, 0.14, 0.09};
+    private static final double[] REACH = {0.17, 0.17, 0.17, 0.17, 0.13};
     /** A plaquinha do progresso: altura acima do bloco (m). */
     public static final double PANEL_HEIGHT = 1.45;
     private static final double NEAR = 2.4, FAR = 4.0, LOOK_ANGLE = Math.toRadians(45), HAND_NEAR = 0.6;
@@ -284,6 +284,26 @@ public final class BrewingStation {
     }
 
     // ------------------------------------------------------------------ ações
+
+    /**
+     * O lugar aceitaria este item? Com o menu aberto, pergunta ao menu; antes de abrir, o mesmo teste dele: garrafa ou
+     * poção nos braços, ingrediente de poção no topo, pó de blaze no meio.
+     */
+    public boolean likelyAccepts(Minecraft client, int target, ItemStack stack) {
+        if (menu != null) {
+            return accepts(target, stack);
+        }
+        if (stack.isEmpty() || client.level == null) {
+            return false;
+        }
+        if (target == FUEL) {
+            return stack.is(net.minecraft.world.item.Items.BLAZE_POWDER);
+        }
+        if (target == INGREDIENT) {
+            return client.level.recipeAccess().propertySet(net.minecraft.world.item.crafting.RecipePropertySet.BREWING_REAGENTS).test(stack);
+        }
+        return net.minecraft.world.item.crafting.PotionIngredient.isPotionInput(stack, client.level.recipeAccess());
+    }
 
     /** O lugar aceita este item (garrafa ou poção nos braços, ingrediente de poção no topo, pó de blaze no meio)? */
     public boolean accepts(int target, ItemStack stack) {

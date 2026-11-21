@@ -11,7 +11,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * A janela do baú aberto (padrão "Janela" de docs/VISUAL.md, como a mochila): o fundo e os espaços do inventário do
- * jogo, os itens e as quantidades, e o espaço sob a mão claro. Fica acima do bloco, virada para o rosto.
+ * jogo, os itens e as quantidades, e o espaço sob a mão claro. No baú, na parte de dentro da tampa aberta; no barril
+ * e na caixa de shulker, deitada na face da tampa ({@link ChestStation#surface}).
  */
 public final class ChestRenderer {
     private ChestRenderer() {}
@@ -19,13 +20,13 @@ public final class ChestRenderer {
     public static void render(LevelRenderContext context, HandsController hands) {
         ChestStation chest = hands.chest();
         PoseStack ms = context.poseStack();
-        Panel panel = chest.isOpen() ? chest.panel() : null;
+        Panel panel = chest.isOpen() ? chest.surface() : null;
         if (panel == null || ms == null || context.submitNodeCollector() == null || !VrBridge.isVRActive()) {
             return;
         }
         Vec3 camera = context.levelState().cameraRenderState.pos;
         Draw d = new Draw(ms, context.submitNodeCollector());
-        float slot = (float) ChestStation.SLOT, px = slot / 18f, pad = (float) ChestStation.PAD;
+        float slot = (float) chest.slot(), px = slot / 18f, pad = px * 3f;
         float halfW = 4.5f * slot + pad, halfH = chest.rows() * slot / 2f + pad;
         ms.pushPose();
         Vec3 o = panel.origin();

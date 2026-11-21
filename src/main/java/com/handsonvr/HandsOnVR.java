@@ -90,6 +90,7 @@ public class HandsOnVR implements ClientModInitializer {
             renderSafely(context.poseStack(), "baú (desenho)", () -> com.handsonvr.chest.ChestRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "suporte de poções (desenho)",
                     () -> com.handsonvr.brewing.BrewingRenderer.render(context, HANDS));
+            renderSafely(context.poseStack(), "fogueira (desenho)", () -> com.handsonvr.render.CampfireHint.render(context, HANDS));
             renderSafely(context.poseStack(), "pulso e quantidade (desenho)",
                     () -> com.handsonvr.render.WristHudRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "outros jogadores (desenho)", () -> com.handsonvr.net.PeerRenderer.render(context));

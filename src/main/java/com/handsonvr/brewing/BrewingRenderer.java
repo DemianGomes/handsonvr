@@ -44,6 +44,7 @@ public final class BrewingRenderer {
         float t = client.level.getGameTime() + client.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         floating(d, ms, camera, b.stack(BrewingStation.INGREDIENT), b.spot(BrewingStation.INGREDIENT).add(0, 0.06, 0), 0.30f, t, light);
         floating(d, ms, camera, b.stack(BrewingStation.FUEL), b.spot(BrewingStation.FUEL), 0.22f, t, light);
+        targets(d, ms, camera, client, b, head.position());
         for (int hand = 0; hand < 2; hand++) {
             int target = b.hover(hand);
             if (target != BrewingStation.NONE && !b.stack(target).isEmpty()) {
@@ -51,6 +52,40 @@ public final class BrewingRenderer {
             }
         }
         progress(d, ms, camera, b, head.position());
+    }
+
+    /** O lado (m) do espaço que marca um lugar vazio, e a que distância da mão ele aparece. */
+    private static final float TARGET = 0.09f;
+    private static final double TARGET_NEAR = 0.6;
+
+    /**
+     * Onde pôr: um espaço do inventário do jogo em cada lugar vazio que aceita o item de uma mão perto dele (claro
+     * quando a mão está nele). Encostar a mão ali (ou soltar o grip) põe o item.
+     */
+    private static void targets(Draw d, PoseStack ms, Vec3 camera, Minecraft client, BrewingStation b, Vec3 eye) {
+        for (int t = 0; t <= BrewingStation.FUEL; t++) {
+            if (!b.stack(t).isEmpty()) {
+                continue;
+            }
+            boolean show = false, hovered = false;
+            for (int hand = 0; hand < 2; hand++) {
+                Vec3 tip = VrBridge.pointer(hand);
+                ItemStack held = hand == 0 ? client.player.getMainHandItem() : client.player.getOffhandItem();
+                if (tip != null && tip.distanceTo(b.spot(t)) <= TARGET_NEAR && b.likelyAccepts(client, t, held)) {
+                    show = true;
+                    hovered |= b.hover(hand) == t;
+                }
+            }
+            if (show) {
+                Vec3 at = b.spot(t);
+                Panel p = Panel.facing(at, eye, 0, 1.0);
+                ms.pushPose();
+                ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
+                ms.rotate(p.rotation());
+                d.mcSlot(0f, 0f, TARGET, 0f, hovered);
+                ms.popPose();
+            }
+        }
     }
 
     private static void floating(Draw d, PoseStack ms, Vec3 camera, ItemStack stack, Vec3 at, float size, float t, int light) {

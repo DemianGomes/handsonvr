@@ -329,6 +329,7 @@ Bola de neve, ovo, pérola do Ender, poção arremessável e persistente, frasco
 | Força real (singleplayer) | No singleplayer o servidor é o do próprio jogo, então a força do gesto muda a velocidade. A mão a 6 m/s dá a força do jogo; mais devagar, o item cai perto (até 35% da força); mais rápido, vai um pouco além (até 130%). Opção "Força real (singleplayer)", ligada por padrão. Em servidor remoto nunca muda nada. |
 | Recarga | A pérola do Ender e a carga de vento esperam a recarga do jogo. Durante ela, soltar não arremessa. |
 | Desligar | "Arremesso com a mão" nos ajustes. |
+| Na mão | O Vivecraft desenha os arremessáveis uns 8 cm à frente do controle, como se flutuassem. O mod os desenha na palma, como a comida, que é como se segura para arremessar. |
 | Ainda não | O tridente, que carrega antes de lançar. |
 
 ### Servidores: isso é cheat?
@@ -359,21 +360,30 @@ O que pede cuidado:
 
 ## 10. Fogueira e armadura no corpo
 
-- **Fogueira:** com comida crua segura pelo grip, solte em cima da fogueira: um item vai para ela (pelo "usar" do jogo) e o resto volta para onde estava. O gatilho, com o grip apertado, põe um e a mão continua segurando. Como no jogo, a comida não sai antes de cozinhar; pronta, ela cai no chão e a coleta a leva para a mochila.
+- **Fogueira:** com comida crua na mão, chegue perto da fogueira: um espaço do inventário do jogo aparece flutuando sobre ela. **Encoste a mão na fogueira** (sem apertar nada) e um item vai para ela, pelo "usar" do jogo; o espaço clareia quando a mão está no lugar. Para pôr outro, tire a mão e encoste de novo. Também dá para segurar com o grip e soltar em cima, e o gatilho com o grip apertado põe um. Como no jogo, a comida não sai antes de cozinhar; pronta, ela cai no chão.
 - **Vestir armadura:** solte a peça na parte do corpo dela: o capacete na cabeça, o peitoral (ou o élitro) no peito, as calças na cintura e as botas abaixo dos joelhos, sempre na frente do corpo (os coldres ficam dos lados e atrás). A peça que estava vestida vai para o lugar de onde a nova saiu.
 
 ## 11. Baú, barril e caixa de shulker
 
-![O baú aberto com a janela do jogo acima dele](img/bau.png)
+![O baú aberto com os itens na parte de dentro da tampa](img/bau.png)
 
-1. Encoste a mão no bloco e aperte o grip: a tampa abre (sem a tela) e o conteúdo aparece numa janela do jogo acima do bloco, virada para você.
-2. Os gestos são os da mochila:
-   - grip num espaço traz o item para a mão;
-   - com o gatilho já apertado, vem a metade;
-   - soltar o grip num espaço põe a pilha;
-   - o gatilho, com o grip apertado, põe um.
-3. Grip no bloco de novo, se afastar mais de 4,5 m ou abrir uma tela fecha.
-4. Vale para baús (simples e duplos), baús com armadilha, barris, baús do Ender e caixas de shulker.
+**Abrir com o movimento:** segure a borda da frente da tampa com o grip e **levante a mão** (12 cm bastam), como quem abre um baú de verdade. No barril e na caixa de shulker, puxe a face da tampa para fora. A tampa abre como no jogo, para todo mundo ver.
+
+**Os itens ficam na tampa, sem página nem rolagem:**
+
+| Bloco | Onde | Espaços |
+|---|---|---|
+| Baú simples (e com armadilha, e do Ender) | Na parte de dentro da tampa aberta, em pé atrás do baú, virada para você | 9x3, espaços de 9,6 cm |
+| Baú duplo | Na tampa inteira das duas metades, duas vezes mais larga | 9x6, espaços de 14 cm |
+| Barril e caixa de shulker | Deitados na face da tampa (no topo, virados para quem olha) | 9x3, espaços de 9,6 cm |
+
+Os gestos são os da mochila:
+- grip num espaço traz o item para a mão;
+- com o gatilho já apertado, vem a metade;
+- soltar o grip num espaço põe a pilha;
+- o gatilho, com o grip apertado, põe um.
+
+**Fechar:** grip no baú aberto e **empurre a mão para baixo** (no barril, para dentro). Se afastar mais de 4,5 m ou abrir uma tela também fecha.
 
 Por baixo é o menu do jogo, aberto como o jogador faria: o jogo anima a tampa para todo mundo, e funciona em qualquer servidor. Como fechar não perde nada, o baú cede o menu quando a mochila precisa da armadura ou do crafting 2x2.
 
@@ -388,7 +398,8 @@ Por baixo é o menu do jogo, aberto como o jogador faria: o jogo anima a tampa p
   - o pó de blaze no meio dela.
 - O jogo já desenha as garrafas; o mod desenha o ingrediente girando no topo, o pó de blaze e o nome do que está sob a mão.
 - Acima, a plaquinha com as **bolhas**, a **seta** do preparo e a **barra de combustível** da tela do jogo.
-- Soltar o grip num lugar põe a pilha, o gatilho põe um, grip num lugar com item o traz para a mão. Cada lugar só aceita o que a tela aceitaria.
+- **Encostar:** com o item na mão (garrafa, ingrediente ou pó de blaze), chegue perto e um espaço do inventário do jogo marca cada lugar vazio que aceita ele. **Encoste a mão ali** (sem apertar nada) e um item vai para o lugar; o espaço clareia quando a mão está nele.
+- Com o grip: soltar num lugar põe a pilha, o gatilho põe um, grip num lugar com item o traz para a mão. Cada lugar só aceita o que a tela aceitaria.
 
 ## 13. Multiplayer: o que os outros veem
 
