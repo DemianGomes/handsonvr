@@ -2,6 +2,13 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.7.1-alpha (Minecraft 26.3)
+
+### Pulso: o relógio grudado no antebraço ([#50](https://github.com/DemianGomes/handsonvr/issues/50))
+
+- O relógio do pulso agora fica **grudado na lateral interna do antebraço esquerdo**, como o HUD "no pulso" do Vivecraft: anda e gira com o controle, deitado ao longo do braço. Antes ele flutuava virado para o rosto e só aparecia quando você olhava.
+- Para ler, vire o lado interno do braço para o rosto. Ele some enquanto a mão esquerda segura a mochila.
+
 ## 0.7.0-alpha (Minecraft 26.3)
 
 - **Pulso esquerdo** ([#42](https://github.com/DemianGomes/handsonvr/issues/42)): virando o pulso para o rosto aparecem a vida, a armadura, a fome, a XP com o nível e os efeitos, com os ícones do HUD do jogo.
