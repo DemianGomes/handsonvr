@@ -2,6 +2,23 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.8.0-alpha (Minecraft 26.3)
+
+### Baú: abrir a tampa com o movimento ([#51](https://github.com/DemianGomes/handsonvr/issues/51))
+
+- Segure a borda da frente da tampa com o grip e **levante a mão** para abrir. Grip no baú aberto e **empurre para baixo** para fechar. No barril e na caixa de shulker, puxe a face da tampa para fora.
+- Os itens aparecem **na parte de dentro da tampa aberta**, sem página nem rolagem: 9x3 no baú simples e **9x6 no baú duplo**, que usa a tampa das duas metades. No barril e na caixa de shulker, deitados na face da tampa.
+
+### Fogueira e suporte de poções: encostar ([#52](https://github.com/DemianGomes/handsonvr/issues/52))
+
+- Com o item na mão, **encoste a mão** na fogueira ou no lugar do suporte de poções (sem apertar nada) e um item vai para lá. Para pôr outro, tire a mão e encoste de novo.
+- Espaços do inventário do jogo mostram onde pôr: sobre a fogueira com comida crua na mão, e em cada lugar vazio do suporte que aceita o item. Clareiam com a mão no lugar.
+- Os lugares do suporte ficaram maiores (17 cm de alcance) e a fogueira aceita a mão desde dentro dela até 85 cm acima, com folga dos lados.
+
+### Arremessáveis na palma ([#53](https://github.com/DemianGomes/handsonvr/issues/53))
+
+- Bola de neve, ovo, pérola do Ender, poções arremessáveis, frasco de experiência e carga de vento agora ficam na palma da mão, como a comida, em vez de flutuar à frente do controle (o jeito do Vivecraft).
+
 ## 0.7.1-alpha (Minecraft 26.3)
 
 ### Pulso: o relógio grudado no antebraço ([#50](https://github.com/DemianGomes/handsonvr/issues/50))

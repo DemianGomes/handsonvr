@@ -82,6 +82,11 @@ public final class HandsController {
     }
 
     private final Drag[] drags = new Drag[2];
+    /** "Mergulhar" a mão com o item na fogueira ou num lugar do suporte de poções: há quantos ticks e se já pôs. */
+    private final int[] dipTicks = new int[2];
+    private final boolean[] dipped = new boolean[2];
+    /** Ticks com a mão parada no lugar antes de pôr (evita pôr só de passar a mão). */
+    private static final int DIP_TICKS = 5;
 
     /** Esta casa está marcada pelo arrastar de alguma mão (o desenho a clareia)? */
     public boolean dragMarked(DragKind kind, int cell) {
@@ -374,11 +379,12 @@ public final class HandsController {
             holdOwnItem(client, hand);
             return true;
         }
-        // 3e) Grip encostado num baú, barril ou caixa de shulker: abre a tampa (ou fecha a que está aberta).
+        // 3e) Grip encostado num baú, barril ou caixa de shulker: começa o gesto da tampa (levantar abre, empurrar
+        //     para baixo fecha; ver ChestStation.lidTick).
         net.minecraft.core.BlockPos box = ChestStation.containerAt(client.level, tip);
-        if (box != null && chest.toggle(client, box)) {
-            VrBridge.pulse(hand, 0.03f);
-            action((chest.isOpen() || chest.isWaiting() ? "abriu" : "fechou") + " o baú");
+        if (box != null && chest.beginLid(hand, box, tip)) {
+            VrBridge.pulse(hand, 0.01f);
+            action("segurou a tampa do baú");
             return true;
         }
         // 4) Zonas do corpo: mochila (ombro esquerdo) ou um coldre com item (sacar).
@@ -1225,19 +1231,73 @@ public final class HandsController {
 
     // ------------------------------------------------------------------ fogueira, armadura no corpo, baú, suporte de poções
 
-    /** A fogueira sob a ponta da mão (a mão em cima dela, até uns 30 cm acima), como um clique no topo dela; ou null. */
-    private static net.minecraft.world.phys.BlockHitResult campfireUnder(Minecraft client, Vec3 tip) {
+    /**
+     * Sem botão nenhum: a mão com o item encosta na fogueira (comida crua) ou num lugar do suporte de poções que aceita
+     * o item (garrafa, ingrediente, pó de blaze) e fica ali um instante: põe UM. Para pôr outro, tire a mão e encoste de
+     * novo. Usa o "usar" do jogo (a fogueira) e os cliques do menu (o suporte), como o jogador faria.
+     */
+    private void dipTick(Minecraft client) {
+        LocalPlayer p = client.player;
+        for (int hand = 0; hand < 2; hand++) {
+            if (grabs.isGrabbing(hand)) {
+                // Segurando com o grip: soltar é que põe. Depois de soltar ali, só põe de novo tirando a mão e voltando.
+                dipped[hand] = true;
+                dipTicks[hand] = 0;
+                continue;
+            }
+            Vec3 tip = VrBridge.isVRActive() && backpack.holder() != hand ? VrBridge.pointer(hand) : null;
+            ItemStack stack = hand == 0 ? p.getMainHandItem() : p.getOffhandItem();
+            int brew = tip == null || stack.isEmpty() ? BrewingStation.NONE : brewing.targetAt(tip);
+            if (brew >= 0 && !brewing.likelyAccepts(client, brew, stack)) {
+                brew = BrewingStation.NONE;
+            }
+            net.minecraft.world.phys.BlockHitResult fire = tip == null || brew >= 0 || !isCampfireFood(client, stack) ? null : campfireUnder(client, tip);
+            if (brew < 0 && fire == null) {
+                dipTicks[hand] = 0;
+                dipped[hand] = false;
+                continue;
+            }
+            if (dipped[hand] || ++dipTicks[hand] < DIP_TICKS || !InvOps.ready(client) || table.isOpen()) {
+                continue;
+            }
+            dipped[hand] = true;
+            boolean placed;
+            if (brew >= 0) {
+                if (p.containerMenu != p.inventoryMenu && !brewing.isOpen()) {
+                    InvOps.releaseHidden(client);
+                }
+                placed = brewing.place(client, hand, InvOps.handSlot(p, hand), brew, false);
+            } else {
+                placed = useOnBlock(client, hand, fire);
+            }
+            if (placed) {
+                VrBridge.pulse(hand, 0.03f);
+                action(brew >= 0 ? "encostou e pôs um no suporte de poções, lugar " + brew : "encostou e pôs um na fogueira");
+            } else {
+                refuse(hand);
+            }
+        }
+    }
+
+    /** O item vai na fogueira (a lista que o servidor manda ao cliente: carne, peixe e batata crus...)? */
+    public static boolean isCampfireFood(Minecraft client, ItemStack stack) {
+        return client.level != null && !stack.isEmpty()
+                && client.level.recipeAccess().propertySet(net.minecraft.world.item.crafting.RecipePropertySet.CAMPFIRE_INPUT).test(stack);
+    }
+
+    /** A fogueira sob a ponta da mão (a mão nela ou até uns 40 cm acima, com uma folga dos lados), como um clique no topo dela; ou null. */
+    public static net.minecraft.world.phys.BlockHitResult campfireUnder(Minecraft client, Vec3 tip) {
         if (tip == null || client.level == null) {
             return null;
         }
         net.minecraft.core.BlockPos at = net.minecraft.core.BlockPos.containing(tip);
-        for (int dy = 0; dy <= 1; dy++) {
-            net.minecraft.core.BlockPos q = at.below(dy);
+        for (net.minecraft.core.BlockPos q : net.minecraft.core.BlockPos.betweenClosed(at.offset(-1, -1, -1), at.offset(1, 0, 1))) {
             if (client.level.getBlockState(q).getBlock() instanceof net.minecraft.world.level.block.CampfireBlock) {
                 double above = tip.y - q.getY(); // a fogueira tem 7/16 de altura
-                if (above >= 0.15 && above <= 0.8) {
+                double side = Math.max(Math.abs(tip.x - (q.getX() + 0.5)), Math.abs(tip.z - (q.getZ() + 0.5)));
+                if (above >= 0.0 && above <= 0.85 && side <= 0.6) {
                     return new net.minecraft.world.phys.BlockHitResult(new Vec3(q.getX() + 0.5, q.getY() + 0.4375, q.getZ() + 0.5),
-                            net.minecraft.core.Direction.UP, q, false);
+                            net.minecraft.core.Direction.UP, q.immutable(), false);
                 }
             }
         }
@@ -1294,6 +1354,13 @@ public final class HandsController {
     private void chestTick(Minecraft client) {
         chest.tick(client);
         for (int hand = 0; hand < 2; hand++) {
+            if (chest.lidActive(hand)) {
+                int moved = chest.lidTick(client, hand, VrBridge.isVRActive() ? VrBridge.pointer(hand) : null, GripState.isHeld(hand));
+                if (moved != 0) {
+                    VrBridge.pulse(hand, 0.03f);
+                    action((moved > 0 ? "abriu" : "fechou") + " a tampa do baú");
+                }
+            }
             int target = backpack.holder() == hand || !VrBridge.isVRActive() ? ChestStation.NONE : chest.slotAt(VrBridge.pointer(hand));
             if (chest.updateHover(hand, target)) {
                 VrBridge.pulse(hand, 0.005f);
@@ -1313,7 +1380,8 @@ public final class HandsController {
             if (brewing.updateHover(hand, target)) {
                 VrBridge.pulse(hand, 0.005f);
             }
-            if (target >= 0 && grabs.isGrabbing(hand) && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
+            ItemStack held = hand == 0 ? p.getMainHandItem() : p.getOffhandItem();
+            if (target >= 0 && (grabs.isGrabbing(hand) || brewing.likelyAccepts(client, target, held)) && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
                 if (p.containerMenu != p.inventoryMenu) {
                     InvOps.releaseHidden(client); // uma fornalha ou um baú aberto cede o menu
                 }
@@ -1562,6 +1630,7 @@ public final class HandsController {
         furnaceTick(client);
         chestTick(client);
         brewingTick(client);
+        dipTick(client);
         craftTick(client);
     }
 

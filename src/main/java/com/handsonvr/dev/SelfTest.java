@@ -2975,15 +2975,21 @@ public final class SelfTest {
         Vec3 chestTop = Vec3.atBottomCenterOf(packPos).add(0, 1.02, 0);
         if (at(54)) {
             pointAt(0, chestTop, new Vec3(0, -1, 0));
-            check(grip(client, 0, true), "grip encostado no baú: é do mod");
+            check(grip(client, 0, true), "grip na borda da tampa do baú: é do mod");
+            check(!chest.isOpen(), "só segurar a tampa ainda não abre o baú");
         }
-        if (at(56)) {
+        if (at(55)) {
+            pointAt(0, chestTop.add(0, 0.2, 0), new Vec3(0, -1, 0)); // levanta a mão: a tampa abre
+        }
+        if (at(58)) {
             grip(client, 0, false);
         }
         if (at(64)) {
             check(chest.isOpen() && client.gui.screen() == null && chest.size() == 27,
-                    "o baú abriu sem a tela do jogo, com os 27 espaços numa janela acima dele (" + chest.last() + ")");
-            Panel panel = chest.panel();
+                    "levantar a mão com a tampa: o baú abriu sem a tela do jogo, com os 27 espaços (" + chest.last() + ")");
+            Panel panel = chest.surface();
+            check(panel.normal().y == 0 && panel.origin().y > chestTop.y && Math.abs(chest.slot() - 0.86 / 9) < 1.0e-6,
+                    "os itens ficam em pé na parte de dentro da tampa aberta, 9x3 em espaços de " + Math.round(chest.slot() * 1000) + " mm");
             double[] c = chest.slotCenter(0);
             pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
         }
@@ -2996,7 +3002,7 @@ public final class SelfTest {
                     "grip no espaço: as 20 pedras vêm para a mão");
             pointAway(client, 0);
             grip(client, 0, false);
-            Panel panel = chest.panel();
+            Panel panel = chest.surface();
             double[] c = chest.slotCenter(1);
             pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
         }
@@ -3011,7 +3017,7 @@ public final class SelfTest {
             pointAway(client, 0);
             grip(client, 0, false);
             inv.setSelectedSlot(0); // areia
-            Panel panel = chest.panel();
+            Panel panel = chest.surface();
             double[] c = chest.slotCenter(13);
             pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
         }
@@ -3030,16 +3036,19 @@ public final class SelfTest {
         }
         if (at(89)) {
             photoPose(client, false);
-            pointAt(0, chestTop, new Vec3(0, -1, 0));
+            pointAt(0, chestTop.add(0, 0.1, 0), new Vec3(0, -1, 0));
         }
         if (at(91)) {
-            grip(client, 0, true); // grip no baú de novo: fecha
+            grip(client, 0, true); // grip no baú aberto e empurra para baixo: fecha
         }
-        if (at(93)) {
+        if (at(92)) {
+            pointAt(0, chestTop.add(0, -0.12, 0), new Vec3(0, -1, 0));
+        }
+        if (at(95)) {
             grip(client, 0, false);
         }
         if (at(98)) {
-            check(!chest.isOpen() && p.containerMenu == p.inventoryMenu, "grip no baú de novo: fecha (" + chest.last() + ")");
+            check(!chest.isOpen() && p.containerMenu == p.inventoryMenu, "grip no baú aberto e empurrar para baixo: fecha (" + chest.last() + ")");
             handAway(0);
             onServer(client, player -> {
                 Inventory pinv = player.getInventory();
@@ -3098,25 +3107,55 @@ public final class SelfTest {
         }
         if (at(139)) {
             photoPose(client, false);
+            onServer(client, player -> player.getInventory().setItem(5, net.minecraft.world.item.alchemy.PotionContents.createItemStack(
+                    Items.POTION, net.minecraft.world.item.alchemy.Potions.WATER).copyWithCount(1)));
+            inv.setSelectedSlot(5);
+        }
+        if (at(140)) {
+            pointAt(0, brew.spot(1), new Vec3(-1, 0, 0)); // sem botão nenhum
+        }
+        if (at(148)) {
+            check(brew.stack(1).is(Items.POTION) && p.getMainHandItem().isEmpty(),
+                    "encostar a garrafa num braço vazio do suporte, sem apertar nada: ela fica lá (" + brew.last() + ")");
+            handAway(0);
         }
         // --- multiplayer: o estado chega ao servidor (o do próprio jogo, como no Essential/LAN)
-        if (at(142)) {
+        if (at(150)) {
             check(openBackpack(client, 1), "mochila aberta para o estado do multiplayer");
         }
-        if (at(158)) {
+        if (at(166)) {
             com.handsonvr.net.PeerSync.State state = com.handsonvr.net.PeerSync.onServer(p.getUUID());
             check(state != null && state.vr() && state.holsters().size() == Holster.values().length && state.backpackHand() == 1,
                     "o servidor recebeu o estado deste jogador para mostrar aos outros: em VR, os 4 coldres e a mochila aberta na mão esquerda");
             grip(client, 1, false);
         }
-        if (at(162)) {
-            setPack(client, Blocks.AIR.defaultBlockState());
+        if (at(170)) {
             onServer(client, player -> player.removeAllEffects());
-            p.setXRot(0f);
             handAway(0);
             handAway(1);
+            setPack(client, Blocks.CAMPFIRE.defaultBlockState());
+            onServer(client, player -> player.getInventory().setItem(4, new ItemStack(Items.BEEF, 3)));
+            inv.setSelectedSlot(4);
         }
-        if (at(168)) {
+        if (at(172)) {
+            pointAt(0, fireTop, new Vec3(0, -1, 0)); // sem botão nenhum
+        }
+        if (at(182)) {
+            BlockPos at = packPos;
+            onServer(client, player -> {
+                if (player.level().getBlockEntity(at) instanceof net.minecraft.world.level.block.entity.CampfireBlockEntity fire) {
+                    probeCount = (int) fire.getItems().stream().filter(s -> s.is(Items.BEEF)).count();
+                }
+            });
+        }
+        if (at(185)) {
+            check(probeCount == 1 && p.getMainHandItem().is(Items.BEEF) && p.getMainHandItem().getCount() == 2,
+                    "encostar a carne na fogueira, sem apertar nada: põe uma (e só uma, até tirar a mão)");
+            setPack(client, Blocks.AIR.defaultBlockState());
+            p.setXRot(0f);
+            handAway(0);
+        }
+        if (at(190)) {
             next();
         }
     }

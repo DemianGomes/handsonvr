@@ -13,7 +13,8 @@
     "AbstractFurnaceMenuAccessor",
     "BackpackTrackerMixin",
     "SwingTrackerMixin",
-    "VRArmHelperMixin"
+    "VRArmHelperMixin",
+    "VivecraftItemRenderingMixin"
   ],
   "injectors": {
     "defaultRequire": 0
