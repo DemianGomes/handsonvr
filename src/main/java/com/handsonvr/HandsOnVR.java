@@ -96,6 +96,7 @@ public class HandsOnVR implements ClientModInitializer {
         });
 
         SelfTest.register();
+        com.handsonvr.dev.TestWorld.register();
         LOGGER.info("[HandsOn VR] Pronto (Vivecraft {})", VrBridge.isVivecraftLoaded() ? "presente" : "ausente");
     }
 

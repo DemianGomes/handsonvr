@@ -68,6 +68,15 @@ tasks.register("prodClientNullVr", net.fabricmc.loom.task.prod.ClientProductionR
     runDir = layout.projectDirectory.dir("run-prod-nullvr")
 }
 
+// Mundo de testes para jogar em VR (dev.TestWorld): "gradlew prodClientWorld" monta "HandsOn VR - Testes" em
+// run-prod/saves e fecha o jogo. Depois é só copiar a pasta para os saves do perfil do Modrinth.
+tasks.register("prodClientWorld", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    testMods(it)
+    jvmArgs.addAll("-Dhandsonvr.testworld=true", "-Xmx4G")
+    programArgs.addAll("--width", "1280", "--height", "720")
+    runDir = layout.projectDirectory.dir("run-prod")
+}
+
 // Opcional: rodar os testes com outro Java 25 (ex.: o Azul Zulu que o Modrinth usa no perfil):
 //   gradlew prodClient -PtestJavaVendor=Azul -Porg.gradle.java.installations.paths=<pasta do Java>
 if (project.hasProperty("testJavaVendor")) {
