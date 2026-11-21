@@ -69,8 +69,6 @@ public final class CraftingTable {
     private int idle = 0;
     private final int[] hover = {NONE, NONE};
     private final List<Consumer<Minecraft>> queue = new ArrayList<>();
-    /** Gatilho no resultado: fabrica um por tick até acabar (cada resultado vai para o inventário principal). */
-    private int craftAllHand = -1, craftAllCount = 0, craftAllWait = 0;
     private String last = "-";
 
     // ------------------------------------------------------------------ estado
@@ -135,7 +133,6 @@ public final class CraftingTable {
         expectUntil = -1;
         queue.clear();
         hover[0] = hover[1] = NONE;
-        craftAllHand = -1;
     }
 
     // ------------------------------------------------------------------ geometria
@@ -230,7 +227,6 @@ public final class CraftingTable {
             queue.clear();
             todo.forEach(a -> a.accept(client));
         }
-        craftAllTick(client);
         // Grade vazia, nada para fabricar e as mãos longe por um tempo: fecha (libera a armadura e o crafting 2x2).
         if (menu != null && gridEmpty() && resultStack().isEmpty() && hover[0] == NONE && hover[1] == NONE && queue.isEmpty()) {
             if (++idle > IDLE_CLOSE) {
@@ -350,22 +346,23 @@ public final class CraftingTable {
         InvOps.setHidden(null);
         expectUntil = -1;
         queue.clear();
-        craftAllHand = -1;
         idle = 0;
     }
 
     // ------------------------------------------------------------------ ações
 
     /**
-     * Põe UM item do espaço {@code from} (menu do jogador: inventário, hotbar ou mão secundária) na casa. Se o menu
-     * ainda não abriu, espera por ele. Retorna false se não dá (casa com outro item ou cheia, item de um lugar que a
-     * mesa não alcança, mesa não abre).
+     * Põe itens do espaço {@code from} (menu do jogador: inventário, hotbar ou mão secundária) na casa: a pilha inteira
+     * ({@code all}, como soltar o grip num espaço do crafting da mochila; uma casa com outro item troca de lugar com ele
+     * e o item dela vai para {@code from}) ou UM item (o gatilho). Se o menu ainda não abriu, espera por ele. Retorna
+     * false se não dá (um item numa casa com outro item ou cheia, item de um lugar que a mesa não alcança, mesa não
+     * abre).
      */
-    public boolean placeOne(Minecraft client, int hand, int from, int cell, boolean canOpen) {
+    public boolean place(Minecraft client, int hand, int from, int cell, boolean canOpen, boolean all) {
         LocalPlayer p = client.player;
         ItemStack expected = InvOps.stack(p, from).copy();
         if (cell < 0 || cell > 8 || expected.isEmpty() || !(from >= InvOps.MAIN_START && from <= InvOps.OFFHAND)
-                || !fits(cell, expected)) {
+                || (!all && !fits(cell, expected))) {
             return false;
         }
         if (menu == null) {
@@ -373,7 +370,7 @@ public final class CraftingTable {
                 return false;
             }
             queue.add(c -> {
-                if (!doPlaceOne(c, from, expected, cell)) {
+                if (!doPlace(c, from, expected, cell, all)) {
                     VrBridge.pulse(hand, 0.08f);
                 } else {
                     VrBridge.pulse(hand, 0.02f);
@@ -381,7 +378,7 @@ public final class CraftingTable {
             });
             return true;
         }
-        return doPlaceOne(client, from, expected, cell);
+        return doPlace(client, from, expected, cell, all);
     }
 
     /** A casa aceita mais um deste item (vazia, ou com o mesmo item e com espaço)? */
@@ -390,33 +387,36 @@ public final class CraftingTable {
         return in.isEmpty() || (ItemStack.isSameItemSameComponents(in, stack) && in.getCount() < in.getMaxStackSize());
     }
 
-    private boolean doPlaceOne(Minecraft client, int from, ItemStack expected, int cell) {
+    private boolean doPlace(Minecraft client, int from, ItemStack expected, int cell, boolean all) {
         LocalPlayer p = client.player;
         ItemStack now = InvOps.stack(p, from);
         if (menu == null || p.containerMenu != menu || !ItemStack.isSameItemSameComponents(now, expected)
-                || !fits(cell, now) || !InvOps.cursor(p).isEmpty()) {
+                || (!all && !fits(cell, now)) || !InvOps.cursor(p).isEmpty()) {
             return false;
         }
-        int before = cellStack(cell).getCount();
+        ItemStack before = cellStack(cell).copy();
         if (from == InvOps.OFFHAND) {
             // A mão secundária não é um espaço do menu da mesa: troca com a hotbar 1, coloca dali e destroca.
             int temp = InvOps.HOTBAR_START;
             InvOps.swap(client, temp, InvOps.OFFHAND_BUTTON);
-            placeFrom(client, InvOps.hiddenIndex(temp), cell);
+            placeFrom(client, InvOps.hiddenIndex(temp), cell, all);
             InvOps.swap(client, temp, InvOps.OFFHAND_BUTTON);
         } else {
-            placeFrom(client, InvOps.hiddenIndex(from), cell);
+            placeFrom(client, InvOps.hiddenIndex(from), cell, all);
         }
         InvOps.flushCursor(client);
-        boolean placed = cellStack(cell).getCount() > before;
-        last = placed ? "pôs um na casa " + cell : "não coube na casa " + cell;
+        boolean placed = !ItemStack.matches(before, cellStack(cell));
+        last = placed ? (all ? "pôs a pilha na casa " : "pôs um na casa ") + cell : "não coube na casa " + cell;
         return placed;
     }
 
-    /** Pega a pilha do espaço (índice do menu da mesa), põe um na casa e devolve o resto. */
-    private static void placeFrom(Minecraft client, int menuSlot, int cell) {
+    /**
+     * Pega a pilha do espaço (índice do menu da mesa), põe na casa a pilha toda (botão esquerdo: junta, ocupa ou troca)
+     * ou um item (botão direito) e devolve ao espaço o que sobrou no cursor.
+     */
+    private static void placeFrom(Minecraft client, int menuSlot, int cell, boolean all) {
         InvOps.clickHidden(client, menuSlot, 0, ContainerInput.PICKUP);
-        InvOps.clickHidden(client, MENU_GRID + cell, 1, ContainerInput.PICKUP);
+        InvOps.clickHidden(client, MENU_GRID + cell, all ? 0 : 1, ContainerInput.PICKUP);
         InvOps.clickHidden(client, menuSlot, 0, ContainerInput.PICKUP);
     }
 
@@ -455,75 +455,23 @@ public final class CraftingTable {
     }
 
     /**
-     * Fabrica UM resultado e guarda no inventário (primeiro junta com uma pilha igual que caiba tudo, depois um espaço
-     * vazio; o inventário principal antes da hotbar). Retorna o espaço do menu do jogador em que ele ficou, ou -1 (nada
-     * para fabricar, sem espaço).
+     * Fabrica UM resultado direto no espaço {@code target} do menu do jogador (vazio, ou com o mesmo item e espaço para
+     * tudo). Retorna true se fabricou.
      */
-    public int craftOne(Minecraft client) {
+    public boolean craftInto(Minecraft client, int target) {
         LocalPlayer p = client.player;
         ItemStack result = resultStack().copy();
-        if (menu == null || result.isEmpty() || p.containerMenu != menu || !InvOps.cursor(p).isEmpty()) {
-            return -1;
-        }
-        int target = targetFor(p, result);
-        if (target < 0) {
-            last = "sem espaço para o resultado";
-            return -1;
+        if (menu == null || result.isEmpty() || p.containerMenu != menu || !InvOps.cursor(p).isEmpty()
+                || InvOps.hiddenIndex(target) < 0) {
+            return false;
         }
         InvOps.clickHidden(client, MENU_RESULT, 0, ContainerInput.PICKUP); // fabrica: o resultado no cursor
         if (InvOps.cursor(p).isEmpty()) {
-            return -1;
+            return false;
         }
         InvOps.clickHidden(client, InvOps.hiddenIndex(target), 0, ContainerInput.PICKUP);
         InvOps.flushCursor(client);
         last = "fabricou " + result.getCount() + "x " + result.getItem() + " (espaço " + target + ")";
-        return target;
-    }
-
-    /** Onde guardar um resultado inteiro: pilha igual com espaço para tudo, ou espaço vazio (principal antes da hotbar). */
-    private static int targetFor(LocalPlayer p, ItemStack result) {
-        int[][] ranges = {{InvOps.MAIN_START, InvOps.HOTBAR_START}, {InvOps.HOTBAR_START, InvOps.OFFHAND}};
-        for (int[] r : ranges) {
-            for (int i = r[0]; i < r[1]; i++) {
-                ItemStack s = InvOps.stack(p, i);
-                if (!s.isEmpty() && ItemStack.isSameItemSameComponents(s, result)
-                        && s.getCount() + result.getCount() <= s.getMaxStackSize()) {
-                    return i;
-                }
-            }
-        }
-        for (int[] r : ranges) {
-            int empty = InvOps.firstEmpty(p, r[0], r[1]);
-            if (empty >= 0) {
-                return empty;
-            }
-        }
-        return -1;
-    }
-
-    /** Gatilho no resultado: fabrica tudo o que a grade der, um por tick. */
-    public void startCraftAll(int hand) {
-        craftAllHand = hand;
-        craftAllCount = 0;
-        craftAllWait = 0;
-    }
-
-    private void craftAllTick(Minecraft client) {
-        if (craftAllHand < 0 || menu == null) {
-            return;
-        }
-        if (resultStack().isEmpty()) {
-            // O servidor manda o próximo resultado no tick seguinte; sem ele por um tempo, acabou.
-            if (++craftAllWait > 10) {
-                craftAllHand = -1;
-            }
-            return;
-        }
-        craftAllWait = 0;
-        if (craftOne(client) < 0 || ++craftAllCount >= 64) {
-            craftAllHand = -1;
-            return;
-        }
-        VrBridge.pulse(craftAllHand, 0.015f);
+        return true;
     }
 }
