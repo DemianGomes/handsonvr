@@ -347,7 +347,8 @@ public final class SelfTest {
         var screen = client.gui.screen();
         if (screen == null || client.player == null || step < 2 || (testOpensScreens
                 && (screen instanceof net.minecraft.client.gui.screens.PauseScreen
-                || screen instanceof com.handsonvr.screen.HandsOnScreen))) {
+                || screen instanceof com.handsonvr.screen.HandsOnScreen))
+                || (allowCraftingScreen && screen instanceof net.minecraft.client.gui.screens.inventory.CraftingScreen)) {
             return;
         }
         if (strayScreens.add(screen.getClass().getName())) {
@@ -401,6 +402,7 @@ public final class SelfTest {
             case 18 -> persistenceAndMisc(client);
             case 19 -> pickupOrder(client);
             case 20 -> bowHands(client);
+            case 21 -> tableCrafting(client);
             default -> { }
         }
     }
@@ -1896,6 +1898,189 @@ public final class SelfTest {
             handAway(1);
         }
         if (at(55)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ mesa de trabalho imersiva
+
+    private static BlockPos tablePos;
+    private static int plankSlot = -1;
+    /** O teste abre a tela da mesa do jeito normal (o último passo): ela não é fechada como tela de outro mod. */
+    private static boolean allowCraftingScreen = false;
+
+    private static void pointTable(int hand, Vec3 point) {
+        pointAt(hand, point, new Vec3(0, -1, 0)); // a mão por cima, apontando para a mesa
+    }
+
+    private static void tableCrafting(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HandsController hc = hands();
+        com.handsonvr.table.CraftingTable table = hc.table();
+        if (at(1)) {
+            section("Mesa de trabalho: grade em cima da mesa, resultado flutuando");
+            tablePos = BlockPos.containing(p.getX(), p.getY(), p.getZ()).offset(0, 0, 1);
+            BlockPos at = tablePos;
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(9, new ItemStack(Items.OAK_LOG, 4));
+                player.level().setBlock(at, Blocks.CRAFTING_TABLE.defaultBlockState(), 3);
+                player.level().setBlock(at.above(), Blocks.AIR.defaultBlockState(), 3);
+            });
+            inv.setSelectedSlot(0);
+            p.setYRot(0f);
+            handAway(0);
+            handAway(1);
+        }
+        if (at(8)) {
+            check(tablePos.equals(table.pos()) && table.forward().z > 0.99,
+                    "a mesa na frente é encontrada (" + table.pos() + "), a linha de cima da grade é a mais longe");
+            check(openBackpack(client, 1), "mochila aberta na mão esquerda");
+            pointBackpackSlot(0, 9);
+        }
+        if (at(10)) {
+            grip(client, 0, true); // pega as toras
+        }
+        if (at(12)) {
+            check(p.getMainHandItem().is(Items.OAK_LOG), "a mão direita pegou as toras da mochila");
+            pointTable(0, table.cellCenter(4).add(0, 0.03, 0));
+        }
+        if (at(14)) {
+            check(table.hover(0) == 4 && (table.isWaiting() || table.isOpen()),
+                    "toras sobre a casa do meio: a casa é destacada e a mesa já está abrindo");
+        }
+        if (at(24)) {
+            check(table.isOpen() && client.gui.screen() == null
+                            && p.containerMenu instanceof net.minecraft.world.inventory.CraftingMenu,
+                    "a mesa abriu por baixo, sem a tela do jogo (" + table.last() + ")");
+            check(!InvOps.reachable(p, InvOps.ARMOR_START) && InvOps.reachable(p, InvOps.MAIN_START),
+                    "com a mesa aberta, a mochila ainda usa o inventário (a armadura espera ela fechar)");
+            grip(client, 0, false); // solta sobre a casa: põe uma
+        }
+        if (at(30)) {
+            check(table.cellStack(4).is(Items.OAK_LOG) && table.cellStack(4).getCount() == 1 && total(inv, Items.OAK_LOG) == 3
+                            && p.getMainHandItem().is(Items.IRON_SWORD),
+                    "soltar sobre a casa: uma tora fica deitada na mesa, as outras 3 voltam e a espada volta para a mão");
+            check(table.resultStack().is(Items.OAK_PLANKS) && table.resultStack().getCount() == 4,
+                    "a receita fecha: 4 tábuas flutuam acima da grade (" + describe(table.resultStack()) + ")");
+            grip(client, 1, false); // fecha a mochila
+            pointTable(0, table.resultCenter());
+            p.setXRot(38f);
+        }
+        if (at(33)) {
+            check(table.hover(0) == com.handsonvr.table.CraftingTable.RESULT, "a mão no resultado flutuando: destacado");
+        }
+        if (at(38)) {
+            screenshot(client, "10-mesa");
+        }
+        if (at(40)) {
+            grip(client, 0, true); // pega o resultado: fabrica
+        }
+        if (at(42)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && g.origin() == GrabSystem.Origin.TABLE && p.getMainHandItem().is(Items.OAK_PLANKS)
+                            && p.getMainHandItem().getCount() == 4 && table.cellStack(4).isEmpty(),
+                    "pegar o resultado: fabricou e as 4 tábuas vieram para a mão (a tora foi gasta)");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(46)) {
+            plankSlot = InvOps.fromInventory(find(inv, Items.OAK_PLANKS));
+            check(plankSlot >= InvOps.MAIN_START && plankSlot < InvOps.HOTBAR_START && total(inv, Items.OAK_PLANKS) == 4
+                            && table.resultStack().isEmpty(),
+                    "soltar longe: as tábuas ficam no inventário principal (espaço " + plankSlot + ") e nada mais flutua");
+            check(openBackpack(client, 1), "mochila aberta de novo");
+            pointBackpackSlot(0, plankSlot);
+        }
+        if (at(48)) {
+            grip(client, 0, true); // pega as tábuas
+            grip(client, 1, false); // fecha a mochila
+            pointTable(0, table.cellCenter(1).add(0, 0.03, 0)); // linha de cima, meio
+        }
+        if (at(50)) {
+            check(hands().onTrigger(client, 0), "gatilho sobre a casa de cima: é da mesa");
+            pointTable(0, table.cellCenter(4).add(0, 0.03, 0));
+        }
+        if (at(52)) {
+            hands().onTrigger(client, 0);
+        }
+        if (at(58)) {
+            check(table.cellStack(1).is(Items.OAK_PLANKS) && table.cellStack(4).is(Items.OAK_PLANKS)
+                            && p.getMainHandItem().is(Items.OAK_PLANKS) && p.getMainHandItem().getCount() == 2,
+                    "gatilho com o grip: uma tábua por casa e a mão continua com as outras 2");
+            check(table.resultStack().is(Items.STICK) && table.resultStack().getCount() == 4,
+                    "tábua em cima de tábua (de longe para perto): 4 varetas flutuam (" + describe(table.resultStack()) + ")");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(62)) {
+            pointTable(0, table.cellCenter(1).add(0, 0.03, 0));
+        }
+        if (at(64)) {
+            grip(client, 0, true); // grip na casa ocupada: a tábua volta para a mão
+        }
+        if (at(66)) {
+            GrabSystem.Grab g = hc.grabs().get(0);
+            check(g != null && g.origin() == GrabSystem.Origin.TABLE && p.getMainHandItem().is(Items.OAK_PLANKS)
+                            && table.cellStack(1).isEmpty(),
+                    "grip numa casa ocupada: a tábua volta para a mão (junto com as outras)");
+            pointAway(client, 0);
+            grip(client, 0, false);
+        }
+        if (at(70)) {
+            // Uma tábua sozinha também é uma receita do jogo: o botão de madeira.
+            check(table.cellStack(4).is(Items.OAK_PLANKS) && table.resultStack().is(Items.OAK_BUTTON)
+                            && total(inv, Items.OAK_PLANKS) == 3,
+                    "a receita muda com a grade: uma tábua sozinha vira um botão (" + describe(table.resultStack())
+                            + "); 3 tábuas no inventário e 1 na mesa");
+            check(table.take(client, 4) >= 0 && table.gridEmpty(), "a última tábua volta para o inventário");
+            onServer(client, player -> {
+                player.getInventory().setItem(11, new ItemStack(Items.COAL));
+                player.getInventory().setItem(12, new ItemStack(Items.STICK));
+            });
+        }
+        if (at(74)) {
+            // Carvão em cima de uma vareta: a tocha (a vareta é um item achatado, deitado na casa).
+            table.placeOne(client, 0, 11, 1, true);
+            table.placeOne(client, 0, 12, 4, true);
+            pointTable(0, table.cellCenter(4).add(0, 0.03, 0));
+        }
+        if (at(78)) {
+            check(table.cellStack(1).is(Items.COAL) && table.cellStack(4).is(Items.STICK)
+                            && table.resultStack().is(Items.TORCH) && table.resultStack().getCount() == 4,
+                    "carvão em cima da vareta: 4 tochas flutuam (" + describe(table.resultStack()) + ")");
+        }
+        if (at(82)) {
+            screenshot(client, "11-mesa-tocha");
+            handAway(0);
+        }
+        if (at(84)) {
+            p.setPos(p.getX(), p.getY(), p.getZ() - 6); // afasta-se da mesa
+        }
+        if (at(99)) {
+            check(!table.isOpen() && p.containerMenu == p.inventoryMenu && total(inv, Items.COAL) == 1
+                            && total(inv, Items.STICK) == 1 && total(inv, Items.OAK_PLANKS) == 4,
+                    "afastar-se: a mesa fecha e o carvão e a vareta voltam para o inventário (" + table.last() + ")");
+            p.setPos(p.getX(), p.getY(), p.getZ() + 6);
+            p.setXRot(0f);
+        }
+        if (at(109)) {
+            allowCraftingScreen = true;
+            client.gameMode.useItemOn(p, net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.phys.BlockHitResult(
+                    Vec3.atCenterOf(tablePos).add(0, 0.5, 0), net.minecraft.core.Direction.UP, tablePos, false));
+        }
+        if (at(119)) {
+            check(client.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.CraftingScreen && !table.isOpen(),
+                    "usar a mesa do jeito normal ainda abre a tela do jogo");
+            p.closeContainer();
+            allowCraftingScreen = false;
+            handAway(0);
+            handAway(1);
+        }
+        if (at(124)) {
             finish(client);
         }
     }
