@@ -2,6 +2,15 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.2.4-alpha (Minecraft 26.3)
+
+### Grip na armadura vestida traz a peça para a mão ([#15](https://github.com/DemianGomes/handsonvr/issues/15))
+
+- Com a mochila aberta, o grip numa armadura vestida (ou num item do crafting) traz a peça para a mão, como em todo outro espaço. Antes ela ia direto para um espaço livre do inventário.
+- Soltar num espaço da mochila, num espaço do radial, num coldre ou no descarte leva a peça para lá. Soltar longe de tudo a veste de novo.
+- Com uma espada na mão, a mão direita usa um espaço vazio da hotbar enquanto segura a peça. Sem espaço vazio, ou com a mão esquerda ocupada, vibra e nada muda.
+- Nunca perde item: soltar a peça sobre algo que não se veste (terra) é recusado com vibração.
+
 ## 0.2.3-alpha (Minecraft 26.3)
 
 ### Menu radial acompanha o jogador ([#13](https://github.com/DemianGomes/handsonvr/issues/13))

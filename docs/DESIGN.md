@@ -105,7 +105,7 @@ A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é 
 
 | Gesto | Resultado |
 |---|---|
-| Grip sobre um espaço com item | Pega o item: ele fica na mão e pode ser usado na hora. |
+| Grip sobre um espaço com item (inventário, crafting ou armadura vestida) | Pega o item: ele fica na mão e pode ser usado na hora. Uma armadura vestida sai do corpo enquanto a mão a segura. |
 | Grip sobre um espaço vazio, o fundo do painel ou o descarte, com um item na mão | Segura o item da própria mão (ele continua na mão). |
 | Soltar o item da mão sobre um espaço | Guarda o item ali: num espaço vazio, ocupa; sobre uma pilha igual, junta; sobre outro item, troca (o outro vai para a mão). |
 | Soltar o grip sobre outro espaço | Coloca a pilha toda nesse espaço. Pilhas iguais se juntam; diferentes trocam de lugar. |
@@ -117,10 +117,13 @@ A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é 
 | Segurar um item sobre uma seta por meio segundo | Troca de página, para levar o item de uma página a outra. |
 | Grip no resultado do crafting | Fabrica um e manda para o inventário. |
 | Gatilho no resultado do crafting | Fabrica o máximo possível (como Shift + clique). |
-| Grip numa peça de armadura ou num item do crafting | Manda de volta para o inventário. |
 | Soltar uma peça de armadura no espaço dela | Veste a peça. Se já havia uma, a antiga vai para o lugar de onde a nova saiu. |
+| Soltar uma armadura pega do corpo longe de tudo | Ela volta a ser vestida. |
+| Soltar uma armadura pega do corpo sobre um item que não se veste (terra) | Recusado com vibração: a terra não pode ir para o pé. |
 
-A mochila pode ser solta enquanto a outra mão segura um item. O item continua na mão até o grip dessa mão ser solto.
+A mochila pode ser solta enquanto a outra mão segura um item. O item continua na mão até o grip dessa mão ser solto. Um item pego do crafting volta para lá quando a mochila fecha, e a sobra do crafting vai para o inventário.
+
+**Armadura com a mão cheia:** pegar a armadura vestida é uma troca com o espaço da mão. Se o item da mão não pode ir para o lugar da armadura (uma espada no espaço da bota), a mão direita passa para um espaço vazio da hotbar enquanto segura a peça e volta ao soltar. Sem espaço vazio na hotbar, ou com a mão esquerda ocupada, o controle vibra e nada muda. Armadura com Maldição do Vínculo não sai.
 
 ## 3. Menu radial da hotbar (X ou B)
 
@@ -186,6 +189,7 @@ Ele confere:
 - as zonas dos coldres, inclusive pontos da borda;
 - sacar e guardar;
 - abrir a mochila, pegar, mover, juntar pilhas, colocar um item, descartar tudo, descartar um, crafting, armadura e páginas;
+- pegar a armadura vestida e o item do crafting com o grip: vem para a mão, volta ao soltar longe, vai para um espaço da mochila, recusa trocar com um item que não se veste;
 - o radial: equipar nas duas mãos, mão vazia, mão vazia com o inventário cheio, levar itens da mochila para a hotbar e andar com ele aberto (ele vai junto e a escolha continua funcionando);
 - o caso do inventário 100% cheio;
 - guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
