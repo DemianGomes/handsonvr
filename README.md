@@ -7,6 +7,7 @@ Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, F
 - **Menu radial da hotbar:** segure B (mão direita) ou X (mão esquerda). A hotbar aparece em círculo, com a mão vazia no centro; leve a mão até um item e solte o botão.
 - **Coleta na mochila:** o que você coleta do chão vai primeiro para o inventário principal (a mochila). A hotbar só recebe quando ele enche, então ela fica com o que você escolheu.
 - **Arco na mão que o pegou:** pegue o arco com uma mão e a flecha aparece na outra. Encoste a flecha na corda, segure o gatilho, puxe e solte.
+- **Mesa de trabalho imersiva:** com a mochila numa mão, ponha os itens na grade 3x3 em cima da mesa com a outra. Eles ficam deitados nas casas, o resultado flutua acima e pegar ele fabrica, com o item vindo para a mão.
 - **Regra das mãos:**
   - O que você pega com o grip é emprestado: ao soltar, volta para o lugar.
   - O que você escolhe no radial fica na mão.
