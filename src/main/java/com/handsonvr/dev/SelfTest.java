@@ -12,6 +12,7 @@ import com.handsonvr.holster.HolsterStorage;
 import com.handsonvr.input.OffhandUse;
 import com.handsonvr.input.VivecraftInput;
 import com.handsonvr.inv.InvOps;
+import com.handsonvr.inv.PickupOrder;
 import com.handsonvr.radial.RadialMenu;
 import com.handsonvr.vr.Panel;
 import com.handsonvr.vr.SimulatedVr;
@@ -397,6 +398,7 @@ public final class SelfTest {
             case 16 -> photos(client);
             case 17 -> handItemStore(client);
             case 18 -> persistenceAndMisc(client);
+            case 19 -> pickupOrder(client);
             default -> { }
         }
     }
@@ -1684,8 +1686,99 @@ public final class SelfTest {
             client.gui.setScreen(null);
         }
         if (at(50)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ coleta: inventário principal primeiro
+
+    private static int pickupMovedBefore = 0;
+
+    /** Item jogado no chão bem nos pés do jogador, sem espera para coletar. */
+    private static void dropAtFeet(ServerPlayer player, ItemStack stack) {
+        ItemEntity e = new ItemEntity(player.level(), player.getX(), player.getY() + 0.2, player.getZ(), stack, 0, 0, 0);
+        e.setNoPickUpDelay();
+        player.level().addFreshEntity(e);
+    }
+
+    private static void pickupOrder(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        if (at(1)) {
+            section("Coleta: inventário principal primeiro");
+            check(hasMixin(Inventory.class), "mixin do inventário aplicado (escolha do espaço livre)");
+            clearDrops(client);
+            inv.setSelectedSlot(1);
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.setItem(2, new ItemStack(Items.TORCH, 10));
+                pinv.add(new ItemStack(Items.OAK_LOG, 5));
+                pinv.add(new ItemStack(Items.TORCH, 5));
+            });
+        }
+        if (at(10)) {
+            boolean hotbarFree = true;
+            for (int i : new int[] {1, 3, 4, 5, 6, 7, 8}) {
+                hotbarFree &= inv.getItem(i).isEmpty();
+            }
+            check(inv.getItem(9).is(Items.OAK_LOG) && inv.getItem(9).getCount() == 5 && hotbarFree,
+                    "item recebido vai para o inventário principal, com a hotbar livre (" + describe(inv.getItem(9)) + " no espaço 9)");
+            check(inv.getItem(2).is(Items.TORCH) && inv.getItem(2).getCount() == 15 && total(inv, Items.TORCH) == 15,
+                    "item igual a uma pilha da hotbar se junta a ela (15 tochas no espaço 2)");
+            onServer(client, player -> dropAtFeet(player, new ItemStack(Items.COBBLESTONE, 3)));
+        }
+        if (at(50)) {
+            int at = find(inv, Items.COBBLESTONE);
+            check(at == 10 && inv.getItem(1).isEmpty(), "coletar do chão: o pedregulho foi para o inventário principal (espaço " + at
+                    + "), não para a mão vazia");
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                for (int i = 9; i < 36; i++) {
+                    pinv.setItem(i, new ItemStack(Items.DIRT));
+                }
+                pinv.add(new ItemStack(Items.APPLE, 2));
+            });
+        }
+        if (at(60)) {
+            check(inv.getItem(1).is(Items.APPLE), "inventário principal cheio: a maçã vai para a hotbar (" + find(inv, Items.APPLE) + ")");
+            HandsOnConfig.get().pickupToMain = false;
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                for (int i = 9; i < 36; i++) {
+                    pinv.setItem(i, ItemStack.EMPTY);
+                }
+                pinv.add(new ItemStack(Items.BREAD, 3));
+            });
+        }
+        if (at(70)) {
+            check(find(inv, Items.BREAD) == 3, "opção desligada: como no jogo, o pão vai para a hotbar (" + find(inv, Items.BREAD) + ")");
+            HandsOnConfig.get().pickupToMain = true;
+            // Servidor de outra pessoa: sem o mixin, o servidor põe na hotbar e a correção pelo cliente leva ao inventário.
+            PickupOrder.debugRemote = true;
+            pickupMovedBefore = PickupOrder.debugMoved();
+            onServer(client, player -> player.getInventory().add(new ItemStack(Items.CARROT, 4)));
+        }
+        if (at(85)) {
+            int at = find(inv, Items.CARROT);
+            check(at >= 9 && at < 36 && PickupOrder.debugMoved() > pickupMovedBefore,
+                    "servidor remoto: a cenoura que caiu na hotbar foi levada para o inventário principal (espaço " + at + ")");
+            InvOps.moveStack(client, InvOps.fromInventory(at), InvOps.HOTBAR_START + 5); // o jogador a leva para a hotbar
+        }
+        if (at(100)) {
+            check(find(inv, Items.CARROT) == 5, "servidor remoto: um item que o jogador levou para a hotbar fica lá");
+            PickupOrder.debugRemote = false;
+            inv.setSelectedSlot(0);
+            clearDrops(client);
+        }
+        if (at(105)) {
             finish(client);
         }
+    }
+
+    private static boolean hasMixin(Class<?> c) {
+        return Stream.of(c.getDeclaredMethods()).anyMatch(m -> m.getName().contains("handsonvr$"));
     }
 
     private static boolean hasMixin(String className) throws ClassNotFoundException {

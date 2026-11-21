@@ -2,6 +2,16 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.2.6-alpha (Minecraft 26.3)
+
+### Itens coletados vão primeiro para a mochila ([#19](https://github.com/DemianGomes/handsonvr/issues/19))
+
+- O que você coleta do chão (e o que volta de uma grade de crafting, ou um item recebido) vai primeiro para o inventário principal. A hotbar só recebe quando ele está cheio. No jogo original é o contrário.
+- Um item igual a uma pilha que já existe continua se juntando a ela, onde ela estiver.
+- Mundo um jogador e LAN aberta por você: feito direto no servidor integrado, sem o item passar pela hotbar.
+- Servidor de outra pessoa: o item novo que cair num espaço vazio da hotbar é levado para a mochila logo em seguida.
+- Nova opção nos ajustes: "Coleta: mochila primeiro" (ligada).
+
 ## 0.2.5-alpha (Minecraft 26.3)
 
 ### Analógico direito volta a girar a câmera ([#18](https://github.com/DemianGomes/handsonvr/issues/18))

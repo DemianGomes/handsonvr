@@ -16,6 +16,7 @@
   "option.handsonvr.render": "Items on body",
   "option.handsonvr.backpack": "No backpack switch",
   "option.handsonvr.left_trigger": "Left trigger: left hand",
+  "option.handsonvr.pickup_main": "Pickup: backpack first",
   "backpack.handsonvr.page": "Page %s/%s",
   "backpack.handsonvr.slots": "Slots %s/%s",
   "radial.handsonvr.empty": "Empty hand",

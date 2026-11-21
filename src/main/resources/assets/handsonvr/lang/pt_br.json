@@ -16,6 +16,7 @@
   "option.handsonvr.render": "Itens no corpo",
   "option.handsonvr.backpack": "Sem troca pelas costas",
   "option.handsonvr.left_trigger": "Gatilho esq.: mão esq.",
+  "option.handsonvr.pickup_main": "Coleta: mochila primeiro",
   "backpack.handsonvr.page": "Página %s/%s",
   "backpack.handsonvr.slots": "Espaços %s/%s",
   "radial.handsonvr.empty": "Mão vazia",

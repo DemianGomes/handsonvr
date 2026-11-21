@@ -41,6 +41,24 @@ Como em nenhum momento um espaço fica vazio, isso funciona até com o inventár
 
 Tudo usa os mesmos pacotes de clique da tela de inventário do Minecraft: trocar com a hotbar (teclas 1 a 9 e F), pegar, colocar e jogar fora. Por isso o mod não precisa estar instalado no servidor.
 
+### Itens que chegam vão para a mochila
+
+No jogo original, um item coletado do chão vai para o primeiro espaço livre da **hotbar**, e o inventário principal só recebe depois que ela enche. Em VR, a hotbar é o que está à mão (o radial), então ela ia enchendo de blocos que o jogador não escolheu.
+
+Com o HandsOn, o que chega vai primeiro para o **inventário principal** (a mochila). A hotbar só recebe quando ele está cheio.
+
+- Vale para tudo o que o jogo põe "no primeiro espaço livre": coletar do chão, receber um item (`/give`, recompensas) e as sobras que voltam de uma grade de crafting.
+- Um item igual a uma pilha que já existe continua se juntando a ela, onde ela estiver. As tochas coletadas vão para as tochas da hotbar.
+
+Como é feito:
+
+| Onde | Como |
+|---|---|
+| Mundo um jogador e LAN aberta pelo próprio jogador | O servidor roda no mesmo programa. Um mixin muda a escolha do espaço livre (`Inventory.getFreeSlot`) só para o jogador local, e nada passa pela hotbar. |
+| Servidor de outra pessoa (o mod só no cliente) | O servidor põe o item na hotbar. No tick seguinte, um item **novo** que caiu num espaço vazio da hotbar é levado para um espaço vazio do inventário principal, com os cliques normais. "Novo" quer dizer que a quantidade dele no inventário aumentou. Um item que o próprio jogador levou para a hotbar não é mexido, porque a soma não muda. |
+
+A opção "Coleta: mochila primeiro" nos ajustes volta ao comportamento do jogo.
+
 ### Mão vazia
 
 A mão só fica vazia se houver para onde ir:
@@ -194,6 +212,7 @@ Ele confere:
 - o radial: equipar nas duas mãos, mão vazia, mão vazia com o inventário cheio, levar itens da mochila para a hotbar e andar com ele aberto (ele vai junto e a escolha continua funcionando);
 - o caso do inventário 100% cheio;
 - guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
+- a coleta: um item recebido e um coletado do chão vão para o inventário principal com a hotbar livre, juntam com a pilha igual da hotbar, vão para a hotbar com o inventário cheio, seguem o jogo com a opção desligada e, num servidor remoto (simulado), são levados da hotbar para o inventário.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 
