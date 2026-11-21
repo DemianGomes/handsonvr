@@ -2878,7 +2878,11 @@ public final class SelfTest {
         if (at(8)) {
             SimulatedVr.setHand(1, eye.add(0.12, -0.32, 0.32), new Vec3(-1, 0, 0)); // pulso virado para cima, na frente
             SimulatedVr.setHand(0, eye.add(-0.15, -0.3, 0.35), new Vec3(0, 0, 1));
-            check(com.handsonvr.render.WristHudRenderer.wristFacingHead(), "pulso esquerdo na frente, virado para cima: o relógio aparece");
+            Panel wrist = com.handsonvr.render.WristHudRenderer.wristPanel();
+            Vec3 handPos = VrBridge.hand(1).position();
+            check(wrist != null && wrist.normal().z < -0.9 && Math.abs(wrist.normal().dot(new Vec3(-1, 0, 0))) < 0.05
+                            && wrist.origin().x > handPos.x + 0.1,
+                    "o relógio fica grudado na lateral interna do antebraço esquerdo (atrás da mão, virado para quem olha o braço)");
         }
         if (at(9)) {
             p.setXRot(35f); // olhando para o pulso, para a foto
@@ -2886,10 +2890,13 @@ public final class SelfTest {
         if (at(11)) {
             screenshot(client, "16-pulso");
             p.setXRot(0f);
-            SimulatedVr.setHand(1, eye.add(0.12, 0.45, 0.3), new Vec3(-1, 0, 0)); // acima da cabeça
+            SimulatedVr.setHand(1, eye.add(0.2, -0.25, 0.4), new Vec3(0, -0.6, 0.8)); // outra posição, apontando para baixo
         }
         if (at(12)) {
-            check(!com.handsonvr.render.WristHudRenderer.wristFacingHead(), "pulso acima da cabeça (não virado para o rosto): o relógio some");
+            Panel wrist = com.handsonvr.render.WristHudRenderer.wristPanel();
+            Vec3 dir = VrBridge.hand(1).direction();
+            check(wrist != null && Math.abs(wrist.normal().dot(dir)) < 0.05 && Math.abs(wrist.right().dot(dir) - 1) < 0.05,
+                    "girando e movendo a mão, o relógio vai junto, deitado ao longo do braço (a leitura vai do cotovelo para a mão)");
             check(HandsOnConfig.get().handCount && p.getMainHandItem().getCount() == 32,
                     "a quantidade da mão (32 de areia) aparece perto do dedão (print 16-pulso)");
             handAway(1);

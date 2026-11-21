@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * O que a tela do jogo mostra no HUD e o VR esconde, preso ao corpo (padrão em docs/VISUAL.md):
  * <ul>
- *   <li><b>No pulso esquerdo</b>, como um relógio: virando o pulso para o rosto aparecem a vida, a armadura, a fome, a
+ *   <li><b>No pulso esquerdo</b>, grudado na lateral interna do antebraço como o HUD "no pulso" do Vivecraft: a vida, a armadura, a fome, a
  *       barra de XP com o nível e os efeitos ativos, com os ícones do HUD do jogo, pequenos ({@code hud/heart/*},
  *       {@code hud/armor_*}, {@code hud/food_*}, {@code hud/experience_bar_*}, {@code textures/mob_effect/*}).</li>
  *   <li><b>Perto do dedão de cada mão</b>, a quantidade da pilha que ela segura, como num espaço do inventário (o que
@@ -34,10 +34,11 @@ public final class WristHudRenderer {
     /** Um pixel do HUD (m): 81 pixels de largura (10 corações) dão uns 13 cm. */
     private static final float PX = 0.0016f;
     private static final int WIDTH = 81, ROW = 10;
-    /** O pulso: atrás do controle (para o cotovelo) e um pouco acima dele, no referencial do controle (m). */
-    private static final float WRIST_BACK = 0.11f, WRIST_UP = 0.035f;
-    /** Aparece quando a parte de cima do pulso está virada para o rosto (cosseno do ângulo) e perto dele (m). */
-    private static final double LOOK = 0.35, MAX_DISTANCE = 0.9;
+    /**
+     * Onde o relógio fica, no referencial do controle esquerdo (m), como o HUD "no pulso" do Vivecraft: na lateral
+     * interna do antebraço (+x, o lado do corpo), atrás da mão (+z, para o cotovelo), deitado ao longo do braço.
+     */
+    private static final float WRIST_SIDE = 0.045f, WRIST_BACK = 0.15f, WRIST_UP = 0.0f;
     /** Fundo translúcido como o do chat do jogo. */
     private static final int BACKGROUND = 0x80000000;
     /** O verde do nível de XP do jogo. */
@@ -45,8 +46,6 @@ public final class WristHudRenderer {
     /** Quantidade na mão: o "espaço" (m) e onde fica o dedão no referencial do controle (lado, cima, trás). */
     private static final float COUNT_SLOT = 0.05f, THUMB_SIDE = 0.035f, THUMB_UP = 0.03f, THUMB_BACK = 0.01f;
 
-    /** Teste automático: mostra o HUD do pulso mesmo sem o pulso virado para o rosto. */
-    public static boolean debugAlwaysShow = false;
 
     private static Vec3 axis(Quaternionfc rotation, float x, float y, float z) {
         Vector3f v = new Vector3f(x, y, z);
@@ -56,28 +55,19 @@ public final class WristHudRenderer {
         return new Vec3(v.x, v.y, v.z);
     }
 
-    /** Onde fica o "relógio" no pulso esquerdo agora, ou null (sem VR, sem rastreio). */
-    public static Vec3 wristPoint() {
+    /**
+     * O plano do relógio, grudado no antebraço esquerdo: anda e gira com o controle, como o HUD "no pulso" do Vivecraft.
+     * A leitura vai do cotovelo para a mão (x = para a frente do controle), o "cima" é o de cima do controle e a frente
+     * do desenho fica virada para o lado interno do braço. Null sem a mão esquerda.
+     */
+    public static Panel wristPanel() {
         VrBridge.Pose hand = VrBridge.hand(1);
         if (hand == null) {
             return null;
         }
         float s = VrBridge.worldScale();
-        return hand.position().add(axis(hand.rotation(), 0, WRIST_UP * s, WRIST_BACK * s));
-    }
-
-    /** O pulso esquerdo está virado para o rosto (como quem olha o relógio)? */
-    public static boolean wristFacingHead() {
-        VrBridge.Pose hand = VrBridge.hand(1), head = VrBridge.head();
-        Vec3 at = wristPoint();
-        if (hand == null || head == null || at == null) {
-            return false;
-        }
-        Vec3 toHead = head.position().subtract(at);
-        if (toHead.length() > MAX_DISTANCE * VrBridge.worldScale()) {
-            return false;
-        }
-        return axis(hand.rotation(), 0, 1, 0).dot(toHead.normalize()) > LOOK;
+        Vec3 origin = hand.position().add(axis(hand.rotation(), WRIST_SIDE * s, WRIST_UP * s, WRIST_BACK * s));
+        return new Panel(origin, axis(hand.rotation(), 0, 0, -1), axis(hand.rotation(), 0, 1, 0), axis(hand.rotation(), 1, 0, 0), 1.0);
     }
 
     public static void render(LevelRenderContext context, HandsController hands) {
@@ -98,10 +88,10 @@ public final class WristHudRenderer {
                 }
             }
         }
-        if (config.wristHud && !p.isCreative() && !p.isSpectator() && (debugAlwaysShow || wristFacingHead())) {
-            Vec3 at = wristPoint();
-            if (at != null) {
-                wrist(d, ms, camera, client, p, at, head.position());
+        if (config.wristHud && !p.isCreative() && !p.isSpectator() && !hands.isHandHidden(1)) {
+            Panel panel = wristPanel();
+            if (panel != null) {
+                wrist(d, ms, camera, client, p, panel);
             }
         }
     }
@@ -124,8 +114,8 @@ public final class WristHudRenderer {
     }
 
     /** O "relógio": corações, armadura, fome, XP e efeitos, de cima para baixo. */
-    private static void wrist(Draw d, PoseStack ms, Vec3 camera, Minecraft client, LocalPlayer p, Vec3 at, Vec3 eye) {
-        Panel panel = Panel.facing(at, eye, 0, 1.0);
+    private static void wrist(Draw d, PoseStack ms, Vec3 camera, Minecraft client, LocalPlayer p, Panel panel) {
+        Vec3 at = panel.origin();
         float px = PX * VrBridge.worldScale();
         List<MobEffectInstance> effects = new ArrayList<>(p.getActiveEffects());
         int armor = p.getArmorValue();
