@@ -223,6 +223,18 @@ Com o HandsOn, **o arco fica na mão que o pegou, e a flecha aparece na outra**:
 - A mão que segura a mochila esconde o que estiver nela, inclusive a flecha: feche a mochila antes de atirar.
 - Num servidor com um Vivecraft antigo, o "Reverse Bow" não funciona e o arco fica sempre na esquerda.
 
+### Mira do arco (opcional)
+
+![A mira do jogo na parede, onde a flecha vai acertar](img/mira-do-arco.png)
+
+Nos ajustes, "Mira do arco" (desligada por padrão). Ligada, com a corda puxada, a mira do jogo (`hud/crosshair`) aparece no ponto em que a flecha vai acertar. A conta segue o jogo com o arco do Vivecraft:
+
+- a flecha sai da mão que puxa a corda, na direção dela para a mão do arco;
+- a velocidade é a do arco do jogo (a força pelo tempo puxando, até 1 em um segundo, vezes 3) vezes o quanto a corda está puxada;
+- a cada tick a flecha anda, perde 1% da velocidade e cai 0,05; o ponto é o primeiro bloco ou criatura no caminho.
+
+Não conta a pequena imprecisão aleatória do arco: é uma ajuda, não uma garantia. A mira fica do mesmo tamanho na vista a qualquer distância, virada para o rosto, branca com a sombra do jogo.
+
 ## 6. Mesa de trabalho (imersiva)
 
 A nossa versão da mesa do ImmersiveMC: fabricar em cima da própria mesa, sem a tela do jogo.
@@ -269,6 +281,7 @@ Ele confere:
 - guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
 - a coleta: um item recebido e um coletado do chão vão para o inventário principal com a hotbar livre, juntam com a pilha igual da hotbar, vão para a hotbar com o inventário cheio, seguem o jogo com a opção desligada e, num servidor remoto (simulado), são levados da hotbar para o inventário.
 - o arco: pego pela mão esquerda, vai para o espaço da mão principal e o "Reverse Bow" do Vivecraft fica desligado; pego pela direita (ou pelo B), fica ligado; pelo X, desligado; sem o arco na mão, volta ao que era.
+- a mira do arco: nasce desligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
 - a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado não fabricando, grip + gatilho fabricando tudo (16 tábuas) direto na mão, o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
