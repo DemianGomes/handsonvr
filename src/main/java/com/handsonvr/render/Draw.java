@@ -61,6 +61,11 @@ public final class Draw {
         return ms;
     }
 
+    /** Para onde vão os submits (para desenhar um modelo de item já resolvido). */
+    public SubmitNodeCollector collector() {
+        return out;
+    }
+
     /** Cor final: no modo opaco, a mistura com o fundo (alfa cheio). */
     private int color(int argb) {
         if (opaqueOver == null) {
