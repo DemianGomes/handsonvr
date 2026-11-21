@@ -155,7 +155,8 @@ public final class HolsterManager {
      * Guarda no coldre o item do espaço {@code handlerSlot} (o item que a mão segurava com o grip, solto aqui). Se ele
      * está na hotbar ou na mão secundária e há espaço livre no inventário principal, vai para lá: a mão fica vazia,
      * como ao pôr a espada na bainha. Sem espaço livre, o item fica onde está e o coldre lembra dele assim mesmo. Se o
-     * coldre já tinha um item, passa a lembrar do novo; o antigo continua no inventário.
+     * coldre já tinha um item, passa a lembrar do novo; o antigo continua no inventário. Uma armadura vestida ou um
+     * item do crafting sempre vai para o inventário principal (sem espaço livre, não guarda).
      */
     public boolean store(Minecraft client, Holster h, int handlerSlot) {
         LocalPlayer player = client.player;
@@ -163,10 +164,13 @@ public final class HolsterManager {
             return false;
         }
         int slot = handlerSlot;
-        if (handlerSlot >= InvOps.HOTBAR_START) {
+        boolean outsideMain = handlerSlot < InvOps.MAIN_START;
+        if (handlerSlot >= InvOps.HOTBAR_START || outsideMain) {
             int empty = freeMainSlot(player);
             if (empty >= 0 && InvOps.moveStack(client, handlerSlot, empty)) {
                 slot = empty;
+            } else if (outsideMain) {
+                return false;
             }
         }
         return assign(player, h, slot);
