@@ -7,7 +7,7 @@ Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, F
 - **Menu radial da hotbar:** segure B (mão direita) ou X (mão esquerda). A hotbar aparece em círculo, com a mão vazia no centro; leve a mão até um item e solte o botão.
 - **Coleta na mochila:** o que você coleta do chão vai primeiro para o inventário principal (a mochila). A hotbar só recebe quando ele enche, então ela fica com o que você escolheu.
 - **Arco na mão que o pegou:** pegue o arco com uma mão e a flecha aparece na outra. Encoste a flecha na corda, segure o gatilho, puxe e solte. Opcional: a mira do jogo mostrando onde a flecha vai cair (desligada por padrão).
-- **Mesa de trabalho imersiva:** com a mochila numa mão, ponha os itens na grade 3x3 em cima da mesa com a outra. Eles ficam deitados nas casas, o resultado flutua acima, e grip + gatilho nele fabrica tudo direto na sua mão.
+- **Mesa de trabalho imersiva:** com a mochila numa mão, ponha os itens na grade 3x3 em cima da mesa com a outra. Eles ficam deitados nas casas, o resultado flutua acima, o grip nele fabrica uma vez e grip + gatilho fabrica tudo, direto na sua mão.
 - **Regra das mãos:**
   - O que você pega com o grip é emprestado: ao soltar, volta para o lugar.
   - O que você escolhe no radial fica na mão.
@@ -24,7 +24,8 @@ O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O padrão visual (t
 | Grip | Pegar (coldre, mochila, item da mochila ou do radial) enquanto estiver apertado. Em qualquer outro lugar, segura o item da própria mão. |
 | Soltar o grip | Devolve o item ao lugar dele. Sobre um espaço da mochila, coloca ali; num coldre, guarda ali; no ombro esquerdo, guarda na mochila. |
 | Gatilho com o grip apertado | Coloca um item por vez num espaço ou na zona de descarte. |
-| Grip + gatilho no resultado do crafting | Fabrica tudo o que der (mochila ou mesa) e o resultado vai para a mão. |
+| Grip no resultado do crafting | Fabrica uma vez (mochila ou mesa) e o resultado vai para a mão. |
+| Grip + gatilho no resultado do crafting | Fabrica tudo o que der, direto na mão. |
 | B / X | Menu radial da hotbar da mão direita / esquerda. |
 | Gatilho esquerdo | Usa o item da mão esquerda. |
 | Analógico direito | Gira a câmera, como no Vivecraft. A hotbar fica com o menu radial (B/X). |

@@ -134,8 +134,8 @@ A ideia vem da mochila de *The Walking Dead: Saints & Sinners*, mas o visual é 
 | Gatilho com o grip apertado na zona de descarte | Solta um item por vez. |
 | Grip ou gatilho numa seta | Troca de página. |
 | Segurar um item sobre uma seta por meio segundo | Troca de página, para levar o item de uma página a outra. |
-| Grip no resultado do crafting | Segura o resultado, mas não fabrica nada ainda (pode gastar muito material). |
-| Gatilho com o grip no resultado | Fabrica tudo o que a grade der (como o Shift+clique) e o resultado vai para a mão que o segura. A mão direita usa o espaço dela, se estiver vazio, ou um espaço vazio da hotbar (o item que ela tinha continua na hotbar); a esquerda recebe o resultado no lugar do que tinha. Com o grip ainda apertado, soltar num coldre, na mochila ou no radial guarda o resultado; em outro lugar, ele fica na mão. Gatilho sem o grip não fabrica. |
+| Grip no resultado do crafting | Fabrica **uma vez** e o resultado vai para a mão que pegou (4 toras: 4 tábuas, e sobram 3 toras). A mão direita usa o espaço dela, se estiver vazio ou já tiver o mesmo item, ou um espaço vazio da hotbar (o item que ela tinha continua na hotbar); a esquerda recebe o resultado no lugar do que tinha. Com o grip ainda apertado, soltar num coldre, na mochila ou no radial guarda o resultado; em outro lugar, ele fica na mão. |
+| Gatilho com o grip no resultado | Fabrica **tudo** o que a grade der (como o Shift+clique), juntando na mesma mão; o que não couber vai para o inventário. Vale apertar o grip primeiro (uma vez, depois o resto) ou o gatilho primeiro (tudo de uma vez). Gatilho sem o grip não fabrica. |
 | Soltar uma peça de armadura no espaço dela | Veste a peça. Se já havia uma, a antiga vai para o lugar de onde a nova saiu. |
 | Soltar uma armadura pega do corpo longe de tudo | Ela volta a ser vestida. |
 | Soltar uma armadura pega do corpo sobre um item que não se veste (terra) | Recusado com vibração: a terra não pode ir para o pé. |
@@ -245,8 +245,8 @@ A nossa versão da mesa do ImmersiveMC: fabricar em cima da própria mesa, sem a
 2. Com a outra mão, pegue um item (grip) e leve-o até uma casa da grade 3x3 desenhada no topo da mesa. A casa sob a mão clareia e o controle vibra.
 3. Solte o grip: a **pilha inteira** fica deitada na casa, como num espaço do crafting da mochila. Uma casa com outro item troca de lugar com ele. Com o grip apertado, o **gatilho** põe **um** item por vez e a mão continua segurando o resto, então dá para "distribuir" um item por várias casas.
 4. Quando a receita fecha, o item que será fabricado aparece **flutuando** acima da grade, girando devagar. Ao lado dele aparece o **total** que o grip + gatilho vai fabricar (4 toras: 16 tábuas), como a quantidade de um espaço do inventário. Com a mão perto, ele cresce um pouco e mostra o nome e o total na caixa de dica do jogo. Cada casa com mais de um item mostra a quantidade no canto mais perto do jogador, deitada na mesa.
-5. **Grip no item flutuante:** a mão o segura, mas nada é fabricado ainda (pode gastar muito material).
-6. **Gatilho com o grip no item flutuante:** fabrica tudo o que a grade der (como o Shift+clique da tela do jogo: 4 toras dão 16 tábuas) e o resultado vai para a **mão que o segura**, como no crafting da mochila. Com o grip ainda apertado, soltar num coldre, na mochila, no radial ou numa casa da mesa guarda o resultado ali; em outro lugar, ele fica na mão. Gatilho sem o grip não fabrica.
+5. **Grip no item flutuante:** fabrica **uma vez** e o resultado vai para a **mão que o pegou**, como no crafting da mochila: um pack de toras dá 4 tábuas na mão e sobram 63 toras na mesa. Com o grip ainda apertado, soltar num coldre, na mochila, no radial ou numa casa da mesa guarda o resultado ali; em outro lugar, ele fica na mão.
+6. **Gatilho com o grip no item flutuante:** fabrica **tudo** o que a grade der (como o Shift+clique da tela do jogo: 4 toras dão 16 tábuas), juntando na mesma mão. Dá para apertar o grip e depois o gatilho (uma vez, depois o resto) ou o gatilho e depois o grip (tudo de uma vez). Gatilho sem o grip não fabrica.
 7. **Grip numa casa ocupada:** o que está nela volta para a mão.
 
 | Detalhe | Como é |
@@ -282,7 +282,7 @@ Ele confere:
 - a coleta: um item recebido e um coletado do chão vão para o inventário principal com a hotbar livre, juntam com a pilha igual da hotbar, vão para a hotbar com o inventário cheio, seguem o jogo com a opção desligada e, num servidor remoto (simulado), são levados da hotbar para o inventário.
 - o arco: pego pela mão esquerda, vai para o espaço da mão principal e o "Reverse Bow" do Vivecraft fica desligado; pego pela direita (ou pelo B), fica ligado; pelo X, desligado; sem o arco na mão, volta ao que era.
 - a mira do arco: nasce desligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
-- a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado não fabricando, grip + gatilho fabricando tudo (16 tábuas) direto na mão, o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
+- a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado fabricando uma vez (4 tábuas na mão, 3 toras na mesa), o gatilho fabricando o resto na mesma mão (16 tábuas), o gatilho já apertado e depois o grip fabricando tudo (8 tochas), o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
 
 O resultado vai para `run-prod/handsonvr-selftest.txt`, com prints em `run-prod/screenshots/`.
 
