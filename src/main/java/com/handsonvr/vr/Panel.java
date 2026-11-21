@@ -42,6 +42,16 @@ public record Panel(Vec3 origin, Vec3 right, Vec3 up, Vec3 normal, double scale)
         return origin.add(right.scale(x * scale)).add(up.scale(y * scale)).add(normal.scale(z * scale));
     }
 
+    /** Este plano (no mundo) nas coordenadas da área de jogo, em metros (escala 1). */
+    public Panel toRoom(VrBridge.RoomFrame f) {
+        return new Panel(f.toRoom(origin), f.dirToRoom(right), f.dirToRoom(up), f.dirToRoom(normal), scale / f.scale());
+    }
+
+    /** Este plano (na área de jogo) de volta no mundo, onde a área de jogo está agora. */
+    public Panel toWorld(VrBridge.RoomFrame f) {
+        return new Panel(f.toWorld(origin), f.dirToWorld(right), f.dirToWorld(up), f.dirToWorld(normal), scale * f.scale());
+    }
+
     /** Rotação que leva os eixos X/Y/Z do desenho para direita/cima/normal do plano. */
     public Quaternionf rotation() {
         Matrix3f m = new Matrix3f(

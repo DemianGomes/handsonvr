@@ -71,6 +71,8 @@ public class HandsOnVR implements ClientModInitializer {
         });
         // Minecraft 26: o mundo é desenhado juntando "submits"; o nosso entra junto com o das entidades.
         LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+            // A área de jogo deste quadro (o radial anda com ela), antes de desenhar.
+            guard("área de jogo", VrBridge::captureFrame);
             renderSafely(context.poseStack(), "coldres (desenho)", () -> HolsterRenderer.render(context, HANDS.holsters()));
             renderSafely(context.poseStack(), "mochila (desenho)", () -> BackpackRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "radial (desenho)", () -> RadialRenderer.render(context, HANDS));

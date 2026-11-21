@@ -19,5 +19,6 @@
   "option.handsonvr.right_stick": "Right stick: hotbar",
   "backpack.handsonvr.page": "Page %s/%s",
   "backpack.handsonvr.slots": "Slots %s/%s",
-  "radial.handsonvr.empty": "Empty hand"
+  "radial.handsonvr.empty": "Empty hand",
+  "radial.handsonvr.empty_full": "Empty hand (no free slot)"
 }

@@ -9,6 +9,9 @@ import net.minecraft.world.phys.Vec3;
  * apertado, os 9 espaços da hotbar ficam num círculo em volta de onde a mão estava, com a "mão vazia" no centro,
  * virados para o rosto. Passar a mão por cima destaca; soltar o botão escolhe.
  *
+ * <p>O menu fica preso à área de jogo do Vivecraft: anda e gira junto quando o jogador anda ou vira com o analógico,
+ * mas não foge quando ele mexe a cabeça ou se inclina para alcançar um espaço.
+ *
  * <p>Só o estado e o layout ficam aqui; o que escolher faz fica no {@link com.handsonvr.hands.HandsController}.
  */
 public final class RadialMenu {
@@ -17,11 +20,16 @@ public final class RadialMenu {
     /** Nenhum alvo. */
     public static final int NONE = -2;
 
-    public static final double RING_RADIUS = 0.13, SLOT_RADIUS = 0.042, CENTER_RADIUS = 0.045;
-    private static final double TOUCH_DEPTH = 0.12, TOUCH_SLACK = 0.025;
+    /** Um pixel do jogo no radial (m). Cada espaço é uma casa da hotbar: 22 pixels, como no jogo. */
+    public static final double PX = 0.0034;
+    public static final double CELL = 22 * PX, HALF = CELL / 2;
+    /** Raio do círculo dos 9 espaços: as casas (quadradas) não se encostam em nenhum ângulo. */
+    public static final double RING_RADIUS = 0.15;
+    private static final double TOUCH_DEPTH = 0.12, TOUCH_SLACK = 0.02;
 
     private int opener = -1;
-    private Panel panel;
+    /** O painel no mundo (o último calculado) e na área de jogo (null fora do VR de verdade/sem rastreio). */
+    private Panel panel, roomPanel;
     private final int[] hover = {NONE, NONE};
     /** Nesta abertura um item pego já foi solto num espaço: soltar o botão não equipa nada. */
     private boolean assigned = false;
@@ -35,7 +43,14 @@ public final class RadialMenu {
         return opener;
     }
 
+    /** O painel no mundo agora: onde a área de jogo (e o jogador) está. Null fechado. */
     public Panel panel() {
+        if (roomPanel != null) {
+            VrBridge.RoomFrame frame = VrBridge.roomFrame();
+            if (frame != null) {
+                panel = roomPanel.toWorld(frame);
+            }
+        }
         return panel;
     }
 
@@ -48,6 +63,8 @@ public final class RadialMenu {
         }
         opener = hand;
         panel = Panel.facing(at, head.position(), 0.0, VrBridge.worldScale());
+        VrBridge.RoomFrame frame = VrBridge.roomFrame();
+        roomPanel = frame == null ? null : panel.toRoom(frame);
         hover[0] = hover[1] = NONE;
         assigned = false;
         VrBridge.pulse(hand, 0.02f);
@@ -56,7 +73,7 @@ public final class RadialMenu {
 
     public void close() {
         opener = -1;
-        panel = null;
+        panel = roomPanel = null;
         hover[0] = hover[1] = NONE;
     }
 
@@ -77,16 +94,13 @@ public final class RadialMenu {
         return new double[] {Math.cos(angle) * RING_RADIUS, Math.sin(angle) * RING_RADIUS};
     }
 
-    public static double radius(int index) {
-        return index == CENTER ? CENTER_RADIUS : SLOT_RADIUS;
-    }
-
-    /** O alvo sob a ponta da mão: 0-8, {@link #CENTER} ou {@link #NONE}. */
+    /** O alvo sob a ponta da mão: 0-8, {@link #CENTER} ou {@link #NONE}. Os alvos são as casas (quadradas). */
     public int targetAt(Vec3 point) {
-        if (panel == null || point == null) {
+        Panel p = panel();
+        if (p == null || point == null) {
             return NONE;
         }
-        Vec3 l = panel.local(point);
+        Vec3 l = p.local(point);
         if (Math.abs(l.z) > TOUCH_DEPTH) {
             return NONE;
         }
@@ -94,8 +108,8 @@ public final class RadialMenu {
         double bestDistance = Double.MAX_VALUE;
         for (int i = CENTER; i < 9; i++) {
             double[] c = position(i);
-            double d = Math.hypot(l.x - c[0], l.y - c[1]);
-            if (d <= radius(i) + TOUCH_SLACK && d < bestDistance) {
+            double d = Math.max(Math.abs(l.x - c[0]), Math.abs(l.y - c[1]));
+            if (d <= HALF + TOUCH_SLACK && d < bestDistance) {
                 best = i;
                 bestDistance = d;
             }
@@ -105,6 +119,14 @@ public final class RadialMenu {
 
     public int hover(int hand) {
         return hover[hand];
+    }
+
+    /** O alvo destacado: o da mão que abriu ou, se ela não está sobre nada, o da outra mão. */
+    public int highlighted() {
+        if (opener < 0) {
+            return NONE;
+        }
+        return hover[opener] != NONE ? hover[opener] : hover[1 - opener];
     }
 
     /** Atualiza o alvo da mão; true se mudou para um alvo (vibração). */

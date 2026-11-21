@@ -19,5 +19,6 @@
   "option.handsonvr.right_stick": "Analógico dir.: hotbar",
   "backpack.handsonvr.page": "Página %s/%s",
   "backpack.handsonvr.slots": "Espaços %s/%s",
-  "radial.handsonvr.empty": "Mão vazia"
+  "radial.handsonvr.empty": "Mão vazia",
+  "radial.handsonvr.empty_full": "Mão vazia (sem espaço livre)"
 }

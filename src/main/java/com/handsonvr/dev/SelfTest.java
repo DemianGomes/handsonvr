@@ -1005,8 +1005,40 @@ public final class SelfTest {
             menuButton(client, 0, false);
             check(p.getMainHandItem().is(Items.STONE_PICKAXE) && p.getOffhandItem().isEmpty() && hc.offSource() == -1,
                     "radial direito no mesmo espaço: a picareta passa da esquerda para a direita");
+        }
+        // O radial acompanha o jogador: abrir, andar 1,5 bloco e ainda escolher (o VR de mentira põe a área de jogo no
+        // jogador, como o Vivecraft faz ao andar com o analógico).
+        if (at(43)) {
+            check(menuButton(client, 0, true) && radial.isOpen(), "B de novo: o radial abriu");
+            followStart = p.position();
+            followPanel = radial.panel().origin();
+            p.setPos(p.getX() + 1.5, p.getY(), p.getZ());
+        }
+        if (at(46)) {
+            Vec3 moved = p.position().subtract(followStart);
+            Vec3 panelMoved = radial.panel().origin().subtract(followPanel);
+            check(moved.length() > 1.0 && panelMoved.distanceTo(moved) < 1.0e-3,
+                    "andando com o radial aberto, ele vai junto (o jogador andou " + fmt(moved.length())
+                            + " m, o radial " + fmt(panelMoved.length()) + " m)");
+            handInFront(client, 0);
+            pointRadial(0, 6);
+        }
+        if (at(49)) {
+            check(radial.hover(0) == 6, "depois de andar, a mão sobre o espaço 7 ainda o destaca");
+            pointRadial(0, 2);
+        }
+        if (at(52)) {
+            menuButton(client, 0, false);
+            check(!radial.isOpen() && inv.getSelectedSlot() == 2, "e escolher continua funcionando (a picareta, espaço 3)");
+            p.setPos(followStart.x, followStart.y, followStart.z);
             next();
         }
+    }
+
+    private static Vec3 followStart, followPanel;
+
+    private static String fmt(double v) {
+        return String.format(java.util.Locale.ROOT, "%.2f", v);
     }
 
     private static void radialWithBackpack(Minecraft client) {
