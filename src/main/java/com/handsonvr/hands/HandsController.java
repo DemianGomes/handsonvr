@@ -747,6 +747,13 @@ public final class HandsController {
                 || p.inventoryMenu.getSlot(from).mayPlace(target);
     }
 
+    /** O item seguro veio de um coldre e foi guardado na mochila: o coldre esquece dele (fica vazio). */
+    private void leaveHolster(GrabSystem.Grab g) {
+        if (g.origin() == GrabSystem.Origin.HOLSTER && g.holster() != null) {
+            holsters.clear(g.holster());
+        }
+    }
+
     /** Fecha a mochila. Um item pego do crafting volta para lá antes: o que sobra no crafting vai para o inventário. */
     private void closeBackpack(Minecraft client) {
         for (int h = 0; h < 2 && InvOps.ready(client); h++) {
@@ -817,6 +824,14 @@ public final class HandsController {
         }
         if (radial.isOpen()) {
             int target = radial.targetAt(tip);
+            if (target == RadialMenu.DROP) {
+                InvOps.throwFrom(client, GrabSystem.itemSlot(p, g), true);
+                grabs.end(client, hand);
+                radial.markAssigned();
+                VrBridge.pulse(hand, 0.03f);
+                action("descartou a pilha (radial)");
+                return;
+            }
             if (target >= 0) {
                 grabs.end(client, hand);
                 int slot = InvOps.HOTBAR_START + target;
@@ -845,6 +860,7 @@ public final class HandsController {
                     refuse(hand); // (com a mesa de trabalho aberta, a armadura e o crafting 2x2 esperam ela fechar)
                 } else {
                     InvOps.moveStack(client, g.source(), e.handler());
+                    leaveHolster(g); // guardado na mochila: o coldre de onde ele saiu fica vazio
                     action("colocou no espaço " + e.handler());
                 }
                 return;
@@ -931,9 +947,19 @@ public final class HandsController {
         Holster zone = holsters.refreshZone(hand);
         grabs.end(client, hand);
         // Por cima do ombro, como no Saints & Sinners: soltar no ombro da mochila guarda o item nela.
+        boolean fromHolster = g.origin() == GrabSystem.Origin.HOLSTER && g.holster() != null;
+        if (zone != null && zone.isBackpack(config) && !backpack.isOpen() && fromHolster
+                && g.source() >= InvOps.MAIN_START && g.source() < InvOps.HOTBAR_START) {
+            // O item do coldre já mora na mochila (o inventário principal): guardar por cima do ombro só tira do coldre.
+            leaveHolster(g);
+            VrBridge.pulse(hand, 0.05f);
+            action("guardou na mochila (saiu do coldre)");
+            return;
+        }
         if (zone != null && zone.isBackpack(config) && !backpack.isOpen()
                 && (g.source() >= InvOps.HOTBAR_START || g.source() < InvOps.MAIN_START)) {
             if (storeInBackpack(client, g.source())) {
+                leaveHolster(g);
                 VrBridge.pulse(hand, 0.05f);
                 action("guardou na mochila (por cima do ombro)");
             } else {
@@ -1013,6 +1039,13 @@ public final class HandsController {
             int handSlot = GrabSystem.itemSlot(p, grabs.get(hand)); // onde o item pego está
             if (radial.isOpen()) {
                 int target = radial.targetAt(tip);
+                if (target == RadialMenu.DROP) {
+                    InvOps.throwFrom(client, handSlot, false);
+                    radial.markAssigned();
+                    VrBridge.pulse(hand, 0.01f);
+                    action("descartou um (radial)");
+                    return true;
+                }
                 if (target >= 0) {
                     int slot = InvOps.HOTBAR_START + target;
                     if (target != offSource && !isLocked(p, slot) && InvOps.placeOne(client, handSlot, slot)) {
@@ -1457,6 +1490,17 @@ public final class HandsController {
         }
         if (assigned || target == RadialMenu.NONE || hand < 0 || grabs.isGrabbing(hand) || backpack.holder() == hand
                 || !InvOps.ready(client)) {
+            return;
+        }
+        if (target == RadialMenu.DROP) {
+            LocalPlayer p = client.player;
+            if (p != null && !(hand == 0 ? p.getMainHandItem() : p.getOffhandItem()).isEmpty()) {
+                InvOps.throwFrom(client, InvOps.handSlot(p, hand), true);
+                VrBridge.pulse(hand, 0.03f);
+                action("radial: mão " + hand + " jogou fora a pilha");
+            } else {
+                refuse(hand);
+            }
             return;
         }
         boolean ok = hand == 0 ? equipMain(client, target) : equipOff(client, target);

@@ -67,6 +67,8 @@ public class HandsOnVR implements ClientModInitializer {
             }
         });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            guard("grip (soltura perdida)", HandsOnVR::gripWatch);
+            guard("HUD do Vivecraft", () -> com.handsonvr.render.VivecraftHud.tick(client));
             guard("mãos", () -> HANDS.tick(client));
             guard("coleta no inventário", () -> com.handsonvr.inv.PickupOrder.tick(client, HANDS));
             guard("estado para os outros jogadores", () -> com.handsonvr.net.PeerSync.tick(client, HANDS));
@@ -96,13 +98,13 @@ public class HandsOnVR implements ClientModInitializer {
             renderSafely(context.poseStack(), "outros jogadores (desenho)", () -> com.handsonvr.net.PeerRenderer.render(context));
         });
 
-        // Botão "Coldres VR" no menu de pausa (Y no controle): os ajustes sem precisar de tecla.
+        // Botão "Opções HandsOn VR" no menu de pausa (Y no controle): os ajustes sem precisar de tecla.
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof PauseScreen) {
                 guard("botão no menu de pausa", () -> Screens.getWidgets(screen).add(
                         Button.builder(Component.translatable("button.handsonvr.settings"),
                                         b -> client.gui.setScreen(new HandsOnScreen(screen, HANDS.holsters())))
-                                .bounds(4, 4, 90, 20).build()));
+                                .bounds(4, 4, 110, 20).build()));
             }
         });
 
@@ -127,14 +129,48 @@ public class HandsOnVR implements ClientModInitializer {
                 || call("suporte de poções (abrir)", () -> HANDS.brewing().onOpenScreen(type, client, containerId));
     }
 
-    /** Grip apertado (VivecraftInput). true = foi nosso, o grip não troca a hotbar. */
+    /**
+     * O grip chega por duas ações do Vivecraft no mesmo botão: a da hotbar (mão fora dos blocos) e o "VR Interact" (mão
+     * dentro de um bloco do HandsOn, pelo {@link com.handsonvr.input.StationInteractModule}). Cada aperto conta uma vez
+     * só, e uma soltura perdida é feita no tick ({@link #gripWatch}).
+     */
+    private static final boolean[] GRIP_DOWN = new boolean[2];
+    private static final int[] GRIP_LOST = new int[2];
+
+    public static boolean isGripDown(int hand) {
+        return GRIP_DOWN[hand];
+    }
+
+    /** Grip apertado (VivecraftInput ou o módulo de interação). true = foi nosso, o grip não troca a hotbar. */
     public static boolean onGripPressed(int hand) {
+        if (GRIP_DOWN[hand]) {
+            return true;
+        }
+        GRIP_DOWN[hand] = true;
+        GRIP_LOST[hand] = 0;
         return call("grip (apertar)", () -> HANDS.onGripPressed(Minecraft.getInstance(), hand));
     }
 
     /** Grip solto. true = foi nosso (fechou a mochila ou devolveu/colocou um item pego). */
     public static boolean onGripReleased(int hand) {
+        if (!GRIP_DOWN[hand]) {
+            return false;
+        }
+        GRIP_DOWN[hand] = false;
         return call("grip (soltar)", () -> HANDS.onGripReleased(Minecraft.getInstance(), hand));
+    }
+
+    /** O botão já não está apertado há 3 ticks e a soltura não chegou (a ação trocou no meio): solta agora. */
+    private static void gripWatch() {
+        for (int hand = 0; hand < 2; hand++) {
+            if (GRIP_DOWN[hand] && !com.handsonvr.input.GripState.isHeld(hand)) {
+                if (++GRIP_LOST[hand] >= 3) {
+                    onGripReleased(hand);
+                }
+            } else {
+                GRIP_LOST[hand] = 0;
+            }
+        }
     }
 
     /** Mixin do Vivecraft: esconder o item desta mão (ela segura a mochila). */

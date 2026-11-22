@@ -43,8 +43,11 @@ public final class WristHudRenderer {
     private static final int BACKGROUND = 0x80000000;
     /** O verde do nível de XP do jogo. */
     private static final int XP_GREEN = 0xFF80FF20;
-    /** Quantidade na mão: o "espaço" (m) e onde fica o dedão no referencial do controle (lado, cima, trás). */
-    private static final float COUNT_SLOT = 0.05f, THUMB_SIDE = 0.035f, THUMB_UP = 0.03f, THUMB_BACK = 0.01f;
+    /**
+     * Quantidade na mão: o "espaço" (m) e onde ela fica no referencial do controle: na lateral do dedão (o lado de
+     * dentro: à esquerda do controle direito, à direita do esquerdo), fora do modelo da mão, grudada como o relógio.
+     */
+    private static final float COUNT_SLOT = 0.045f, THUMB_SIDE = 0.055f, THUMB_UP = 0.015f, THUMB_BACK = 0.02f;
 
 
     private static Vec3 axis(Quaternionfc rotation, float x, float y, float z) {
@@ -84,7 +87,7 @@ public final class WristHudRenderer {
         if (config.handCount) {
             for (int hand = 0; hand < 2; hand++) {
                 if (!hands.isHandHidden(hand)) {
-                    handCount(d, ms, camera, head.position(), hand, hand == 0 ? p.getMainHandItem() : p.getOffhandItem());
+                    handCount(d, ms, camera, hand, hand == 0 ? p.getMainHandItem() : p.getOffhandItem());
                 }
             }
         }
@@ -96,21 +99,35 @@ public final class WristHudRenderer {
         }
     }
 
-    /** A quantidade da pilha da mão, perto do dedão, virada para o rosto. */
-    private static void handCount(Draw d, PoseStack ms, Vec3 camera, Vec3 eye, int hand, ItemStack stack) {
-        VrBridge.Pose pose = VrBridge.hand(hand);
-        if (pose == null || stack.getCount() <= 1) {
+    /** A quantidade da pilha da mão, grudada na lateral do dedão (anda e gira com o controle). */
+    private static void handCount(Draw d, PoseStack ms, Vec3 camera, int hand, ItemStack stack) {
+        Panel panel = stack.getCount() <= 1 ? null : thumbPanel(hand);
+        if (panel == null) {
             return;
         }
+        Vec3 at = panel.origin();
         float s = VrBridge.worldScale();
-        // O dedão: à esquerda do controle direito, à direita do esquerdo.
-        Vec3 at = pose.position().add(axis(pose.rotation(), (hand == 0 ? -THUMB_SIDE : THUMB_SIDE) * s, THUMB_UP * s, THUMB_BACK * s));
-        Panel panel = Panel.facing(at, eye, 0, 1.0);
         ms.pushPose();
         ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
         ms.rotate(panel.rotation());
         d.mcCount(stack, 0f, 0f, COUNT_SLOT * s, 0f);
         ms.popPose();
+    }
+
+    /**
+     * O plano da quantidade, na lateral do dedão: a frente do desenho virada para fora do lado do dedão, o "cima" o de
+     * cima do controle. Null sem a mão.
+     */
+    public static Panel thumbPanel(int hand) {
+        VrBridge.Pose pose = VrBridge.hand(hand);
+        if (pose == null) {
+            return null;
+        }
+        float s = VrBridge.worldScale();
+        float side = hand == 0 ? -1f : 1f; // o dedão: à esquerda do controle direito, à direita do esquerdo
+        Vec3 origin = pose.position().add(axis(pose.rotation(), side * THUMB_SIDE * s, THUMB_UP * s, THUMB_BACK * s));
+        Vec3 normal = axis(pose.rotation(), side, 0, 0), up = axis(pose.rotation(), 0, 1, 0);
+        return new Panel(origin, up.cross(normal), up, normal, 1.0); // direita x cima = normal: o desenho não fica espelhado
     }
 
     /** O "relógio": corações, armadura, fome, XP e efeitos, de cima para baixo. */

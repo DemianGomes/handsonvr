@@ -82,6 +82,11 @@ public final class RadialRenderer {
                 offhandMark(d, x - 8 * PX, y + 8 * PX, itemZ + itemSize * 0.13f);
             }
         }
+        // O descarte, abaixo do círculo: o mesmo espaço da mochila (seta para baixo).
+        double[] dc = RadialMenu.position(RadialMenu.DROP);
+        d.mcSlot((float) dc[0], (float) dc[1], 18 * PX, Z_CELL, highlighted == RadialMenu.DROP);
+        d.spriteCentered(com.handsonvr.backpack.BackpackRenderer.DROP_ICON, (float) dc[0], (float) dc[1], 16 * PX, Z_CELL + 0.001f,
+                highlighted == RadialMenu.DROP ? Draw.MC_SLOT_HOVER : Draw.MC_SLOT);
         if (framed != RadialMenu.NONE) {
             double[] c = RadialMenu.position(framed);
             selection(d, (float) c[0], (float) c[1]);
@@ -119,6 +124,9 @@ public final class RadialRenderer {
 
     /** O texto da caixa de dica: o nome do item (com a cor da raridade) ou o da mão vazia; nada num espaço vazio. */
     private static Component tooltip(HandsController hands, LocalPlayer p, int target, boolean canEmpty) {
+        if (target == RadialMenu.DROP) {
+            return Component.translatable("radial.handsonvr.drop");
+        }
         if (target == RadialMenu.CENTER) {
             return Component.translatable(canEmpty ? "radial.handsonvr.empty" : "radial.handsonvr.empty_full");
         }

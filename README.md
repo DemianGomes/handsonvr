@@ -39,7 +39,7 @@ O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O padrão visual (t
 | Gatilho esquerdo | Usa o item da mão esquerda. |
 | Analógico direito | Gira a câmera, como no Vivecraft. A hotbar fica com o menu radial (B/X). |
 
-Tudo pode ser ligado e desligado em **Coldres VR**, no menu de pausa.
+Tudo pode ser ligado e desligado em **Opções HandsOn VR**, no menu de pausa (separadas em grupos, com rolagem).
 
 ## Requisitos
 

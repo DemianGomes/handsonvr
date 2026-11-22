@@ -27,7 +27,7 @@ O objetivo é deixar o inventário do Minecraft com cara de jogo nativo de VR: o
 | X (mão esquerda) | Enquanto estiver apertado, mostra o menu radial da mão esquerda. |
 | Analógico direito | Do Vivecraft: gira a câmera. O mod não usa (até a 0.2.4, trocava a hotbar). |
 
-O B substitui o menu radial do Vivecraft e o X substitui a tela de inventário. Os dois podem voltar ao comportamento original nos ajustes.
+O B substitui o menu radial do Vivecraft e o X substitui a tela de inventário. Os dois podem voltar ao comportamento original nas Opções HandsOn VR. Abaixo do círculo fica o **descarte** (como o da mochila): soltar o grip ali com um item joga a pilha fora, o gatilho joga um, e soltar o botão sobre ele joga fora a pilha da mão.
 
 Fora dos coldres e da mochila, o grip não troca mais o item da hotbar (o Vivecraft fazia isso): ele segura o item da mão, para levá-lo a um coldre ou à mochila. Isso também pode voltar nos ajustes ("grip troca a hotbar"); com a opção ligada, o grip só segura o item dentro das zonas do corpo.
 
@@ -60,7 +60,7 @@ Como é feito:
 | Mundo um jogador e LAN aberta pelo próprio jogador | O servidor roda no mesmo programa. Um mixin muda a escolha do espaço livre (`Inventory.getFreeSlot`) só para o jogador local, e nada passa pela hotbar. |
 | Servidor de outra pessoa (o mod só no cliente) | O servidor põe o item na hotbar. No tick seguinte, um item **novo** que caiu num espaço vazio da hotbar é levado para um espaço vazio do inventário principal, com os cliques normais. "Novo" quer dizer que a quantidade dele no inventário aumentou. Um item que o próprio jogador levou para a hotbar não é mexido, porque a soma não muda. |
 
-A opção "Coleta: mochila primeiro" nos ajustes volta ao comportamento do jogo.
+A opção "Coleta na mochila" nas Opções HandsOn VR volta ao comportamento do jogo.
 
 ### Mão vazia
 
@@ -87,6 +87,7 @@ Os coldres ficam no **ombro direito**, no **quadril direito** e no **quadril esq
   - Enquanto o grip estiver apertado, nada muda: soltar longe dos coldres deixa o item na mão.
 - **Guardar um item pego de outro lugar:** pegue um item da mochila ou do radial com o grip e solte o grip dentro do coldre. O coldre passa a lembrar desse item.
 - **Qualquer item:** o coldre lembra o item (id e nome) e o espaço do inventário onde ele está. O item não precisa estar na hotbar.
+- **Guardar na mochila tira do coldre:** sacar o item de um coldre e guardá-lo na mochila (soltando por cima do ombro esquerdo, ou num espaço da mochila aberta) esvazia o coldre.
 - **Resposta:** o controle vibra ao entrar num coldre onde o grip faz algo (inclusive com um item seguro, onde soltar o guarda), e o item desenhado no corpo cresce um pouco.
 
 ## 2. Mochila (ombro esquerdo)
@@ -228,11 +229,11 @@ Com o HandsOn, **o arco fica na mão que o pegou, e a flecha aparece na outra**:
 - A mão que segura a mochila esconde o que estiver nela, inclusive a flecha: feche a mochila antes de atirar.
 - Num servidor com um Vivecraft antigo, o "Reverse Bow" não funciona e o arco fica sempre na esquerda.
 
-### Mira do arco (opcional)
+### Mira do arco
 
 ![A mira do jogo na parede, onde a flecha vai acertar](img/mira-do-arco.png)
 
-Nos ajustes, "Mira do arco" (desligada por padrão). Ligada, com a corda puxada, a mira do jogo (`hud/crosshair`) aparece no ponto em que a flecha vai acertar. A conta segue o jogo com o arco do Vivecraft:
+Nas Opções HandsOn VR, "Mira do arco" (ligada por padrão desde a 0.8.4). Ligada, com a corda puxada, a mira do jogo (`hud/crosshair`) aparece no ponto em que a flecha vai acertar. A conta segue o jogo com o arco do Vivecraft:
 
 - a flecha sai da mão que puxa a corda, na direção dela para a mão do arco;
 - a velocidade é a do arco do jogo (a força pelo tempo puxando, até 1 em um segundo, vezes 3) vezes o quanto a corda está puxada;
@@ -345,7 +346,7 @@ O mod só manda ao servidor os mesmos pacotes de um jogador de computador: os cl
 
 O que pede cuidado:
 
-- **Informação que o jogo não dá:** a mira do arco (desligada por padrão). Servidores de PvP costumam proibir esse tipo de ajuda.
+- **Informação que o jogo não dá:** a mira do arco (ligada por padrão; dá para desligar). Servidores de PvP costumam proibir esse tipo de ajuda.
 - **Ação sem o jogador pedir:** a coleta para a mochila em servidor remoto (move o item da hotbar sozinha, como os mods de organizar inventário). Ela tem opção para desligar.
 - **Anticheat de servidor grande:** cliques no inventário andando, vários cliques no mesmo tick e a mira mudando de repente no arremesso podem gerar alerta, mesmo sem ser cheat.
 
@@ -354,9 +355,9 @@ O que pede cuidado:
 ![O relógio no pulso esquerdo e a quantidade perto da mão direita](img/pulso.png)
 
 - **Pulso esquerdo:** grudado na lateral interna do antebraço esquerdo, como o HUD "no pulso" do Vivecraft: anda e gira com o controle, deitado ao longo do braço (a leitura vai do cotovelo para a mão). Mostra a vida (corações), a armadura, a fome, a barra de XP com o nível e os ícones dos efeitos ativos, com os ícones do HUD do jogo, pequenos, num fundo escuro como o do chat. Para ler, vire o lado interno do braço para o rosto. Continua aparecendo com a mochila na mão (só o item some). Fica afastado do braço o bastante para não ser coberto pela segunda camada (mangas) das skins.
-- **Quantidade na mão:** perto do dedão de cada mão aparece a quantidade da pilha que ela segura, como num espaço do inventário. O que é sozinho (espada, arco) não mostra nada.
+- **Quantidade na mão:** grudada na lateral do dedão de cada mão (presa ao controle, como o relógio, e fora do modelo da mão) aparece a quantidade da pilha que ela segura, como num espaço do inventário. O que é sozinho (espada, arco) não mostra nada.
 - É só desenho do cliente: os outros jogadores não veem.
-- Opções "Vida e fome no pulso" e "Quantidade na mão".
+- Opções "Relógio no pulso", "Quantidade na mão" e "Sem HUD do Vivecraft" (em VR, esconde o HUD do Vivecraft no pulso de fora, como o F1; ligada por padrão).
 
 ## 10. Fogueira e armadura no corpo
 
@@ -386,6 +387,8 @@ Os gestos são os da mochila:
 **Fechar:** grip no baú aberto e **empurre a mão para baixo** (no barril, para dentro). Se afastar mais de 4,5 m ou abrir uma tela também fecha.
 
 Por baixo é o menu do jogo, aberto como o jogador faria: o jogo anima a tampa para todo mundo, e funciona em qualquer servidor. Como fechar não perde nada, o baú cede o menu quando a mochila precisa da armadura ou do crafting 2x2.
+
+**O grip com a mão dentro do bloco:** ali o Vivecraft liga a ação "VR Interact" (o grip faz o "usar" do bloco, o que abria a janela antiga) e ela recebe o botão no lugar da ação que o HandsOn escuta. Por isso o HandsOn registra no Vivecraft um módulo de interação (`StationInteractModule`, prioridade 1400, antes do de blocos, 1500) que, com a mão num baú, barril, baú do Ender, caixa de shulker, suporte de poções, fornalha ou mesa de trabalho, é o próprio grip do HandsOn: apertar, segurar e soltar. O A (usar) olhando para o baú, em VR, também abre o baú imersivo.
 
 ## 12. Suporte de poções
 
@@ -427,7 +430,7 @@ Ele confere:
 - guardar o item da mão: num espaço da mochila, juntando pilhas, no descarte, por cima do ombro (inclusive com a mochila cheia), num coldre vazio e num ocupado, com a mão esquerda, e soltar longe de tudo.
 - a coleta: um item recebido e um coletado do chão vão para o inventário principal com a hotbar livre, juntam com a pilha igual da hotbar, vão para a hotbar com o inventário cheio, seguem o jogo com a opção desligada e, num servidor remoto (simulado), são levados da hotbar para o inventário.
 - o arco: pego pela mão esquerda, vai para o espaço da mão principal e o "Reverse Bow" do Vivecraft fica desligado; pego pela direita (ou pelo B), fica ligado; pelo X, desligado; sem o arco na mão, volta ao que era.
-- a mira do arco: nasce desligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
+- a mira do arco: nasce ligada, a força do arco pelo tempo, o tiro forte acertando a parede a 10 blocos e o fraco caindo no chão antes dela, a mira aparecendo na parede com a opção ligada (print `12-mira-do-arco`) e sumindo ao desligar.
 - a mesa de trabalho: achar a mesa, abrir sem a tela, soltar as toras numa casa (a pilha inteira), as tábuas flutuando, o grip sozinho no resultado fabricando uma vez (4 tábuas na mão, 3 toras na mesa), o gatilho fabricando o resto na mesma mão (16 tábuas), o gatilho já apertado e depois o grip fabricando tudo (8 tochas), o gatilho pondo uma tábua por casa, as varetas, tirar de uma casa, fechar ao se afastar (o item volta) e a tela normal da mesa ainda abrindo.
 - as fornalhas: um defumador a uns 8 blocos mostrando ao vivo a carne, o carvão e o fogo (sem abrir), a fornalha abrindo sem a tela ao olhar para ela, o minério na abertura de cima (a pilha inteira) e o carvão na de baixo (um por vez com o gatilho), terra recusada nos dois lugares, a fornalha acendendo com a chama e a seta andando, os lingotes flutuando e indo para a mão com o grip, o minério voltando para a mão, a fornalha cedendo o menu ao crafting 2x2 da mochila, o defumador (carne em cima da chaminé, minério recusado), o alto-forno (minério por cima, carne recusada), fechar ao olhar para o outro lado, abrir de novo ao olhar e a tela normal ainda abrindo (prints `13-fornalha`, `14-defumador` e `15-alto-forno`).
 - o pacote 0.7: o relógio grudado na lateral interna do antebraço e acompanhando o giro da mão, a quantidade na mão (print `16-pulso`), a carne posta na fogueira (3 ficam na mão), o capacete e o peitoral vestidos levando ao corpo, o baú abrindo sem a tela, dando 20 pedras, a metade dos diamantes, recebendo 32 de areia e fechando (print `17-bau`), o suporte de poções abrindo ao olhar, recebendo a garrafa, o pó de blaze e a verruga e começando a preparar (print `18-pocoes`), e o servidor recebendo o estado dos coldres e da mochila.

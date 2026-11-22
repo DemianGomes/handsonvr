@@ -120,7 +120,19 @@ public final class VivecraftInput {
 
     /** O grip da mão está apertado (dado cru da ação, lido pelo Vivecraft a cada quadro mesmo quando desativada). */
     public static boolean isGripHeld(int hand) {
-        return held(hand == 0 ? gripMain : gripOff);
+        return held(hand == 0 ? gripMain : gripOff) || isInteractHeld(hand);
+    }
+
+    /**
+     * O grip pela ação "VR Interact" do Vivecraft: com a mão dentro de um bloco do HandsOn ela fica ligada e recebe o
+     * botão no lugar da ação da hotbar ({@link StationInteractModule}).
+     */
+    public static boolean isInteractHeld(int hand) {
+        try {
+            return VivecraftVRMod.INSTANCE != null && VivecraftVRMod.INSTANCE.keyVRInteract.isDown(ControllerType.values()[hand]);
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     /** O gatilho da mão (direito = atacar, esquerdo = teleporte) está apertado. */

@@ -2,6 +2,19 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.8.4-alpha (Minecraft 26.3)
+
+### Depois do teste em multiplayer (dois jogadores em VR)
+
+- **Baú (de novo, a causa certa):** com a mão dentro de um bloco, o Vivecraft liga a ação "VR Interact" e o grip vai para ela, não para a ação que o HandsOn escutava. Na 0.8.3 o módulo do HandsOn segurava essa ação mas não fazia nada, então com a mão no baú o grip não abria a tampa nem pegava itens. Agora o módulo **é** o grip do HandsOn ali (apertar, segurar e soltar): a tampa abre com o movimento e o grip pega e põe itens com a mão dentro do baú. Vale também para o suporte de poções, as fornalhas e a mesa.
+- **Mira do arco ligada por padrão.** Quem já tinha a configuração recebe a mira ligada uma vez (dá para desligar nas opções).
+- **Coldres:** sacar um item do coldre (ombro ou cintura) e guardá-lo na mochila (por cima do ombro ou num espaço da mochila aberta) esvazia o coldre.
+- **Quantidade na mão:** agora fica grudada na lateral do dedão, como o relógio do pulso, e não some mais dentro da mão.
+- **HUD do Vivecraft escondido por padrão em VR** (a hotbar e a vida no pulso de fora): é o mesmo "esconder HUD" do F1, que estava ligado só em um dos jogadores. Sem VR o HUD volta. Opção "Sem HUD do Vivecraft".
+- **Menu radial: espaço de descarte** abaixo do círculo, como o da mochila. Soltar o grip ali com um item joga a pilha fora; o gatilho joga um; soltar o B sobre ele joga fora a pilha da mão.
+- **Suporte de poções agachado:** já é o padrão do mod desde a 0.8.1 (não é configuração). O teste agora confere com o suporte fechado e o jogador agachado.
+- **Opções HandsOn VR** (antes "Coldres VR"; alguns nomes ficaram mais curtos para caber: "Relógio no pulso", "Coleta na mochila", "Sem HUD do Vivecraft"): as opções ficam em grupos (Coldres; Mochila e menu radial; Mãos e itens; HUD) numa lista que rola com a roda do mouse ou o analógico, com os botões ▲ ▼ ao lado.
+
 ## 0.8.3-alpha (Minecraft 26.3)
 
 - **Baú: o grip não abre mais a janela antiga.** A causa era o "VR Interact" do Vivecraft: com a mão dentro de um bloco, o grip faz o "usar" do jogo nele. No baú fechado isso abria a janela antiga; no baú aberto, o grip para pegar um item reabria a janela antiga e fechava o baú novo. Agora o HandsOn registra no Vivecraft um módulo de interação que vem antes do dele e deixa o grip só para o HandsOn quando a mão está num baú, barril, baú do Ender, caixa de shulker, suporte de poções, fornalha ou mesa de trabalho.

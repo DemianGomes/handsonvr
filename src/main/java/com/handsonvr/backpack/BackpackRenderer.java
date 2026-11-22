@@ -65,7 +65,7 @@ public final class BackpackRenderer {
     }, Map.of('#', Draw.MC_SLOT));
 
     /** Ícone do descarte (16x16): seta para baixo sobre o chão, no traço dos ícones do jogo. */
-    private static final Sprite DROP_ICON = Sprite.of(new String[] {
+    public static final Sprite DROP_ICON = Sprite.of(new String[] {
             "                ",
             "      oooo      ",
             "      orro      ",

@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.AbstractFurnaceBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import org.vivecraft.api.client.InteractModule;
+import org.vivecraft.api.client.HeldInteractModule;
 import org.vivecraft.client_vr.ClientDataHolderVR;
 
 /**
@@ -20,11 +20,13 @@ import org.vivecraft.client_vr.ClientDataHolderVR;
  * do jogo nele (o BlockInteractionModule, prioridade 1500). No baú isso abria a janela antiga, e com o baú imersivo
  * aberto, o grip para pegar um item reabria a janela antiga e fechava o imersivo.
  *
- * <p>Este módulo vem antes (prioridade 1400) e fica ativo com a mão nos blocos que o HandsOn usa com as mãos (baú,
- * barril, baú do Ender, caixa de shulker, suporte de poções, fornalhas e mesa de trabalho). Ele não faz nada: o grip
- * fica só para o HandsOn (pegar itens, o gesto da tampa). Só existe em VR; sem VR o jogo é o de sempre.
+ * <p>Mais: enquanto essa ação está ligada, o grip vai para ela e NÃO para a ação da hotbar que o HandsOn escuta. Por
+ * isso este módulo vem antes (prioridade 1400) e é o próprio grip do HandsOn quando a mão está num bloco que o mod
+ * usa com as mãos (baú, barril, baú do Ender, caixa de shulker, suporte de poções, fornalhas e mesa de trabalho):
+ * apertar, segurar e soltar chamam o mesmo grip de sempre (pegar itens, o gesto da tampa, soltar num espaço). Se o
+ * grip já começou fora do bloco (pela hotbar), o módulo não toma o botão no meio. Só existe em VR.
  */
-public final class StationInteractModule implements InteractModule {
+public final class StationInteractModule implements HeldInteractModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("handsonvr", "stations");
     private static boolean registered = false;
     private static boolean warned = false;
@@ -84,14 +86,46 @@ public final class StationInteractModule implements InteractModule {
         return ID;
     }
 
+    /** O grip desta mão foi apertado por este módulo (e ainda não soltou)? */
+    private final boolean[] held = new boolean[2];
+
     @Override
     public boolean isActive(LocalPlayer player, InteractionHand hand, Vec3 position) {
-        return HandsOnVR.call("módulo de interação (ativo)", () -> covers(player.level(), hand.ordinal(), position));
+        int h = hand.ordinal();
+        if (held[h]) {
+            return true;
+        }
+        if (HandsOnVR.isGripDown(h)) {
+            return false; // o grip começou fora do bloco (hotbar): não toma o botão no meio, senão soltaria o item
+        }
+        return HandsOnVR.call("módulo de interação (ativo)", () -> covers(player.level(), h, position));
     }
 
     @Override
     public boolean onPress(LocalPlayer player, InteractionHand hand) {
-        return false; // o grip é do HandsOn: nada de "usar" o bloco, nem balançar o braço
+        int h = hand.ordinal();
+        held[h] = true;
+        HandsOnVR.onGripPressed(h); // o grip do HandsOn (pegar um item, a tampa do baú...)
+        return false; // sem o balanço do braço e a vibração do Vivecraft (o HandsOn vibra quando faz algo)
+    }
+
+    @Override
+    public boolean onHoldTick(LocalPlayer player, InteractionHand hand) {
+        return held[hand.ordinal()]; // segura o módulo enquanto o botão está apertado, mesmo com a mão saindo do bloco
+    }
+
+    @Override
+    public void onRelease(LocalPlayer player, InteractionHand hand) {
+        int h = hand.ordinal();
+        if (held[h]) {
+            held[h] = false;
+            HandsOnVR.onGripReleased(h);
+        }
+    }
+
+    @Override
+    public void reset(LocalPlayer player, InteractionHand hand) {
+        // O Vivecraft reinicia os módulos a cada tick sem o botão apertado: a soltura vem por onRelease antes disso.
     }
 
     @Override

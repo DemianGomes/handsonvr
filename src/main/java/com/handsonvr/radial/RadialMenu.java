@@ -19,6 +19,8 @@ public final class RadialMenu {
     public static final int CENTER = -1;
     /** Nenhum alvo. */
     public static final int NONE = -2;
+    /** O descarte, abaixo do círculo (como o da mochila): soltar um item seguro ali joga a pilha fora. */
+    public static final int DROP = -3;
 
     /** Um pixel do jogo no radial (m). Cada espaço é uma casa da hotbar: 22 pixels, como no jogo. */
     public static final double PX = 0.0034;
@@ -90,11 +92,14 @@ public final class RadialMenu {
         if (index == CENTER) {
             return new double[] {0, 0};
         }
+        if (index == DROP) {
+            return new double[] {0, -(RING_RADIUS + CELL * 1.35)};
+        }
         double angle = Math.toRadians(90 - index * 40);
         return new double[] {Math.cos(angle) * RING_RADIUS, Math.sin(angle) * RING_RADIUS};
     }
 
-    /** O alvo sob a ponta da mão: 0-8, {@link #CENTER} ou {@link #NONE}. Os alvos são as casas (quadradas). */
+    /** O alvo sob a ponta da mão: 0-8, {@link #CENTER}, {@link #DROP} ou {@link #NONE}. Os alvos são as casas (quadradas). */
     public int targetAt(Vec3 point) {
         Panel p = panel();
         if (p == null || point == null) {
@@ -106,7 +111,10 @@ public final class RadialMenu {
         }
         int best = NONE;
         double bestDistance = Double.MAX_VALUE;
-        for (int i = CENTER; i < 9; i++) {
+        for (int i = DROP; i < 9; i++) {
+            if (i == NONE) {
+                continue;
+            }
             double[] c = position(i);
             double d = Math.max(Math.abs(l.x - c[0]), Math.abs(l.y - c[1]));
             if (d <= HALF + TOUCH_SLACK && d < bestDistance) {
