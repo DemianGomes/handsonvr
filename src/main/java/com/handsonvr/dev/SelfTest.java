@@ -3065,16 +3065,7 @@ public final class SelfTest {
                 pinv.setItem(3, new ItemStack(Items.NETHER_WART, 1));
             });
         }
-        if (at(99)) {
-            // O "usar" normal do jogo no baú (o gatilho, perto demais para o gesto): também vira o baú imersivo, sem a janela antiga.
-            BlockPos box = packPos;
-            client.gameMode.useItemOn(p, net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.phys.BlockHitResult(
-                    Vec3.atCenterOf(box).add(0, 0.5, 0), net.minecraft.core.Direction.UP, box, false));
-        }
         if (at(104)) {
-            check(chest.isOpen() && client.gui.screen() == null,
-                    "abrir o baú pelo \"usar\" normal do jogo: vira o baú imersivo, sem a janela antiga (" + chest.last() + ")");
-            chest.close(client, "teste");
             setPack(client, Blocks.BREWING_STAND.defaultBlockState());
             p.setXRot(45f);
         }

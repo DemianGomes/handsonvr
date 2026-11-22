@@ -375,8 +375,8 @@ public final class HandsController {
             }
             return true;
         }
-        if (chest.onPanel(tip)) {
-            holdOwnItem(client, hand);
+        if (chest.onPanel(tip) && !(hand == 0 ? p.getMainHandItem() : p.getOffhandItem()).isEmpty()) {
+            holdOwnItem(client, hand); // com um item na mão: soltar num espaço o guarda (mão vazia: grip no fundo e empurrar para baixo fecha)
             return true;
         }
         // 3e) Grip encostado num baú, barril ou caixa de shulker: começa o gesto da tampa (levantar abre, empurrar

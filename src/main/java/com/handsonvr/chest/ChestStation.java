@@ -206,6 +206,34 @@ public final class ChestStation {
         return new double[] {(col - 4) * s, ((rows() - 1) / 2.0 - row) * s};
     }
 
+    /** Quanto a mão pode estar abaixo e acima da superfície dos itens (m). No fundo do baú, que é deitado, a folga é maior (a ponta fica à frente do controle). */
+    private double depthMin() {
+        return isFlat() ? -0.10 : -TOUCH_DEPTH * 0.5;
+    }
+
+    private double depthMax() {
+        return isFlat() ? 0.20 : TOUCH_DEPTH;
+    }
+
+    private boolean isFlat() {
+        Minecraft client = Minecraft.getInstance();
+        return pos != null && client.level != null && hasHingedLid(client.level.getBlockState(pos));
+    }
+
+    /** O bloco é o baú aberto (ou a outra metade do baú duplo)? */
+    private boolean isOpenChest(BlockPos block) {
+        Minecraft client = Minecraft.getInstance();
+        if (pos == null || client.level == null) {
+            return false;
+        }
+        if (block.equals(pos)) {
+            return true;
+        }
+        BlockState state = client.level.getBlockState(pos);
+        return state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE
+                && block.equals(pos.relative(ChestBlock.getConnectedDirection(state)));
+    }
+
     /** O espaço sob a ponta da mão, ou {@link #NONE}. */
     public int slotAt(Vec3 tip) {
         Panel p = menu == null ? null : surface();
@@ -214,7 +242,7 @@ public final class ChestStation {
         }
         Vec3 local = p.local(tip);
         double s = slot();
-        if (local.z < -TOUCH_DEPTH * 0.5 || local.z > TOUCH_DEPTH) {
+        if (local.z < depthMin() || local.z > depthMax()) {
             return NONE;
         }
         int col = (int) Math.round(local.x / s) + 4, row = (int) Math.round((rows() - 1) / 2.0 - local.y / s);
@@ -232,7 +260,7 @@ public final class ChestStation {
         }
         Vec3 local = p.local(tip);
         double s = slot();
-        return local.z >= -TOUCH_DEPTH * 0.5 && local.z <= TOUCH_DEPTH && Math.abs(local.x) <= 4.5 * s && Math.abs(local.y) <= rows() * s / 2;
+        return local.z >= depthMin() && local.z <= depthMax() && Math.abs(local.x) <= 4.5 * s && Math.abs(local.y) <= rows() * s / 2;
     }
 
     public boolean updateHover(int hand, int target) {
@@ -248,7 +276,7 @@ public final class ChestStation {
      * Retorna true (o grip é do baú).
      */
     public boolean beginLid(int hand, BlockPos block, Vec3 tip) {
-        boolean opening = !(block.equals(pos) && (menu != null || expectUntil >= 0));
+        boolean opening = !(isOpenChest(block) && (menu != null || expectUntil >= 0));
         lids[hand] = new Lid(block, tip, opening);
         return true;
     }
@@ -312,44 +340,10 @@ public final class ChestStation {
         return true;
     }
 
-    /** Qual baú o "usar" normal abriu: o bloco que a mira aponta, ou o que uma das mãos toca, ou o mais perto dos olhos. */
-    private BlockPos guessOpened(Minecraft client) {
-        if (client.hitResult instanceof BlockHitResult hit && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
-                && isContainer(client.level.getBlockState(hit.getBlockPos()))) {
-            return hit.getBlockPos().immutable();
-        }
-        for (int hand = 0; hand < 2; hand++) {
-            BlockPos touched = containerAt(client.level, VrBridge.pointer(hand));
-            if (touched != null) {
-                return touched;
-            }
-        }
-        BlockPos base = client.player.blockPosition(), best = null;
-        double bestDistance = 6.0;
-        for (BlockPos q : BlockPos.betweenClosed(base.offset(-5, -3, -5), base.offset(5, 4, 5))) {
-            if (isContainer(client.level.getBlockState(q)) && Vec3.atCenterOf(q).distanceTo(client.player.getEyePosition()) < bestDistance) {
-                bestDistance = Vec3.atCenterOf(q).distanceTo(client.player.getEyePosition());
-                best = q.immutable();
-            }
-        }
-        return best;
-    }
-
     public boolean onOpenScreen(MenuType<?> type, Minecraft client, int containerId) {
-        if (client.player == null || (type != MenuType.GENERIC_9x3 && type != MenuType.GENERIC_9x6 && type != MenuType.SHULKER_BOX)) {
+        if (expectUntil < 0 || client.player == null
+                || (type != MenuType.GENERIC_9x3 && type != MenuType.GENERIC_9x6 && type != MenuType.SHULKER_BOX)) {
             return false;
-        }
-        if (expectUntil < 0) {
-            // Abriu pelo "usar" normal do jogo (o gatilho, perto demais para o gesto): em VR também vira o baú imersivo,
-            // em vez da janela antiga. Só se sabemos qual bloco é; senão, a tela normal.
-            BlockPos guess = VrBridge.isVRActive() && client.gui.screen() == null ? guessOpened(client) : null;
-            if (guess == null) {
-                return false;
-            }
-            if (menu != null) {
-                close(client, "abriu outro");
-            }
-            pos = guess;
         }
         expectUntil = -1;
         AbstractContainerMenu m = type.create(containerId, client.player.getInventory());

@@ -135,9 +135,9 @@ public final class WristHudRenderer {
             icon(d, "hud/heart/container", x0 + i * 8 * px, y, px);
             int v = health - i * 2;
             if (v >= 2) {
-                icon(d, "hud/heart/full", x0 + i * 8 * px, y, px);
+                iconAt(d, "hud/heart/full", x0 + i * 8 * px, y, px, 0.0014f);
             } else if (v == 1) {
-                icon(d, "hud/heart/half", x0 + i * 8 * px, y, px);
+                iconAt(d, "hud/heart/half", x0 + i * 8 * px, y, px, 0.0014f);
             }
         }
         y -= ROW * px;
@@ -184,6 +184,14 @@ public final class WristHudRenderer {
             ex += 10 * px;
         }
         ms.popPose();
+    }
+
+    /** Um ícone mais à frente (o coração cheio sobre o recipiente: no mesmo plano os dois brigam e piscam em vermelho e preto). */
+    private static void iconAt(Draw d, String name, float left, float top, float px, float z) {
+        Sprite s = Sprite.gui(name);
+        if (s != null) {
+            d.sprite(s, left, top, px * 9f / s.width(), z, Draw.KEEP_ALPHA);
+        }
     }
 
     private static void icon(Draw d, String name, float left, float top, float px) {
