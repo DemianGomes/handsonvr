@@ -2,6 +2,12 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.8.6-alpha (Minecraft 26.3)
+
+- **HUD do Vivecraft só com o que importa, sempre no pulso esquerdo.** Em VR, o HUD do Vivecraft fica à vista e preso ao pulso esquerdo, com só: o chat, a lista de jogadores, os títulos, as mensagens da barra de ação, a barra do chefe, o placar do servidor e o HUD de outros mods, como o **minimapa do Xaero's Minimap** (aparece sempre que o mod está instalado; sem ele, nada muda). Saem dele a hotbar, a vida, a armadura, a fome, as bolhas, a XP, os efeitos, o nome do item, a mira do jogo e as sobreposições de tela cheia (o relógio do pulso e o radial já mostram isso).
+- Se o HUD estava escondido (o F1, ou o "esconder HUD" do Vivecraft), o HandsOn mostra ele ao ligar o VR e devolve como estava ao desligar. Tudo em memória: nenhum arquivo do Vivecraft ou do jogo é alterado. Sem VR, o HUD do jogo é o de sempre.
+- A opção "Barras só no pulso" saiu: em VR o HUD é sempre assim.
+
 ## 0.8.5-alpha (Minecraft 26.3)
 
 - **Dica do item na mochila e no baú VR:** com a mão sobre um item aparece a caixa de dica do jogo, com o nome, os encantamentos, os efeitos e a descrição (como no inventário do jogo).

@@ -383,7 +383,7 @@ public final class SelfTest {
                 } else if (stepTicks > 60) {
                     pass("mod carregou e o mundo abriu (mixins aplicados)");
                     check(com.handsonvr.render.VivecraftHud.hidesBars() == VrBridge.isVRActive() && !client.gui.hud.isHidden(),
-                            "em VR, as barras do jogo (hotbar, vida, fome) saem do HUD do Vivecraft e o resto (minimapa, chat) fica; sem VR, o HUD do jogo fica normal");
+                            "em VR, o HUD do Vivecraft fica à vista só com o chat, a lista de jogadores e o HUD de outros mods (minimapa); sem VR, o HUD do jogo fica normal");
                     next();
                 }
             }
@@ -1754,7 +1754,7 @@ public final class SelfTest {
                     "option.handsonvr.backpack_on", "option.handsonvr.radial", "option.handsonvr.pickup_main",
                     "option.handsonvr.grip_hotbar", "option.handsonvr.bow_aim", "option.handsonvr.left_trigger",
                     "option.handsonvr.throw", "option.handsonvr.throw_power", "option.handsonvr.wrist_hud",
-                    "option.handsonvr.hand_count", "option.handsonvr.hide_vivecraft_hud"};
+                    "option.handsonvr.hand_count"};
             java.util.Set<String> seen = new java.util.HashSet<>();
             for (int guard = 0; guard < 40; guard++) {
                 for (var e : settings.children()) {

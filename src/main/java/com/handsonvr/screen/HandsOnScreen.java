@@ -107,10 +107,6 @@ public class HandsOnScreen extends Screen {
             toggle(left(), y, "option.handsonvr.wrist_hud", config.wristHud, v -> config.wristHud = v);
             toggle(right(), y, "option.handsonvr.hand_count", config.handCount, v -> config.handCount = v);
         }));
-        lines.add(row(y -> toggle(left(), y, "option.handsonvr.hide_vivecraft_hud", config.hideVivecraftHud, v -> {
-            config.hideVivecraftHud = v;
-            com.handsonvr.render.VivecraftHud.apply(minecraft);
-        })));
         return lines;
     }
 

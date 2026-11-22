@@ -357,7 +357,8 @@ O que pede cuidado:
 - **Pulso esquerdo:** grudado na lateral interna do antebraço esquerdo, como o HUD "no pulso" do Vivecraft: anda e gira com o controle, deitado ao longo do braço (a leitura vai do cotovelo para a mão). Mostra a vida (corações), a armadura, a fome, a barra de XP com o nível e os ícones dos efeitos ativos, com os ícones do HUD do jogo, pequenos, num fundo escuro como o do chat. Para ler, vire o lado interno do braço para o rosto. Continua aparecendo com a mochila na mão (só o item some). Fica afastado do braço o bastante para não ser coberto pela segunda camada (mangas) das skins.
 - **Quantidade na mão:** grudada na lateral do dedão de cada mão (presa ao controle, como o relógio, e fora do modelo da mão) aparece a quantidade da pilha que ela segura, como num espaço do inventário. O que é sozinho (espada, arco) não mostra nada.
 - É só desenho do cliente: os outros jogadores não veem.
-- Opções "Relógio no pulso", "Quantidade na mão" e "Barras só no pulso" (em VR, tira do HUD do Vivecraft a hotbar, a vida, a fome, as bolhas, a XP e os efeitos; o minimapa e o chat ficam; ligada por padrão).
+- Opções "Relógio no pulso" e "Quantidade na mão".
+- **HUD do Vivecraft (pulso esquerdo, de fora):** em VR fica sempre à vista e no pulso, só com o chat, a lista de jogadores, os títulos, a barra de ação, a barra do chefe, o placar e o HUD de outros mods (o minimapa do Xaero, se instalado). A hotbar, a vida, a fome, a XP, os efeitos e a mira saem dele. Escondido pelo F1, o HandsOn mostra ao ligar o VR e devolve ao desligar (só em memória).
 
 ## 10. Fogueira e armadura no corpo
 
