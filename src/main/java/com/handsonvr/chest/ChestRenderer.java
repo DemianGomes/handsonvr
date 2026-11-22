@@ -11,7 +11,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * A janela do baú aberto (padrão "Janela" de docs/VISUAL.md, como a mochila): o fundo e os espaços do inventário do
- * jogo, os itens e as quantidades, e o espaço sob a mão claro. No baú, na parte de dentro da tampa aberta; no barril
+ * jogo, os itens e as quantidades, e o espaço sob a mão claro. No baú, no fundo escuro da caixa aberta, deitada; no barril
  * e na caixa de shulker, deitada na face da tampa ({@link ChestStation#surface}).
  */
 public final class ChestRenderer {
@@ -39,8 +39,9 @@ public final class ChestRenderer {
             d.mcSlot((float) c[0], (float) c[1], slot, 0.001f, hovered);
             ItemStack stack = chest.stack(i);
             if (!stack.isEmpty()) {
-                d.item(stack, (float) c[0], (float) c[1], 0.003f, slot * 16f / 18f);
-                d.mcCount(stack, (float) c[0], (float) c[1], slot, 0.006f);
+                float itemSize = slot * 16f / 18f;
+                d.item(stack, (float) c[0], (float) c[1], 0.003f, itemSize);
+                d.mcCount(stack, (float) c[0], (float) c[1], slot, 0.003f + itemSize * 0.13f); // à frente do bloco 3D (areia, pedra)
             }
         }
         ms.popPose();

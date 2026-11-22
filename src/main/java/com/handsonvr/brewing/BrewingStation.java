@@ -27,7 +27,8 @@ import java.util.function.Consumer;
  * mod fica com o menu do jogo sem a tela.
  *
  * <p>Os lugares são os do próprio modelo do bloco (brewing_stand_bottle0..2): as três garrafas penduradas nos braços
- * (leste, noroeste e sudoeste da haste), o ingrediente no topo da haste e o pó de blaze no meio dela. As garrafas o
+ * (leste, noroeste e sudoeste da haste), o ingrediente no topo da haste e o pó de blaze ao lado do ingrediente, à esquerda de quem olha o suporte (como na tela do
+ * jogo: o combustível à esquerda do ingrediente), flutuando e bem separado dos outros. As garrafas o
  * jogo já desenha no bloco; o mod desenha o ingrediente, o pó de blaze e, acima, a plaquinha com as bolhas, a seta e a
  * barra de combustível da tela do jogo. Soltar o grip num lugar põe a pilha, o gatilho põe um, grip num lugar com item
  * o traz para a mão.
@@ -37,8 +38,8 @@ public final class BrewingStation {
     public static final int BOTTLE_0 = 0, INGREDIENT = 3, FUEL = 4, NONE = -1;
     /** Onde fica cada lugar no bloco (x, y, z de 0 a 1) e o raio do toque (m). */
     private static final double[][] SPOTS = {
-            {0.75, 0.30, 0.50}, {0.31, 0.30, 0.31}, {0.31, 0.30, 0.69}, {0.50, 1.02, 0.50}, {0.50, 0.62, 0.50}};
-    private static final double[] REACH = {0.17, 0.17, 0.17, 0.17, 0.13};
+            {0.75, 0.30, 0.50}, {0.31, 0.30, 0.31}, {0.31, 0.30, 0.69}, {0.50, 1.02, 0.50}, {0.50, 1.02, 0.50}}; // o do pó de blaze sai de spot()
+    private static final double[] REACH = {0.17, 0.17, 0.17, 0.17, 0.15};
     /** A plaquinha do progresso: altura acima do bloco (m). */
     public static final double PANEL_HEIGHT = 1.45;
     private static final double NEAR = 2.4, FAR = 4.0, LOOK_ANGLE = Math.toRadians(45), HAND_NEAR = 0.6;
@@ -98,9 +99,45 @@ public final class BrewingStation {
         hover[0] = hover[1] = NONE;
     }
 
+    /** Afastamento (m) do pó de blaze ao ingrediente, para o lado. */
+    private static final double FUEL_SIDE = 0.32;
+    /** Para que lado do bloco está quem olha (0 = +z, 1 = -x, 2 = -z, 3 = +x); só muda quando a pessoa dá a volta no bloco. */
+    private int viewSide = 0;
+    private static final int[][] CARDINAL = {{0, 1}, {-1, 0}, {0, -1}, {1, 0}};
+
+    private void updateViewSide() {
+        VrBridge.Pose head = VrBridge.head();
+        if (head == null || pos == null || hover[0] != NONE || hover[1] != NONE) {
+            return;
+        }
+        double dx = head.position().x - (pos.getX() + 0.5), dz = head.position().z - (pos.getZ() + 0.5);
+        double len = Math.hypot(dx, dz);
+        if (len < 0.2) {
+            return;
+        }
+        int[] now = CARDINAL[viewSide];
+        if ((dx * now[0] + dz * now[1]) / len >= Math.cos(Math.toRadians(55))) {
+            return; // ainda de frente para o mesmo lado: o lugar não anda
+        }
+        int best = viewSide;
+        double bestDot = -2;
+        for (int i = 0; i < 4; i++) {
+            double dot = (dx * CARDINAL[i][0] + dz * CARDINAL[i][1]) / len;
+            if (dot > bestDot) {
+                bestDot = dot;
+                best = i;
+            }
+        }
+        viewSide = best;
+    }
+
     /** O centro de um lugar no mundo. */
     public Vec3 spot(int target) {
         double[] s = SPOTS[target];
+        if (target == FUEL) {
+            int[] f = CARDINAL[viewSide];
+            return new Vec3(pos.getX() + 0.5 - f[1] * FUEL_SIDE, pos.getY() + s[1], pos.getZ() + 0.5 + f[0] * FUEL_SIDE);
+        }
         return new Vec3(pos.getX() + s[0], pos.getY() + s[1], pos.getZ() + s[2]);
     }
 
@@ -174,9 +211,13 @@ public final class BrewingStation {
         }
         if (menu == null && expectUntil < 0) {
             pos = best;
+            updateViewSide();
             if (pos != null && canAuto && vr && ticks >= suppressUntil) {
                 ensureOpen(client, false);
             }
+        }
+        if (pos != null) {
+            updateViewSide();
         }
         if (pos == null) {
             hover[0] = hover[1] = NONE;
@@ -234,14 +275,13 @@ public final class BrewingStation {
         }
         LocalPlayer p = client.player;
         if (pos == null || p == null || client.gameMode == null || client.gui.screen() != null
-                || p.containerMenu != p.inventoryMenu || p.isSecondaryUseActive() || ticks < retryAfter
+                || p.containerMenu != p.inventoryMenu || ticks < retryAfter
                 || (!asked && ticks < suppressUntil)) {
             return false;
         }
         expectUntil = ticks + OPEN_TIMEOUT;
         seen = lastUse = ticks;
-        client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND,
-                new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false));
+        com.handsonvr.hands.NoShift.run(client, () -> client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false)));
         last = "abrindo";
         return true;
     }

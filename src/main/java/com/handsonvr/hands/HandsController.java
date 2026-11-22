@@ -1285,7 +1285,32 @@ public final class HandsController {
                 && client.level.recipeAccess().propertySet(net.minecraft.world.item.crafting.RecipePropertySet.CAMPFIRE_INPUT).test(stack);
     }
 
-    /** A fogueira sob a ponta da mão (a mão nela ou até uns 40 cm acima, com uma folga dos lados), como um clique no topo dela; ou null. */
+    /** Raio de cada canto da fogueira em que a ponta da mão conta como "no lugar da comida". */
+    public static final double CAMPFIRE_SLOT_RADIUS = 0.17;
+
+    /**
+     * Os 4 lugares de comida da fogueira, nos cantos (o mesmo cálculo do CampfireRenderer do jogo), na altura da brasa.
+     * O servidor enche sempre o primeiro lugar vazio, na ordem do bloco, então {@code empty[i]} diz se o lugar i está livre.
+     */
+    public record CampfireSlots(Vec3[] at, boolean[] empty) {}
+
+    public static CampfireSlots campfireSlots(Minecraft client, net.minecraft.core.BlockPos pos) {
+        var state = client.level.getBlockState(pos);
+        int facing = state.getValue(net.minecraft.world.level.block.CampfireBlock.FACING).get2DDataValue();
+        var be = client.level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.CampfireBlockEntity fire ? fire : null;
+        Vec3[] at = new Vec3[4];
+        boolean[] empty = new boolean[4];
+        for (int i = 0; i < 4; i++) {
+            double theta = Math.toRadians(-net.minecraft.core.Direction.from2DDataValue((i + facing) % 4).toYRot());
+            double x = -0.25, z = -0.25;
+            at[i] = new Vec3(pos.getX() + 0.5 + x * Math.cos(theta) + z * Math.sin(theta), pos.getY() + 0.4375,
+                    pos.getZ() + 0.5 - x * Math.sin(theta) + z * Math.cos(theta));
+            empty[i] = be == null || be.getItems().get(i).isEmpty();
+        }
+        return new CampfireSlots(at, empty);
+    }
+
+    /** A fogueira com a ponta da mão sobre um de seus lugares de comida livres (ou até uns 40 cm acima dele); ou null. */
     public static net.minecraft.world.phys.BlockHitResult campfireUnder(Minecraft client, Vec3 tip) {
         if (tip == null || client.level == null) {
             return null;
@@ -1294,10 +1319,14 @@ public final class HandsController {
         for (net.minecraft.core.BlockPos q : net.minecraft.core.BlockPos.betweenClosed(at.offset(-1, -1, -1), at.offset(1, 0, 1))) {
             if (client.level.getBlockState(q).getBlock() instanceof net.minecraft.world.level.block.CampfireBlock) {
                 double above = tip.y - q.getY(); // a fogueira tem 7/16 de altura
-                double side = Math.max(Math.abs(tip.x - (q.getX() + 0.5)), Math.abs(tip.z - (q.getZ() + 0.5)));
-                if (above >= 0.0 && above <= 0.85 && side <= 0.6) {
-                    return new net.minecraft.world.phys.BlockHitResult(new Vec3(q.getX() + 0.5, q.getY() + 0.4375, q.getZ() + 0.5),
-                            net.minecraft.core.Direction.UP, q.immutable(), false);
+                if (above < 0.0 || above > 0.85) {
+                    continue;
+                }
+                CampfireSlots slots = campfireSlots(client, q);
+                for (int i = 0; i < 4; i++) {
+                    if (slots.empty()[i] && Math.hypot(tip.x - slots.at()[i].x, tip.z - slots.at()[i].z) <= CAMPFIRE_SLOT_RADIUS) {
+                        return new net.minecraft.world.phys.BlockHitResult(slots.at()[i], net.minecraft.core.Direction.UP, q.immutable(), false);
+                    }
                 }
             }
         }
@@ -1310,7 +1339,7 @@ public final class HandsController {
             return false;
         }
         var interactionHand = hand == 0 ? net.minecraft.world.InteractionHand.MAIN_HAND : net.minecraft.world.InteractionHand.OFF_HAND;
-        return client.gameMode.useItemOn(client.player, interactionHand, hit).consumesAction();
+        return NoShift.run(client, () -> client.gameMode.useItemOn(client.player, interactionHand, hit)).consumesAction();
     }
 
     /**

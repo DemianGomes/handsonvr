@@ -2,6 +2,17 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.8.1-alpha (Minecraft 26.3)
+
+### Ajustes depois do teste no óculos
+
+- **Abaixar o corpo não atrapalha mais os blocos baixos.** Abaixar de verdade conta como Shift, e o jogo ignora o bloco com um item na mão agachado. Agora o mod tira o Shift só durante o "usar" dele (suporte de poções, fogueira, baú, fornalha, mesa) e devolve em seguida; seu corpo continua abaixado.
+- **Fogueira: os 4 cantos.** A comida entra encostando a mão num dos 4 cantos livres (um espaço aparece em cada um); o meio do fogo não conta mais. O jogo enche sempre o primeiro canto livre, na ordem dele.
+- **Baú: os itens ficam dentro da caixa**, deitados no fundo escuro do baú aberto, e não mais na tampa. O baú aberto pelo "usar" normal (gatilho, perto demais) também vira o baú imersivo, sem a janela antiga.
+- **Baú: a quantidade** (areia, pedra e outros blocos) não fica mais atrás do item.
+- **Pulso:** o relógio fica mais afastado do braço, fora da segunda camada (mangas) das skins, e **continua aparecendo com a mochila na mão**.
+- **Suporte de poções: o pó de blaze** tem um lugar só dele, ao lado do ingrediente (à esquerda de quem olha, como na tela do jogo), flutuando e longe dos outros; o espaço mostra o item da mão.
+
 ## 0.8.0-alpha (Minecraft 26.3)
 
 ### Baú: abrir a tampa com o movimento ([#51](https://github.com/DemianGomes/handsonvr/issues/51))

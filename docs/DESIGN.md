@@ -353,28 +353,28 @@ O que pede cuidado:
 
 ![O relógio no pulso esquerdo e a quantidade perto da mão direita](img/pulso.png)
 
-- **Pulso esquerdo:** grudado na lateral interna do antebraço esquerdo, como o HUD "no pulso" do Vivecraft: anda e gira com o controle, deitado ao longo do braço (a leitura vai do cotovelo para a mão). Mostra a vida (corações), a armadura, a fome, a barra de XP com o nível e os ícones dos efeitos ativos, com os ícones do HUD do jogo, pequenos, num fundo escuro como o do chat. Para ler, vire o lado interno do braço para o rosto. Some enquanto a mão esquerda segura a mochila.
+- **Pulso esquerdo:** grudado na lateral interna do antebraço esquerdo, como o HUD "no pulso" do Vivecraft: anda e gira com o controle, deitado ao longo do braço (a leitura vai do cotovelo para a mão). Mostra a vida (corações), a armadura, a fome, a barra de XP com o nível e os ícones dos efeitos ativos, com os ícones do HUD do jogo, pequenos, num fundo escuro como o do chat. Para ler, vire o lado interno do braço para o rosto. Continua aparecendo com a mochila na mão (só o item some). Fica afastado do braço o bastante para não ser coberto pela segunda camada (mangas) das skins.
 - **Quantidade na mão:** perto do dedão de cada mão aparece a quantidade da pilha que ela segura, como num espaço do inventário. O que é sozinho (espada, arco) não mostra nada.
 - É só desenho do cliente: os outros jogadores não veem.
 - Opções "Vida e fome no pulso" e "Quantidade na mão".
 
 ## 10. Fogueira e armadura no corpo
 
-- **Fogueira:** com comida crua na mão, chegue perto da fogueira: um espaço do inventário do jogo aparece flutuando sobre ela. **Encoste a mão na fogueira** (sem apertar nada) e um item vai para ela, pelo "usar" do jogo; o espaço clareia quando a mão está no lugar. Para pôr outro, tire a mão e encoste de novo. Também dá para segurar com o grip e soltar em cima, e o gatilho com o grip apertado põe um. Como no jogo, a comida não sai antes de cozinhar; pronta, ela cai no chão.
+- **Fogueira:** com comida crua na mão, chegue perto da fogueira: um espaço do inventário do jogo aparece flutuando sobre cada canto livre dela. O jogo enche sempre o primeiro canto livre na ordem dele, então a comida pode aparecer em outro canto que não o tocado. **Encoste a mão na fogueira** (sem apertar nada) e um item vai para ela, pelo "usar" do jogo; o espaço clareia quando a mão está no lugar. Para pôr outro, tire a mão e encoste de novo. Também dá para segurar com o grip e soltar em cima, e o gatilho com o grip apertado põe um. Como no jogo, a comida não sai antes de cozinhar; pronta, ela cai no chão.
 - **Vestir armadura:** solte a peça na parte do corpo dela: o capacete na cabeça, o peitoral (ou o élitro) no peito, as calças na cintura e as botas abaixo dos joelhos, sempre na frente do corpo (os coldres ficam dos lados e atrás). A peça que estava vestida vai para o lugar de onde a nova saiu.
 
 ## 11. Baú, barril e caixa de shulker
 
-![O baú aberto com os itens na parte de dentro da tampa](img/bau.png)
+![O baú aberto com os itens no fundo da caixa](img/bau.png)
 
 **Abrir com o movimento:** segure a borda da frente da tampa com o grip e **levante a mão** (12 cm bastam), como quem abre um baú de verdade. No barril e na caixa de shulker, puxe a face da tampa para fora. A tampa abre como no jogo, para todo mundo ver.
 
-**Os itens ficam na tampa, sem página nem rolagem:**
+**Os itens ficam dentro do baú, sem página nem rolagem:**
 
 | Bloco | Onde | Espaços |
 |---|---|---|
-| Baú simples (e com armadilha, e do Ender) | Na parte de dentro da tampa aberta, em pé atrás do baú, virada para você | 9x3, espaços de 9,6 cm |
-| Baú duplo | Na tampa inteira das duas metades, duas vezes mais larga | 9x6, espaços de 14 cm |
+| Baú simples (e com armadilha, e do Ender) | Deitados no fundo escuro da caixa aberta, com a fileira de cima do lado de lá |  9x3, espaços de 9,6 cm |
+| Baú duplo | No fundo das duas metades juntas, duas vezes mais largo | 9x6, espaços de 14 cm |
 | Barril e caixa de shulker | Deitados na face da tampa (no topo, virados para quem olha) | 9x3, espaços de 9,6 cm |
 
 Os gestos são os da mochila:
@@ -395,7 +395,7 @@ Por baixo é o menu do jogo, aberto como o jogador faria: o jogo anima a tampa p
 - **Lugares**, os do próprio modelo do bloco:
   - as três garrafas nos braços (leste, noroeste e sudoeste da haste);
   - o ingrediente no topo da haste;
-  - o pó de blaze no meio dela.
+  - o pó de blaze ao lado do ingrediente, à esquerda de quem olha (como na tela do jogo), flutuando e longe dos outros; o espaço mostra o item da mão.
 - O jogo já desenha as garrafas; o mod desenha o ingrediente girando no topo, o pó de blaze e o nome do que está sob a mão.
 - Acima, a plaquinha com as **bolhas**, a **seta** do preparo e a **barra de combustível** da tela do jogo.
 - **Encostar:** com o item na mão (garrafa, ingrediente ou pó de blaze), chegue perto e um espaço do inventário do jogo marca cada lugar vazio que aceita ele. **Encoste a mão ali** (sem apertar nada) e um item vai para o lugar; o espaço clareia quando a mão está nele.

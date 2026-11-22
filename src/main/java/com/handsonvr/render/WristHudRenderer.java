@@ -36,9 +36,9 @@ public final class WristHudRenderer {
     private static final int WIDTH = 81, ROW = 10;
     /**
      * Onde o relógio fica, no referencial do controle esquerdo (m), como o HUD "no pulso" do Vivecraft: na lateral
-     * interna do antebraço (+x, o lado do corpo), atrás da mão (+z, para o cotovelo), deitado ao longo do braço.
+     * interna do antebraço (+x, o lado do corpo), afastado o bastante para ficar fora da segunda camada (mangas) das skins, atrás da mão (+z, para o cotovelo), deitado ao longo do braço.
      */
-    private static final float WRIST_SIDE = 0.045f, WRIST_BACK = 0.15f, WRIST_UP = 0.0f;
+    private static final float WRIST_SIDE = 0.065f, WRIST_BACK = 0.15f, WRIST_UP = 0.0f;
     /** Fundo translúcido como o do chat do jogo. */
     private static final int BACKGROUND = 0x80000000;
     /** O verde do nível de XP do jogo. */
@@ -88,7 +88,7 @@ public final class WristHudRenderer {
                 }
             }
         }
-        if (config.wristHud && !p.isCreative() && !p.isSpectator() && !hands.isHandHidden(1)) {
+        if (config.wristHud && !p.isCreative() && !p.isSpectator()) { // continua com a mochila na mão: só o item some, o relógio fica
             Panel panel = wristPanel();
             if (panel != null) {
                 wrist(d, ms, camera, client, p, panel);

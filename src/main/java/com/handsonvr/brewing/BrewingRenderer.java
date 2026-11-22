@@ -17,7 +17,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Desenha o suporte de poções aberto (padrão em docs/VISUAL.md): o ingrediente girando no topo da haste, o pó de
- * blaze no meio dela (as garrafas o jogo já desenha nos braços), o nome do que está sob a mão na caixa de dica, e a
+ * blaze ao lado do ingrediente (as garrafas o jogo já desenha nos braços), o nome do que está sob a mão na caixa de dica, e a
  * plaquinha com as bolhas, a seta e a barra de combustível da tela do jogo, recortadas da própria textura dela.
  */
 public final class BrewingRenderer {
@@ -68,11 +68,13 @@ public final class BrewingRenderer {
                 continue;
             }
             boolean show = false, hovered = false;
+            ItemStack shown = ItemStack.EMPTY;
             for (int hand = 0; hand < 2; hand++) {
                 Vec3 tip = VrBridge.pointer(hand);
                 ItemStack held = hand == 0 ? client.player.getMainHandItem() : client.player.getOffhandItem();
                 if (tip != null && tip.distanceTo(b.spot(t)) <= TARGET_NEAR && b.likelyAccepts(client, t, held)) {
                     show = true;
+                    shown = held;
                     hovered |= b.hover(hand) == t;
                 }
             }
@@ -83,6 +85,8 @@ public final class BrewingRenderer {
                 ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
                 ms.rotate(p.rotation());
                 d.mcSlot(0f, 0f, TARGET, 0f, hovered);
+                // O item da mão, pequeno dentro do espaço: mostra o que vai ali (o pó de blaze não se confunde com o ingrediente).
+                d.item(shown.copyWithCount(1), 0f, 0f, 0.002f, TARGET * 0.6f);
                 ms.popPose();
             }
         }

@@ -2837,6 +2837,10 @@ public final class SelfTest {
 
     private static BlockPos packPos;
 
+    private static Vec3 fireCorner(Minecraft client, int slot) {
+        return HandsController.campfireSlots(client, packPos).at()[slot].add(0, 0.27, 0);
+    }
+
     private static void setPack(Minecraft client, net.minecraft.world.level.block.state.BlockState state) {
         BlockPos at = packPos;
         onServer(client, player -> {
@@ -2905,9 +2909,11 @@ public final class SelfTest {
             inv.setSelectedSlot(1); // carne
         }
         // --- fogueira
-        Vec3 fireTop = Vec3.atBottomCenterOf(packPos).add(0, 0.7, 0);
         if (at(16)) {
-            pointAt(0, fireTop, new Vec3(0, -1, 0));
+            Vec3 center = Vec3.atBottomCenterOf(packPos).add(0, 0.7, 0);
+            check(HandsController.campfireUnder(client, center) == null && HandsController.campfireUnder(client, fireCorner(client, 0)) != null,
+                    "a fogueira só aceita a comida nos 4 cantos (o meio do fogo não conta)");
+            pointAt(0, fireCorner(client, 0), new Vec3(0, -1, 0));
             grip(client, 0, true); // segura a carne da mão
         }
         if (at(18)) {
@@ -2988,8 +2994,8 @@ public final class SelfTest {
             check(chest.isOpen() && client.gui.screen() == null && chest.size() == 27,
                     "levantar a mão com a tampa: o baú abriu sem a tela do jogo, com os 27 espaços (" + chest.last() + ")");
             Panel panel = chest.surface();
-            check(panel.normal().y == 0 && panel.origin().y > chestTop.y && Math.abs(chest.slot() - 0.86 / 9) < 1.0e-6,
-                    "os itens ficam em pé na parte de dentro da tampa aberta, 9x3 em espaços de " + Math.round(chest.slot() * 1000) + " mm");
+            check(panel.normal().y > 0.99 && Math.abs(panel.origin().y - (packPos.getY() + 0.635)) < 0.01 && Math.abs(chest.slot() - 0.82 / 9) < 1.0e-6,
+                    "os itens ficam deitados no fundo escuro da caixa aberta (não na tampa), 9x3 em espaços de " + Math.round(chest.slot() * 1000) + " mm");
             double[] c = chest.slotCenter(0);
             pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
         }
@@ -3030,6 +3036,7 @@ public final class SelfTest {
         if (at(84)) {
             check(chest.stack(13).is(Items.SAND) && chest.stack(13).getCount() == 32, "soltar a areia num espaço vazio do baú: as 32 entram");
             photoPose(client, true);
+            p.setXRot(60f); // olhando para dentro do baú
         }
         if (at(88)) {
             screenshot(client, "17-bau");
@@ -3057,6 +3064,17 @@ public final class SelfTest {
                 pinv.setItem(2, new ItemStack(Items.BLAZE_POWDER, 2));
                 pinv.setItem(3, new ItemStack(Items.NETHER_WART, 1));
             });
+        }
+        if (at(99)) {
+            // O "usar" normal do jogo no baú (o gatilho, perto demais para o gesto): também vira o baú imersivo, sem a janela antiga.
+            BlockPos box = packPos;
+            client.gameMode.useItemOn(p, net.minecraft.world.InteractionHand.MAIN_HAND, new net.minecraft.world.phys.BlockHitResult(
+                    Vec3.atCenterOf(box).add(0, 0.5, 0), net.minecraft.core.Direction.UP, box, false));
+        }
+        if (at(104)) {
+            check(chest.isOpen() && client.gui.screen() == null,
+                    "abrir o baú pelo \"usar\" normal do jogo: vira o baú imersivo, sem a janela antiga (" + chest.last() + ")");
+            chest.close(client, "teste");
             setPack(client, Blocks.BREWING_STAND.defaultBlockState());
             p.setXRot(45f);
         }
@@ -3096,7 +3114,7 @@ public final class SelfTest {
         if (at(134)) {
             check(brew.stack(0).is(Items.POTION) && brew.stack(com.handsonvr.brewing.BrewingStation.FUEL).is(Items.BLAZE_POWDER)
                             && brew.stack(com.handsonvr.brewing.BrewingStation.INGREDIENT).is(Items.NETHER_WART),
-                    "a garrafa num braço, o pó de blaze no meio da haste e a verruga no topo");
+                    "a garrafa num braço, o pó de blaze ao lado do ingrediente e a verruga no topo");
             check(brew.brewTicks() > 0 && brew.fuel() > 0,
                     "o suporte começa a preparar (faltam " + brew.brewTicks() + " ticks, combustível " + brew.fuel() + ")");
             handAway(0);
@@ -3138,7 +3156,8 @@ public final class SelfTest {
             inv.setSelectedSlot(4);
         }
         if (at(172)) {
-            pointAt(0, fireTop, new Vec3(0, -1, 0)); // sem botão nenhum
+            client.options.keyShift.setDown(true); // abaixado de verdade (os blocos baixos pedem isso): conta como Shift
+            pointAt(0, fireCorner(client, 2), new Vec3(0, -1, 0)); // sem botão nenhum
         }
         if (at(182)) {
             BlockPos at = packPos;
@@ -3150,7 +3169,8 @@ public final class SelfTest {
         }
         if (at(185)) {
             check(probeCount == 1 && p.getMainHandItem().is(Items.BEEF) && p.getMainHandItem().getCount() == 2,
-                    "encostar a carne na fogueira, sem apertar nada: põe uma (e só uma, até tirar a mão)");
+                    "encostar a carne num canto da fogueira, sem apertar nada e abaixado (Shift): põe uma (e só uma, até tirar a mão)");
+            client.options.keyShift.setDown(false);
             setPack(client, Blocks.AIR.defaultBlockState());
             p.setXRot(0f);
             handAway(0);

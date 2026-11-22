@@ -39,8 +39,8 @@ import java.util.function.Consumer;
  * os cliques normais (funciona em qualquer servidor). Para fechar, grip no bloco e empurre para baixo (ou para dentro),
  * ou se afaste.
  *
- * <p><b>Os itens ficam na tampa</b>, sem página nem rolagem: no baú, na parte de dentro da tampa aberta (em pé atrás
- * dele): 9x3 no baú simples e 9x6 no duplo, que tem a tampa duas vezes mais larga. No barril e na caixa de shulker,
+ * <p><b>Os itens ficam dentro do baú</b>, sem página nem rolagem: no baú, deitados no fundo escuro da caixa aberta:
+ * 9x3 no baú simples e 9x6 no duplo, que é duas vezes mais largo. No barril e na caixa de shulker,
  * deitados na face da tampa. As mãos fazem o mesmo que na mochila: grip num espaço traz o item para a mão (com o gatilho
  * já apertado, a metade), soltar o grip num espaço põe a pilha, o gatilho põe um. Como fechar não perde nada, o menu
  * cede o lugar quando a mochila precisa do inventário inteiro ({@link InvOps}).
@@ -122,7 +122,7 @@ public final class ChestStation {
                 || state.getBlock() instanceof EnderChestBlock || state.getBlock() instanceof ShulkerBoxBlock;
     }
 
-    /** Baú com tampa de dobradiça (os itens ficam na parte de dentro da tampa aberta)? */
+    /** Baú com tampa de dobradiça (os itens ficam deitados no fundo da caixa aberta)? */
     private static boolean hasHingedLid(BlockState state) {
         return state.getBlock() instanceof ChestBlock || state.getBlock() instanceof EnderChestBlock;
     }
@@ -148,7 +148,7 @@ public final class ChestStation {
 
     /**
      * Onde ficam os itens: o plano (x para a direita de quem olha a frente, y para cima nos itens, z para fora) e o lado
-     * de um espaço. No baú, a parte de dentro da tampa aberta, em pé sobre a borda de trás; no duplo, as duas metades
+     * de um espaço. No baú, o fundo da caixa aberta (a parte escura de dentro), deitado; no duplo, as duas metades
      * juntas. No barril e na caixa de shulker, a face da tampa. Null sem o bloco.
      */
     public Panel surface() {
@@ -166,9 +166,10 @@ public final class ChestStation {
                 BlockPos other = pos.relative(ChestBlock.getConnectedDirection(state));
                 center = center.add(Vec3.atBottomCenterOf(other)).scale(0.5);
             }
-            // A tampa aberta: em pé sobre a borda de trás (a 7/16 do centro), do topo da caixa (10/16) para cima.
-            Vec3 origin = center.subtract(front.scale(0.42)).add(0, 0.625 + 0.42, 0);
-            return new Panel(origin, right, new Vec3(0, 1, 0), front, 1.0);
+            // O fundo do baú aberto (a parte escura de dentro da caixa, a 10/16 do chão), deitado: o "cima" dos itens
+            // aponta para longe de quem está na frente do baú, e a normal para cima.
+            Vec3 origin = center.add(0, 0.625 + 0.01, 0);
+            return new Panel(origin, right, front.reverse(), new Vec3(0, 1, 0), 1.0);
         }
         Direction face = state.hasProperty(BlockStateProperties.FACING) ? state.getValue(BlockStateProperties.FACING) : Direction.UP;
         Vec3 n = Vec3.atLowerCornerOf(face.getUnitVec3i());
@@ -190,7 +191,7 @@ public final class ChestStation {
         Minecraft client = Minecraft.getInstance();
         BlockState state = client.level == null || pos == null ? null : client.level.getBlockState(pos);
         boolean twice = state != null && state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE;
-        return twice ? 1.8 : 0.86;
+        return twice ? 1.7 : 0.82;
     }
 
     /** O lado de um espaço (m): 9 colunas na largura da tampa, com as linhas cabendo na altura dela. */
@@ -298,7 +299,7 @@ public final class ChestStation {
         if (menu != null || expectUntil >= 0) {
             close(client, "abrindo outro");
         }
-        if (p == null || client.gameMode == null || client.gui.screen() != null || p.isSecondaryUseActive() || ticks < retryAfter) {
+        if (p == null || client.gameMode == null || client.gui.screen() != null || ticks < retryAfter) {
             return false;
         }
         if (p.containerMenu != p.inventoryMenu && !InvOps.releaseHidden(client)) {
@@ -306,16 +307,49 @@ public final class ChestStation {
         }
         pos = block;
         expectUntil = ticks + OPEN_TIMEOUT;
-        client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND,
-                new BlockHitResult(Vec3.atCenterOf(block).add(0, 0.5, 0), Direction.UP, block, false));
+        com.handsonvr.hands.NoShift.run(client, () -> client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(Vec3.atCenterOf(block).add(0, 0.5, 0), Direction.UP, block, false)));
         last = "abrindo";
         return true;
     }
 
+    /** Qual baú o "usar" normal abriu: o bloco que a mira aponta, ou o que uma das mãos toca, ou o mais perto dos olhos. */
+    private BlockPos guessOpened(Minecraft client) {
+        if (client.hitResult instanceof BlockHitResult hit && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK
+                && isContainer(client.level.getBlockState(hit.getBlockPos()))) {
+            return hit.getBlockPos().immutable();
+        }
+        for (int hand = 0; hand < 2; hand++) {
+            BlockPos touched = containerAt(client.level, VrBridge.pointer(hand));
+            if (touched != null) {
+                return touched;
+            }
+        }
+        BlockPos base = client.player.blockPosition(), best = null;
+        double bestDistance = 6.0;
+        for (BlockPos q : BlockPos.betweenClosed(base.offset(-5, -3, -5), base.offset(5, 4, 5))) {
+            if (isContainer(client.level.getBlockState(q)) && Vec3.atCenterOf(q).distanceTo(client.player.getEyePosition()) < bestDistance) {
+                bestDistance = Vec3.atCenterOf(q).distanceTo(client.player.getEyePosition());
+                best = q.immutable();
+            }
+        }
+        return best;
+    }
+
     public boolean onOpenScreen(MenuType<?> type, Minecraft client, int containerId) {
-        if (expectUntil < 0 || client.player == null
-                || (type != MenuType.GENERIC_9x3 && type != MenuType.GENERIC_9x6 && type != MenuType.SHULKER_BOX)) {
+        if (client.player == null || (type != MenuType.GENERIC_9x3 && type != MenuType.GENERIC_9x6 && type != MenuType.SHULKER_BOX)) {
             return false;
+        }
+        if (expectUntil < 0) {
+            // Abriu pelo "usar" normal do jogo (o gatilho, perto demais para o gesto): em VR também vira o baú imersivo,
+            // em vez da janela antiga. Só se sabemos qual bloco é; senão, a tela normal.
+            BlockPos guess = VrBridge.isVRActive() && client.gui.screen() == null ? guessOpened(client) : null;
+            if (guess == null) {
+                return false;
+            }
+            if (menu != null) {
+                close(client, "abriu outro");
+            }
+            pos = guess;
         }
         expectUntil = -1;
         AbstractContainerMenu m = type.create(containerId, client.player.getInventory());
