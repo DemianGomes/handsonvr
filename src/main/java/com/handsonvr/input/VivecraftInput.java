@@ -32,6 +32,7 @@ public final class VivecraftInput {
 
     public static void tick(Minecraft client) {
         try {
+            StationInteractModule.ensureRegistered(); // o grip com a mão no baú não faz o "usar" do Vivecraft (só roda em VR)
             MCVR mcvr = MCVR.get();
             if (mcvr == null) {
                 gripMain = gripOff = teleport = rotate = attack = use = radialMain = radialOff = null;

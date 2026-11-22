@@ -322,6 +322,24 @@ public final class ChestStation {
 
     // ------------------------------------------------------------------ abrir e fechar
 
+    /**
+     * "Usar" (A) no baú que a mira aponta, em VR: abre o baú imersivo em vez da janela antiga (só em VR; sem VR nada muda).
+     * Retorna true se o "usar" foi nosso. Com o baú já aberto por nós, não faz nada.
+     */
+    public boolean useOnContainer(Minecraft client) {
+        if (client.player == null || client.level == null || client.gui.screen() != null || !VrBridge.isVRActive()
+                || !(client.hitResult instanceof BlockHitResult hit) || hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK
+                || !isContainer(client.level.getBlockState(hit.getBlockPos()))) {
+            return false;
+        }
+        BlockPos block = hit.getBlockPos().immutable();
+        if (isOpenChest(block) && (menu != null || expectUntil >= 0)) {
+            return true;
+        }
+        open(client, block);
+        return true;
+    }
+
     private boolean open(Minecraft client, BlockPos block) {
         LocalPlayer p = client.player;
         if (menu != null || expectUntil >= 0) {

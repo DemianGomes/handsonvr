@@ -1144,12 +1144,15 @@ public final class HandsController {
         return false;
     }
 
-    /** "Usar" (A): não usa o item escondido da mão que segura a mochila, nem aponta para o painel. */
+    /** "Usar" (A): não usa o item escondido da mão que segura a mochila, nem aponta para o painel; no baú, abre o imersivo. */
     public boolean onUse(Minecraft client) {
         if (client.player == null || client.gui.screen() != null) {
             return false;
         }
-        return backpack.holder() == 0 || (backpack.isOpen() && backpack.onPanel(VrBridge.pointer(0)));
+        if (backpack.holder() == 0 || (backpack.isOpen() && backpack.onPanel(VrBridge.pointer(0)))) {
+            return true;
+        }
+        return chest.useOnContainer(client); // A no baú: o baú imersivo, não a janela antiga (só em VR)
     }
 
     // ------------------------------------------------------------------ arrastar com o gatilho (distribuir)

@@ -2,6 +2,12 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.8.3-alpha (Minecraft 26.3)
+
+- **Baú: o grip não abre mais a janela antiga.** A causa era o "VR Interact" do Vivecraft: com a mão dentro de um bloco, o grip faz o "usar" do jogo nele. No baú fechado isso abria a janela antiga; no baú aberto, o grip para pegar um item reabria a janela antiga e fechava o baú novo. Agora o HandsOn registra no Vivecraft um módulo de interação que vem antes do dele e deixa o grip só para o HandsOn quando a mão está num baú, barril, baú do Ender, caixa de shulker, suporte de poções, fornalha ou mesa de trabalho.
+- **Baú: o A (usar) abre o baú novo.** Em VR, apertar A olhando para um baú, barril ou caixa de shulker abre o baú imersivo (os itens no fundo da caixa), e não mais a janela antiga.
+- Sem VR (ou com o VR desligado) nada muda: o baú é o do jogo.
+
 ## 0.8.2-alpha (Minecraft 26.3)
 
 ### Correções da 0.8.1

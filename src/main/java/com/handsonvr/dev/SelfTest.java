@@ -2980,6 +2980,14 @@ public final class SelfTest {
         // --- baú
         Vec3 chestTop = Vec3.atBottomCenterOf(packPos).add(0, 1.02, 0);
         if (at(54)) {
+            handAway(0);
+            var module = new com.handsonvr.input.StationInteractModule();
+            int blockPriority = org.vivecraft.client_vr.ClientDataHolderVR.getInstance().blockModule.getPriority();
+            check(com.handsonvr.input.StationInteractModule.isRegistered() && module.getPriority() < blockPriority
+                            && module.isActive(p, net.minecraft.world.InteractionHand.MAIN_HAND, Vec3.atCenterOf(packPos))
+                            && !module.isActive(p, net.minecraft.world.InteractionHand.MAIN_HAND, Vec3.atCenterOf(packPos.below(2).north(3)))
+                            && !module.onPress(p, net.minecraft.world.InteractionHand.MAIN_HAND),
+                    "mão dentro do baú: o grip (\"VR Interact\" do Vivecraft) é do HandsOn e não faz o \"usar\" do bloco (que abria a janela antiga)");
             pointAt(0, chestTop, new Vec3(0, -1, 0));
             check(grip(client, 0, true), "grip na borda da tampa do baú: é do mod");
             check(!chest.isOpen(), "só segurar a tampa ainda não abre o baú");
@@ -3065,7 +3073,16 @@ public final class SelfTest {
                 pinv.setItem(3, new ItemStack(Items.NETHER_WART, 1));
             });
         }
+        if (at(100)) {
+            p.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(packPos)); // olhando para o baú
+        }
+        if (at(101)) {
+            probeCount = hands().onUse(client) ? 1 : 0; // A olhando para o baú
+        }
         if (at(104)) {
+            check(probeCount == 1 && chest.isOpen() && client.gui.screen() == null,
+                    "A (usar) olhando para o baú, em VR: abre o baú imersivo, sem a janela antiga (" + chest.last() + ", " + probeCount + ")");
+            chest.close(client, "teste");
             setPack(client, Blocks.BREWING_STAND.defaultBlockState());
             p.setXRot(45f);
         }
