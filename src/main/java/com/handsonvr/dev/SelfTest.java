@@ -382,6 +382,8 @@ public final class SelfTest {
                     stepTicks = 0;
                 } else if (stepTicks > 60) {
                     pass("mod carregou e o mundo abriu (mixins aplicados)");
+                    check(com.handsonvr.render.VivecraftHud.hidesBars() == VrBridge.isVRActive() && !client.gui.hud.isHidden(),
+                            "em VR, o HUD do Vivecraft fica à vista só com o chat, a lista de jogadores e o HUD de outros mods (minimapa); sem VR, o HUD do jogo fica normal");
                     next();
                 }
             }
@@ -410,6 +412,7 @@ public final class SelfTest {
             case 24 -> dragAndHalf(client);
             case 25 -> pack07(client);
             case 26 -> bowAimMarker(client);
+            case 27 -> holsterToBackpack(client);
             default -> { }
         }
     }
@@ -1153,6 +1156,45 @@ public final class SelfTest {
             menuButton(client, 0, false);
             check(!radial.isOpen() && inv.getSelectedSlot() == 2, "e escolher continua funcionando (a picareta, espaço 3)");
             p.setPos(followStart.x, followStart.y, followStart.z);
+            onServer(client, player -> player.getInventory().setItem(7, new ItemStack(Items.DIRT, 5)));
+        }
+        // O descarte do radial (abaixo do círculo), como o da mochila.
+        if (at(55)) {
+            menuButton(client, 0, true);
+            pointRadial(0, 7);
+        }
+        if (at(57)) {
+            check(radial.hover(0) == 7, "radial: a mão sobre a terra (espaço 8)");
+            grip(client, 0, true); // pega a terra do radial
+        }
+        if (at(59)) {
+            pointRadial(0, RadialMenu.DROP);
+        }
+        if (at(61)) {
+            check(radial.hover(0) == RadialMenu.DROP, "radial: a mão sobre o descarte, abaixo do círculo: destacado");
+            grip(client, 0, false); // solta no descarte
+        }
+        if (at(64)) {
+            menuButton(client, 0, false);
+            check(slot(p, InvOps.HOTBAR_START + 7).isEmpty() && inv.getSelectedSlot() == 2 && p.getMainHandItem().is(Items.STONE_PICKAXE),
+                    "radial: soltar o grip no descarte joga a pilha fora (as 5 terras), e a mão continua com a picareta");
+            onServer(client, player -> player.getInventory().setItem(7, new ItemStack(Items.DIRT, 3)));
+        }
+        if (at(67)) {
+            inv.setSelectedSlot(7);
+            menuButton(client, 0, true);
+            pointRadial(0, RadialMenu.DROP);
+        }
+        if (at(70)) {
+            menuButton(client, 0, false);
+            check(p.getMainHandItem().isEmpty() && slot(p, InvOps.HOTBAR_START + 7).isEmpty(),
+                    "radial: soltar o B sobre o descarte joga fora a pilha da mão (as 3 terras)");
+            inv.setSelectedSlot(2);
+        }
+        if (at(73)) {
+            // A terra jogada fora não pode voltar para o inventário (o teste seguinte conta tudo).
+            onServer(client, player -> player.level().getEntitiesOfClass(ItemEntity.class, player.getBoundingBox().inflate(16))
+                    .forEach(net.minecraft.world.entity.Entity::discard));
             next();
         }
     }
@@ -1705,6 +1747,39 @@ public final class SelfTest {
         if (at(30)) {
             check(client.gui.screen() instanceof com.handsonvr.screen.HandsOnScreen, "o botão do menu de pausa abre os ajustes");
             screenshot(client, "09-ajustes");
+        }
+        if (at(32) && client.gui.screen() instanceof com.handsonvr.screen.HandsOnScreen settings) {
+            // Rolando do começo ao fim, todas as opções aparecem em algum momento (antes as de baixo ficavam fora da tela).
+            String[] keys = {"option.handsonvr.holsters", "option.handsonvr.render", "option.handsonvr.backpack",
+                    "option.handsonvr.backpack_on", "option.handsonvr.radial", "option.handsonvr.pickup_main",
+                    "option.handsonvr.grip_hotbar", "option.handsonvr.bow_aim", "option.handsonvr.left_trigger",
+                    "option.handsonvr.throw", "option.handsonvr.throw_power", "option.handsonvr.wrist_hud",
+                    "option.handsonvr.hand_count"};
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (int guard = 0; guard < 40; guard++) {
+                for (var e : settings.children()) {
+                    if (e instanceof net.minecraft.client.gui.components.AbstractWidget w) {
+                        seen.add(w.getMessage().getString());
+                    }
+                }
+                if (!settings.scrollBy(24)) {
+                    break;
+                }
+            }
+            java.util.List<String> missing = new java.util.ArrayList<>();
+            for (String key : keys) {
+                String label = Component.translatable(key).getString();
+                if (seen.stream().noneMatch(m -> m.startsWith(label))) {
+                    missing.add(label);
+                }
+            }
+            check(missing.isEmpty() && settings.getTitle().getString().equals(Component.translatable("screen.handsonvr.title").getString()),
+                    "\"" + settings.getTitle().getString() + "\": rolando, todas as " + keys.length + " opções aparecem"
+                            + (settings.canScroll() ? " (a lista rola)" : " (cabem sem rolar nesta janela)")
+                            + (missing.isEmpty() ? "" : "; faltam " + missing));
+        }
+        if (at(34)) {
+            screenshot(client, "09b-ajustes-fim");
         }
         if (at(40)) {
             client.gui.setScreen(null);
@@ -2837,6 +2912,20 @@ public final class SelfTest {
 
     private static BlockPos packPos;
 
+    private static Object interactModuleInstance;
+
+    /** O módulo de interação do HandsOn, como o Vivecraft o chama (o grip com a mão dentro de um bloco). */
+    private static com.handsonvr.input.StationInteractModule interactModule() {
+        if (interactModuleInstance == null) {
+            interactModuleInstance = new com.handsonvr.input.StationInteractModule();
+        }
+        return (com.handsonvr.input.StationInteractModule) interactModuleInstance;
+    }
+
+    private static Vec3 fireCorner(Minecraft client, int slot) {
+        return HandsController.campfireSlots(client, packPos).at()[slot].add(0, 0.27, 0);
+    }
+
     private static void setPack(Minecraft client, net.minecraft.world.level.block.state.BlockState state) {
         BlockPos at = packPos;
         onServer(client, player -> {
@@ -2897,17 +2986,21 @@ public final class SelfTest {
             Vec3 dir = VrBridge.hand(1).direction();
             check(wrist != null && Math.abs(wrist.normal().dot(dir)) < 0.05 && Math.abs(wrist.right().dot(dir) - 1) < 0.05,
                     "girando e movendo a mão, o relógio vai junto, deitado ao longo do braço (a leitura vai do cotovelo para a mão)");
-            check(HandsOnConfig.get().handCount && p.getMainHandItem().getCount() == 32,
-                    "a quantidade da mão (32 de areia) aparece perto do dedão (print 16-pulso)");
+            Panel thumb = com.handsonvr.render.WristHudRenderer.thumbPanel(0);
+            check(HandsOnConfig.get().handCount && p.getMainHandItem().getCount() == 32 && thumb != null && VrBridge.hand(0) != null
+                            && thumb.origin().distanceTo(VrBridge.hand(0).position()) > 0.05 && Math.abs(thumb.normal().dot(VrBridge.hand(0).direction())) < 0.05,
+                    "a quantidade da mão (32 de areia) fica grudada na lateral do dedão, fora do modelo da mão (print 16-pulso)");
             handAway(1);
             // fogueira na frente, acesa
             setPack(client, Blocks.CAMPFIRE.defaultBlockState());
             inv.setSelectedSlot(1); // carne
         }
         // --- fogueira
-        Vec3 fireTop = Vec3.atBottomCenterOf(packPos).add(0, 0.7, 0);
         if (at(16)) {
-            pointAt(0, fireTop, new Vec3(0, -1, 0));
+            Vec3 center = Vec3.atBottomCenterOf(packPos).add(0, 0.7, 0);
+            check(HandsController.campfireUnder(client, center) == null && HandsController.campfireUnder(client, fireCorner(client, 0)) != null,
+                    "a fogueira só aceita a comida nos 4 cantos (o meio do fogo não conta)");
+            pointAt(0, fireCorner(client, 0), new Vec3(0, -1, 0));
             grip(client, 0, true); // segura a carne da mão
         }
         if (at(18)) {
@@ -2974,34 +3067,49 @@ public final class SelfTest {
         // --- baú
         Vec3 chestTop = Vec3.atBottomCenterOf(packPos).add(0, 1.02, 0);
         if (at(54)) {
+            handAway(0);
+            var module = interactModule();
+            var main = net.minecraft.world.InteractionHand.MAIN_HAND;
+            int blockPriority = org.vivecraft.client_vr.ClientDataHolderVR.getInstance().blockModule.getPriority();
+            check(com.handsonvr.input.StationInteractModule.isRegistered() && module.getPriority() < blockPriority
+                            && module.isActive(p, main, Vec3.atCenterOf(packPos))
+                            && !module.isActive(p, main, Vec3.atCenterOf(packPos.below(2).north(3))),
+                    "mão dentro do baú: o \"VR Interact\" do Vivecraft (que recebe o grip ali) é do HandsOn, antes do \"usar\" do bloco");
             pointAt(0, chestTop, new Vec3(0, -1, 0));
-            check(grip(client, 0, true), "grip na borda da tampa do baú: é do mod");
-            check(!chest.isOpen(), "só segurar a tampa ainda não abre o baú");
+            SimulatedVr.setGrip(0, true);
+            module.onPress(p, main); // o grip chega pelo VR Interact, como no óculos com a mão no bloco
+            check(!chest.isOpen() && client.gui.screen() == null,
+                    "grip parado na tampa (pelo VR Interact): não abre nada, nem a janela antiga");
         }
         if (at(55)) {
             pointAt(0, chestTop.add(0, 0.2, 0), new Vec3(0, -1, 0)); // levanta a mão: a tampa abre
         }
         if (at(58)) {
-            grip(client, 0, false);
+            SimulatedVr.setGrip(0, false);
+            interactModule().onRelease(p, net.minecraft.world.InteractionHand.MAIN_HAND);
         }
         if (at(64)) {
             check(chest.isOpen() && client.gui.screen() == null && chest.size() == 27,
-                    "levantar a mão com a tampa: o baú abriu sem a tela do jogo, com os 27 espaços (" + chest.last() + ")");
+                    "levantar a mão com a tampa (grip pelo VR Interact): o baú abriu sem a tela do jogo, com os 27 espaços (" + chest.last() + ")");
             Panel panel = chest.surface();
-            check(panel.normal().y == 0 && panel.origin().y > chestTop.y && Math.abs(chest.slot() - 0.86 / 9) < 1.0e-6,
-                    "os itens ficam em pé na parte de dentro da tampa aberta, 9x3 em espaços de " + Math.round(chest.slot() * 1000) + " mm");
+            check(panel.normal().y > 0.99 && Math.abs(panel.origin().y - (packPos.getY() + 0.635)) < 0.01 && Math.abs(chest.slot() - 0.82 / 9) < 1.0e-6,
+                    "os itens ficam deitados no fundo escuro da caixa aberta (não na tampa), 9x3 em espaços de " + Math.round(chest.slot() * 1000) + " mm");
             double[] c = chest.slotCenter(0);
             pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
         }
         if (at(66)) {
             check(chest.hover(0) == 0, "a mão no primeiro espaço do baú: destacado");
-            grip(client, 0, true);
+            SimulatedVr.setGrip(0, true);
+            check(interactModule().isActive(p, net.minecraft.world.InteractionHand.MAIN_HAND, VrBridge.pointer(0)),
+                    "a mão no espaço do baú está dentro do bloco: o grip vem pelo VR Interact");
+            interactModule().onPress(p, net.minecraft.world.InteractionHand.MAIN_HAND);
         }
         if (at(69)) {
-            check(p.getMainHandItem().is(Items.COBBLESTONE) && p.getMainHandItem().getCount() == 20 && chest.stack(0).isEmpty(),
-                    "grip no espaço: as 20 pedras vêm para a mão");
+            check(p.getMainHandItem().is(Items.COBBLESTONE) && p.getMainHandItem().getCount() == 20 && chest.stack(0).isEmpty() && chest.isOpen() && client.gui.screen() == null,
+                    "grip no espaço (pelo VR Interact, a mão dentro do baú): as 20 pedras vêm para a mão e o baú continua aberto");
             pointAway(client, 0);
-            grip(client, 0, false);
+            SimulatedVr.setGrip(0, false);
+            interactModule().onRelease(p, net.minecraft.world.InteractionHand.MAIN_HAND);
             Panel panel = chest.surface();
             double[] c = chest.slotCenter(1);
             pointAt(0, panel.world(c[0], c[1], 0.01), panel.normal().reverse());
@@ -3030,6 +3138,39 @@ public final class SelfTest {
         if (at(84)) {
             check(chest.stack(13).is(Items.SAND) && chest.stack(13).getCount() == 32, "soltar a areia num espaço vazio do baú: as 32 entram");
             photoPose(client, true);
+            p.setXRot(60f); // olhando para dentro do baú
+        }
+        if (at(85)) {
+            int before = 0, after = 0;
+            for (int i = 0; i < chest.size(); i++) {
+                before += chest.stack(i).getCount();
+            }
+            boolean sorted = chest.sort(client);
+            boolean contiguous = true, seenEmpty = false;
+            for (int i = 0; i < chest.size(); i++) {
+                after += chest.stack(i).getCount();
+                contiguous &= !(seenEmpty && !chest.stack(i).isEmpty());
+                seenEmpty |= chest.stack(i).isEmpty();
+            }
+            check(sorted && contiguous && before == after && before > 0,
+                    "Organizar no baú: os itens ficam juntos no começo, sem perder nada (" + before + " itens)");
+            ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+            sword.enchant(client.level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                    .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 3);
+            List<Component> tip = com.handsonvr.render.Draw.itemTooltip(sword);
+            check(tip.size() >= 2 && tip.stream().anyMatch(l -> l.getString().contains(
+                            Component.translatable("enchantment.minecraft.sharpness").getString())),
+                    "dica do item (mochila e baú): o nome e os encantamentos (" + tip.size() + " linhas)");
+            // Outro bloco pede o menu (como a fornalha com a mão nela): o baú cede e fica suspenso, ainda à vista.
+            InvOps.releaseHidden(client);
+            check(chest.isSuspended() && chest.isShown() && !chest.stack(0).isEmpty(),
+                    "o baú cede o menu a outro bloco e fica suspenso, ainda mostrando os itens");
+            Panel panel = chest.surface();
+            double[] c0 = chest.slotCenter(0);
+            pointAt(0, panel.world(c0[0], c0[1], 0.01), panel.normal().reverse());
+        }
+        if (at(89)) {
+            check(chest.isOpen() && client.gui.screen() == null, "a mão voltou aos espaços do baú suspenso: ele reabriu (" + chest.last() + ")");
         }
         if (at(88)) {
             screenshot(client, "17-bau");
@@ -3057,6 +3198,17 @@ public final class SelfTest {
                 pinv.setItem(2, new ItemStack(Items.BLAZE_POWDER, 2));
                 pinv.setItem(3, new ItemStack(Items.NETHER_WART, 1));
             });
+        }
+        if (at(100)) {
+            p.lookAt(net.minecraft.commands.arguments.EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(packPos)); // olhando para o baú
+        }
+        if (at(101)) {
+            probeCount = hands().onUse(client) ? 1 : 0; // A olhando para o baú
+        }
+        if (at(104)) {
+            check(probeCount == 1 && chest.isOpen() && client.gui.screen() == null,
+                    "A (usar) olhando para o baú, em VR: abre o baú imersivo, sem a janela antiga (" + chest.last() + ", " + probeCount + ")");
+            chest.close(client, "teste");
             setPack(client, Blocks.BREWING_STAND.defaultBlockState());
             p.setXRot(45f);
         }
@@ -3096,7 +3248,7 @@ public final class SelfTest {
         if (at(134)) {
             check(brew.stack(0).is(Items.POTION) && brew.stack(com.handsonvr.brewing.BrewingStation.FUEL).is(Items.BLAZE_POWDER)
                             && brew.stack(com.handsonvr.brewing.BrewingStation.INGREDIENT).is(Items.NETHER_WART),
-                    "a garrafa num braço, o pó de blaze no meio da haste e a verruga no topo");
+                    "a garrafa num braço, o pó de blaze ao lado do ingrediente e a verruga no topo");
             check(brew.brewTicks() > 0 && brew.fuel() > 0,
                     "o suporte começa a preparar (faltam " + brew.brewTicks() + " ticks, combustível " + brew.fuel() + ")");
             handAway(0);
@@ -3111,12 +3263,17 @@ public final class SelfTest {
                     Items.POTION, net.minecraft.world.item.alchemy.Potions.WATER).copyWithCount(1)));
             inv.setSelectedSlot(5);
         }
+        if (at(139)) {
+            brew.close(client, "teste: reabrir agachado");
+            client.options.keyShift.setDown(true); // abaixado de verdade, como o suporte (baixo) pede
+        }
         if (at(140)) {
             pointAt(0, brew.spot(1), new Vec3(-1, 0, 0)); // sem botão nenhum
         }
         if (at(148)) {
             check(brew.stack(1).is(Items.POTION) && p.getMainHandItem().isEmpty(),
-                    "encostar a garrafa num braço vazio do suporte, sem apertar nada: ela fica lá (" + brew.last() + ")");
+                    "encostar a garrafa num braço vazio do suporte, sem apertar nada e AGACHADO (com o suporte fechado antes): ela fica lá (" + brew.last() + ")");
+            client.options.keyShift.setDown(false);
             handAway(0);
         }
         // --- multiplayer: o estado chega ao servidor (o do próprio jogo, como no Essential/LAN)
@@ -3138,7 +3295,8 @@ public final class SelfTest {
             inv.setSelectedSlot(4);
         }
         if (at(172)) {
-            pointAt(0, fireTop, new Vec3(0, -1, 0)); // sem botão nenhum
+            client.options.keyShift.setDown(true); // abaixado de verdade (os blocos baixos pedem isso): conta como Shift
+            pointAt(0, fireCorner(client, 2), new Vec3(0, -1, 0)); // sem botão nenhum
         }
         if (at(182)) {
             BlockPos at = packPos;
@@ -3150,7 +3308,8 @@ public final class SelfTest {
         }
         if (at(185)) {
             check(probeCount == 1 && p.getMainHandItem().is(Items.BEEF) && p.getMainHandItem().getCount() == 2,
-                    "encostar a carne na fogueira, sem apertar nada: põe uma (e só uma, até tirar a mão)");
+                    "encostar a carne num canto da fogueira, sem apertar nada e abaixado (Shift): põe uma (e só uma, até tirar a mão)");
+            client.options.keyShift.setDown(false);
             setPack(client, Blocks.AIR.defaultBlockState());
             p.setXRot(0f);
             handAway(0);
@@ -3168,9 +3327,9 @@ public final class SelfTest {
         LocalPlayer p = client.player;
         Vec3 eye = p.getEyePosition();
         if (at(1)) {
-            section("Mira do arco (opcional)");
-            check(!HandsOnConfig.get().bowAim && com.handsonvr.hands.BowAim.predict(client) == null,
-                    "a mira do arco nasce desligada");
+            section("Mira do arco (ligada por padrão)");
+            check(HandsOnConfig.get().bowAim && new HandsOnConfig().bowAim && HandsOnConfig.get().configVersion >= 2 && com.handsonvr.hands.BowAim.predict(client) == null,
+                    "a mira do arco nasce ligada (e uma configuração antiga é migrada para ligada), sem mira com o arco parado");
             check(com.handsonvr.hands.BowAim.power(0) == 0f && com.handsonvr.hands.BowAim.power(20) == 1f
                             && Math.abs(com.handsonvr.hands.BowAim.power(10) - 0.4167f) < 0.001f,
                     "força do arco pelo tempo puxando, como no jogo (0, 0,42 em meio segundo, 1 em um segundo)");
@@ -3206,7 +3365,7 @@ public final class SelfTest {
         }
         if (at(18)) {
             HandsOnConfig.get().bowAim = false;
-            check(com.handsonvr.hands.BowAim.predict(client) == null, "desligada de novo: sem mira");
+            check(com.handsonvr.hands.BowAim.predict(client) == null, "desligada de novo: sem mira"); HandsOnConfig.get().bowAim = true;
             com.handsonvr.hands.BowAim.debugShot = null;
             BlockPos wall = wallAt;
             onServer(client, player -> {
@@ -3218,6 +3377,47 @@ public final class SelfTest {
             });
         }
         if (at(22)) {
+            next();
+        }
+    }
+
+    /** Um item tirado de um coldre e guardado na mochila (por cima do ombro) sai do coldre. */
+    private static void holsterToBackpack(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        HolsterManager hm = holsters();
+        if (at(1)) {
+            section("Coldre: guardar na mochila tira do coldre");
+            onServer(client, player -> player.getInventory().setItem(8, new ItemStack(Items.GOLDEN_CARROT, 4)));
+        }
+        if (at(4)) {
+            inv.setSelectedSlot(8);
+            check(hm.store(client, Holster.LEFT_HIP, InvOps.HOTBAR_START + 8), "a cenoura dourada guardada no quadril esquerdo");
+        }
+        if (at(8)) {
+            HolsterStorage.Binding b = hm.binding(Holster.LEFT_HIP);
+            check(b != null && "minecraft:golden_carrot".equals(b.item()), "o quadril esquerdo lembra da cenoura");
+            handAt(0, Holster.LEFT_HIP);
+        }
+        if (at(10)) {
+            grip(client, 0, true); // saca do coldre
+        }
+        if (at(12)) {
+            check(hm.isDrawing(0) && p.getMainHandItem().is(Items.GOLDEN_CARROT), "sacou a cenoura do quadril esquerdo");
+            handAt(0, Holster.LEFT_SHOULDER); // por cima do ombro esquerdo: a mochila
+        }
+        if (at(14)) {
+            grip(client, 0, false);
+        }
+        if (at(18)) {
+            int at = find(inv, Items.GOLDEN_CARROT);
+            check(hm.binding(Holster.LEFT_HIP) == null && at >= 9 && at < 36,
+                    "guardar na mochila (por cima do ombro) o item tirado do coldre: ele fica na mochila e o coldre fica vazio");
+            check(hm.displayStack(p, Holster.LEFT_HIP).isEmpty(), "o quadril esquerdo não desenha mais a cenoura");
+            handAway(0);
+            inv.setSelectedSlot(0);
+        }
+        if (at(20)) {
             finish(client);
         }
     }

@@ -49,10 +49,9 @@ public final class HandsOnConfig {
     public boolean pickupToMain = true;
 
     /**
-     * Mira do arco: com a corda puxada, a mira do jogo aparece onde a flecha vai acertar. Desligada por padrão (acertar
-     * depende da habilidade).
+     * Mira do arco: com a corda puxada, a mira do jogo aparece onde a flecha vai acertar. Ligada por padrão (0.8.4).
      */
-    public boolean bowAim = false;
+    public boolean bowAim = true;
 
     /**
      * Arremesso com a mão: com um item arremessável seguro pelo grip, soltar o grip com a mão rápida joga o item na
@@ -72,11 +71,24 @@ public final class HandsOnConfig {
     /** A quantidade da pilha de cada mão, perto do dedão (só para o próprio jogador). */
     public boolean handCount = true;
 
+    /**
+     * Em VR, esconde o HUD do Vivecraft (a hotbar, os corações e a fome no pulso, o mesmo "esconder HUD" do F1): o
+     * relógio do pulso e o radial do HandsOn mostram isso. Não muda o arquivo do Vivecraft; sem VR o HUD volta.
+     */
+    public boolean hideVivecraftHud = true;
+
     // ---- controles
     /** Gatilho esquerdo usa o item da mão esquerda (coloca tocha/bloco, usa) em vez do teleporte. */
     public boolean leftTriggerOffhandUse = true;
     // O analógico direito é sempre do Vivecraft (girar a câmera). Até a 0.2.4 ele podia trocar a hotbar
     // ("rightStickHotbar"); uma configuração antiga com esse campo é lida sem erro e o campo é ignorado.
+
+    /**
+     * Versão da configuração, para mudar um padrão de quem já tem o arquivo: 0 = antes da 0.8.4. A 2 liga a mira do
+     * arco e o "esconder o HUD do Vivecraft" uma vez (o usuário pediu esses padrões).
+     */
+    public int configVersion = 0;
+    private static final int CURRENT_VERSION = 2;
 
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("handsonvr.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -85,6 +97,12 @@ public final class HandsOnConfig {
     public static HandsOnConfig get() {
         if (instance == null) {
             instance = load();
+            if (instance.configVersion < CURRENT_VERSION) {
+                instance.bowAim = true;
+                instance.hideVivecraftHud = true;
+                instance.configVersion = CURRENT_VERSION;
+                instance.save();
+            }
         }
         return instance;
     }

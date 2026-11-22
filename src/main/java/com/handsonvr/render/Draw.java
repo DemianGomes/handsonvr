@@ -335,22 +335,53 @@ public final class Draw {
      * pixels) a 3 pixels da moldura roxa de 1 pixel, o fundo 1 pixel além dela, de cantos cortados.
      */
     public void mcTooltip(Component text, float cx, float bottom, float px, float z) {
-        int w = Minecraft.getInstance().font.width(text);
-        float x0 = cx - (w / 2f + 4) * px, x1 = cx + (w / 2f + 4) * px, y0 = bottom, y1 = bottom + 16 * px;
+        mcTooltip(List.of(text), cx, bottom, px, z);
+    }
+
+    /**
+     * Caixa de dica do jogo com várias linhas (como a de um item no inventário: o nome, os encantamentos, a descrição),
+     * centrada em {@code cx} e com a borda de baixo em {@code bottom}. Como no jogo: 2 pixels a mais depois da primeira
+     * linha e 10 pixels por linha.
+     */
+    public void mcTooltip(List<Component> lines, float cx, float bottom, float px, float z) {
+        if (lines.isEmpty()) {
+            return;
+        }
+        Font font = Minecraft.getInstance().font;
+        int w = 0;
+        for (Component line : lines) {
+            w = Math.max(w, font.width(line));
+        }
+        int content = 8 + (lines.size() > 1 ? 2 + (lines.size() - 1) * 10 : 0);
+        float x0 = cx - (w / 2f + 4) * px, x1 = cx + (w / 2f + 4) * px, y0 = bottom, y1 = bottom + (content + 8) * px;
         rect(x0 + px, y0, x1 - px, y1, z, MC_TOOLTIP_BG);
         rect(x0, y0 + px, x0 + px, y1 - px, z, MC_TOOLTIP_BG);
         rect(x1 - px, y0 + px, x1, y1 - px, z, MC_TOOLTIP_BG);
         float zf = z + 0.0004f, fx0 = x0 + px, fx1 = x1 - px, fy0 = y0 + px, fy1 = y1 - px;
         rect(fx0, fy1 - px, fx1, fy1, zf, MC_TOOLTIP_TOP);
         rect(fx0, fy0, fx1, fy0 + px, zf, MC_TOOLTIP_BOTTOM);
-        int rows = 12; // entre a linha de cima e a de baixo da moldura
+        int rows = content + 4; // entre a linha de cima e a de baixo da moldura
         for (int i = 0; i < rows; i++) {
             int c = lerpColor(MC_TOOLTIP_TOP, MC_TOOLTIP_BOTTOM, (i + 1f) / (rows + 1f));
             float ya = fy1 - (i + 2) * px, yb = fy1 - (i + 1) * px;
             rect(fx0, ya, fx0 + px, yb, zf, c);
             rect(fx1 - px, ya, fx1, yb, zf, c);
         }
-        text(text, cx, y0 + 8 * px, z + 0.0008f, 8 * px, 0xFFFFFFFF, true);
+        for (int i = 0; i < lines.size(); i++) {
+            float center = y1 - (i == 0 ? 8 : 18 + (i - 1) * 10) * px;
+            text(lines.get(i), x0 + 4 * px, center, z + 0.0008f, 8 * px, 0xFFFFFFFF, false);
+        }
+    }
+
+    /** As linhas da dica de um item, como no inventário do jogo (nome, encantamentos, efeitos, descrição); até 12. */
+    public static List<Component> itemTooltip(ItemStack stack) {
+        Minecraft mc = Minecraft.getInstance();
+        if (stack.isEmpty() || mc.level == null) {
+            return List.of();
+        }
+        List<Component> lines = stack.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.of(mc.level), mc.player,
+                net.minecraft.world.item.TooltipFlag.NORMAL);
+        return lines.size() > 12 ? lines.subList(0, 12) : lines;
     }
 
     private static int lerpColor(int a, int b, float t) {

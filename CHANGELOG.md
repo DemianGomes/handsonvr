@@ -2,6 +2,59 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.8.6-alpha (Minecraft 26.3)
+
+- **HUD do Vivecraft só com o que importa, sempre no pulso esquerdo.** Em VR, o HUD do Vivecraft fica à vista e preso ao pulso esquerdo, com só: o chat, a lista de jogadores, os títulos, as mensagens da barra de ação, a barra do chefe, o placar do servidor e o HUD de outros mods, como o **minimapa do Xaero's Minimap** (aparece sempre que o mod está instalado; sem ele, nada muda). Saem dele a hotbar, a vida, a armadura, a fome, as bolhas, a XP, os efeitos, o nome do item, a mira do jogo e as sobreposições de tela cheia (o relógio do pulso e o radial já mostram isso).
+- Se o HUD estava escondido (o F1, ou o "esconder HUD" do Vivecraft), o HandsOn mostra ele ao ligar o VR e devolve como estava ao desligar. Tudo em memória: nenhum arquivo do Vivecraft ou do jogo é alterado. Sem VR, o HUD do jogo é o de sempre.
+- A opção "Barras só no pulso" saiu: em VR o HUD é sempre assim.
+
+## 0.8.5-alpha (Minecraft 26.3)
+
+- **Dica do item na mochila e no baú VR:** com a mão sobre um item aparece a caixa de dica do jogo, com o nome, os encantamentos, os efeitos e a descrição (como no inventário do jogo).
+- **Baú aberto e outros blocos ao mesmo tempo:** o servidor só deixa um menu aberto por vez. Agora, ao levar a mão à fornalha (ou ao suporte de poções, ou à mesa), o baú cede o menu e fica **suspenso**: continua à vista com o que tinha e reabre sozinho quando a mão volta aos espaços dele. A tampa pode fechar e abrir rapidinho nessa troca.
+- **Bolhas de ar no relógio do pulso** quando você está debaixo d'água (ou o ar ainda não voltou).
+- **HUD do Vivecraft com o minimapa:** em VR, em vez de esconder o HUD inteiro (o F1), o HandsOn tira dele só a hotbar, a vida, a armadura, a fome, as bolhas, a XP, os efeitos e o nome do item (o relógio do pulso já mostra). O resto continua: o minimapa do Xaero e o HUD de outros mods, o chat. A opção agora se chama "Barras só no pulso".
+- **Botão "Organizar" (A-Z)** na mochila (à direita da primeira fileira) e no baú VR (abaixo da grade): junta as pilhas iguais e põe em ordem, com cliques normais. É do próprio HandsOn: funciona com ou sem o Inventory Profiles Next.
+- **Compatível com o Inventory Profiles Next:** o reabastecimento automático do IPN via a mão esvaziar ao guardar um item no coldre ou na mochila e punha o item de volta na mão. Agora, depois de cada ação do HandsOn, o IPN recomeça a "foto" da mão; ele continua repondo o que acaba de verdade (um bloco colocado, uma ferramenta quebrada). Os cliques do HandsOn também não passam mais pelo ponto que outros mods interceptam. Testado com o IPN, o Xaero's Minimap e o Voxy carregados.
+
+## 0.8.4-alpha (Minecraft 26.3)
+
+### Depois do teste em multiplayer (dois jogadores em VR)
+
+- **Baú (de novo, a causa certa):** com a mão dentro de um bloco, o Vivecraft liga a ação "VR Interact" e o grip vai para ela, não para a ação que o HandsOn escutava. Na 0.8.3 o módulo do HandsOn segurava essa ação mas não fazia nada, então com a mão no baú o grip não abria a tampa nem pegava itens. Agora o módulo **é** o grip do HandsOn ali (apertar, segurar e soltar): a tampa abre com o movimento e o grip pega e põe itens com a mão dentro do baú. Vale também para o suporte de poções, as fornalhas e a mesa.
+- **Mira do arco ligada por padrão.** Quem já tinha a configuração recebe a mira ligada uma vez (dá para desligar nas opções).
+- **Coldres:** sacar um item do coldre (ombro ou cintura) e guardá-lo na mochila (por cima do ombro ou num espaço da mochila aberta) esvazia o coldre.
+- **Quantidade na mão:** agora fica grudada na lateral do dedão, como o relógio do pulso, e não some mais dentro da mão.
+- **HUD do Vivecraft escondido por padrão em VR** (a hotbar e a vida no pulso de fora): é o mesmo "esconder HUD" do F1, que estava ligado só em um dos jogadores. Sem VR o HUD volta. Opção "Sem HUD do Vivecraft".
+- **Menu radial: espaço de descarte** abaixo do círculo, como o da mochila. Soltar o grip ali com um item joga a pilha fora; o gatilho joga um; soltar o B sobre ele joga fora a pilha da mão.
+- **Suporte de poções agachado:** já é o padrão do mod desde a 0.8.1 (não é configuração). O teste agora confere com o suporte fechado e o jogador agachado.
+- **Opções HandsOn VR** (antes "Coldres VR"; alguns nomes ficaram mais curtos para caber: "Relógio no pulso", "Coleta na mochila", "Sem HUD do Vivecraft"): as opções ficam em grupos (Coldres; Mochila e menu radial; Mãos e itens; HUD) numa lista que rola com a roda do mouse ou o analógico, com os botões ▲ ▼ ao lado.
+
+## 0.8.3-alpha (Minecraft 26.3)
+
+- **Baú: o grip não abre mais a janela antiga.** A causa era o "VR Interact" do Vivecraft: com a mão dentro de um bloco, o grip faz o "usar" do jogo nele. No baú fechado isso abria a janela antiga; no baú aberto, o grip para pegar um item reabria a janela antiga e fechava o baú novo. Agora o HandsOn registra no Vivecraft um módulo de interação que vem antes do dele e deixa o grip só para o HandsOn quando a mão está num baú, barril, baú do Ender, caixa de shulker, suporte de poções, fornalha ou mesa de trabalho.
+- **Baú: o A (usar) abre o baú novo.** Em VR, apertar A olhando para um baú, barril ou caixa de shulker abre o baú imersivo (os itens no fundo da caixa), e não mais a janela antiga.
+- Sem VR (ou com o VR desligado) nada muda: o baú é o do jogo.
+
+## 0.8.2-alpha (Minecraft 26.3)
+
+### Correções da 0.8.1
+
+- **Baú:** tirei o "abrir pelo usar normal vira o baú imersivo" da 0.8.1: ele mexia com o jeito normal de abrir o baú e atrapalhava o grip nos itens. O baú aberto de forma normal volta a ser exatamente o do jogo (e sem VR nada muda). O gesto da tampa (VR) segue igual.
+- **Baú (VR):** a folga para a mão tocar um espaço do fundo do baú ficou maior (10 cm abaixo, 20 cm acima), com o grip num espaço pegando o item. Grip de **mão vazia** no fundo e empurrar para baixo fecha o baú. Num baú duplo, a outra metade não reabre mais o baú.
+- **Pulso:** o coração cheio ficava no mesmo plano do recipiente e piscava em vermelho e preto; agora fica um pouco à frente.
+
+## 0.8.1-alpha (Minecraft 26.3)
+
+### Ajustes depois do teste no óculos
+
+- **Abaixar o corpo não atrapalha mais os blocos baixos.** Abaixar de verdade conta como Shift, e o jogo ignora o bloco com um item na mão agachado. Agora o mod tira o Shift só durante o "usar" dele (suporte de poções, fogueira, baú, fornalha, mesa) e devolve em seguida; seu corpo continua abaixado.
+- **Fogueira: os 4 cantos.** A comida entra encostando a mão num dos 4 cantos livres (um espaço aparece em cada um); o meio do fogo não conta mais. O jogo enche sempre o primeiro canto livre, na ordem dele.
+- **Baú: os itens ficam dentro da caixa**, deitados no fundo escuro do baú aberto, e não mais na tampa.
+- **Baú: a quantidade** (areia, pedra e outros blocos) não fica mais atrás do item.
+- **Pulso:** o relógio fica mais afastado do braço, fora da segunda camada (mangas) das skins, e **continua aparecendo com a mochila na mão**.
+- **Suporte de poções: o pó de blaze** tem um lugar só dele, ao lado do ingrediente (à esquerda de quem olha, como na tela do jogo), flutuando e longe dos outros; o espaço mostra o item da mão.
+
 ## 0.8.0-alpha (Minecraft 26.3)
 
 ### Baú: abrir a tampa com o movimento ([#51](https://github.com/DemianGomes/handsonvr/issues/51))

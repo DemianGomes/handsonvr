@@ -313,7 +313,7 @@ public final class CraftingTable {
         }
         LocalPlayer p = client.player;
         if (pos == null || p == null || client.gameMode == null || !canOpen || client.gui.screen() != null
-                || p.isSecondaryUseActive() || ticks < retryAfter) {
+                || ticks < retryAfter) {
             return false;
         }
         // Uma fornalha imersiva aberta cede o menu (ela não perde nada ao fechar).
@@ -323,7 +323,7 @@ public final class CraftingTable {
         forward = facing(pos);
         expectUntil = ticks + OPEN_TIMEOUT;
         // Como o jogador usando a mesa (o "usar" do jogo): o servidor abre o menu da mesa.
-        client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(topCenter(), Direction.UP, pos, false));
+        com.handsonvr.hands.NoShift.run(client, () -> client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(topCenter(), Direction.UP, pos, false)));
         last = "abrindo a mesa";
         return true;
     }

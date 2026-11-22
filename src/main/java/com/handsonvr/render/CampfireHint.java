@@ -14,12 +14,12 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Onde pôr a comida na fogueira (padrão em docs/VISUAL.md): com comida crua na mão perto de uma fogueira, um espaço do
- * inventário do jogo flutua sobre ela, claro quando a mão está no lugar certo. Encostar ali põe um item.
+ * inventário do jogo flutua sobre cada um dos 4 cantos livres dela, claro quando a mão está no lugar certo. Encostar ali põe um item.
  */
 public final class CampfireHint {
     private CampfireHint() {}
 
-    private static final float SLOT = 0.12f;
+    private static final float SLOT = 0.09f;
     private static final double NEAR = 1.0;
 
     public static void render(LevelRenderContext context, HandsController hands) {
@@ -43,13 +43,20 @@ public final class CampfireHint {
             if (fire == null) {
                 continue;
             }
-            Vec3 at = Vec3.atBottomCenterOf(fire).add(0, 0.62, 0);
-            Panel p = Panel.facing(at, head.position(), 0, 1.0);
-            ms.pushPose();
-            ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
-            ms.rotate(p.rotation());
-            d.mcSlot(0f, 0f, SLOT, 0f, in != null);
-            ms.popPose();
+            HandsController.CampfireSlots slots = HandsController.campfireSlots(client, fire);
+            for (int i = 0; i < 4; i++) {
+                if (!slots.empty()[i]) {
+                    continue;
+                }
+                Vec3 at = slots.at()[i].add(0, 0.2, 0);
+                Panel p = Panel.facing(at, head.position(), 0, 1.0);
+                ms.pushPose();
+                ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
+                ms.rotate(p.rotation());
+                boolean on = in != null && Math.hypot(tip.x - slots.at()[i].x, tip.z - slots.at()[i].z) <= HandsController.CAMPFIRE_SLOT_RADIUS;
+                d.mcSlot(0f, 0f, SLOT, 0f, on);
+                ms.popPose();
+            }
         }
     }
 

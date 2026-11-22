@@ -364,6 +364,10 @@ public final class HandsController {
             blockToHand(client, hand, brewing.take(client, onBrewing), "tirou do suporte de poções o lugar " + onBrewing);
             return true;
         }
+        if (chest.onSortButton(tip)) {
+            sortChest(client, hand);
+            return true;
+        }
         // 3d) Baú aberto: um espaço com item vem para a mão (com o gatilho já apertado, a metade).
         int onChest = chest.slotAt(tip);
         if (onChest >= 0 && !chest.stack(onChest).isEmpty()) {
@@ -375,8 +379,8 @@ public final class HandsController {
             }
             return true;
         }
-        if (chest.onPanel(tip)) {
-            holdOwnItem(client, hand);
+        if (chest.onPanel(tip) && !(hand == 0 ? p.getMainHandItem() : p.getOffhandItem()).isEmpty()) {
+            holdOwnItem(client, hand); // com um item na mão: soltar num espaço o guarda (mão vazia: grip no fundo e empurrar para baixo fecha)
             return true;
         }
         // 3e) Grip encostado num baú, barril ou caixa de shulker: começa o gesto da tampa (levantar abre, empurrar
@@ -731,6 +735,7 @@ public final class HandsController {
                 }
             }
             case CRAFT_OUT -> gripResult(client, hand, ResultSource.BACKPACK); // uma vez (com o gatilho, tudo) para a mão
+            case SORT -> sortBackpack(client, hand);
             case PREV -> flip(hand, -1);
             case NEXT -> flip(hand, 1);
             default -> { }
@@ -745,6 +750,46 @@ public final class HandsController {
         ItemStack target = InvOps.stack(p, to);
         return target.isEmpty() || ItemStack.isSameItemSameComponents(target, InvOps.stack(p, from))
                 || p.inventoryMenu.getSlot(from).mayPlace(target);
+    }
+
+    /** O item seguro veio de um coldre e foi guardado na mochila: o coldre esquece dele (fica vazio). */
+    private void leaveHolster(GrabSystem.Grab g) {
+        if (g.origin() == GrabSystem.Origin.HOLSTER && g.holster() != null) {
+            holsters.clear(g.holster());
+        }
+    }
+
+    /** "Organizar" da mochila: junta e ordena o inventário principal (as 3 páginas). */
+    private void sortBackpack(Minecraft client, int hand) {
+        LocalPlayer p = client.player;
+        if (p == null || !InvOps.ready(client) || grabs.isGrabbing(0) || grabs.isGrabbing(1) || !InvOps.cursor(p).isEmpty()) {
+            refuse(hand);
+            return;
+        }
+        int clicks = com.handsonvr.inv.Sorter.sort(27, new com.handsonvr.inv.Sorter.Slots() {
+            @Override
+            public ItemStack get(int i) {
+                return InvOps.stack(p, InvOps.MAIN_START + i);
+            }
+
+            @Override
+            public void pickup(int i) {
+                InvOps.pickup(client, InvOps.MAIN_START + i);
+            }
+        });
+        InvOps.flushCursor(client);
+        VrBridge.pulse(hand, 0.03f);
+        action("organizou a mochila (" + clicks + " cliques)");
+    }
+
+    /** "Organizar" do baú aberto. */
+    private void sortChest(Minecraft client, int hand) {
+        if (grabs.isGrabbing(0) || grabs.isGrabbing(1) || !chest.sort(client)) {
+            refuse(hand);
+            return;
+        }
+        VrBridge.pulse(hand, 0.03f);
+        action("organizou o baú");
     }
 
     /** Fecha a mochila. Um item pego do crafting volta para lá antes: o que sobra no crafting vai para o inventário. */
@@ -817,6 +862,14 @@ public final class HandsController {
         }
         if (radial.isOpen()) {
             int target = radial.targetAt(tip);
+            if (target == RadialMenu.DROP) {
+                InvOps.throwFrom(client, GrabSystem.itemSlot(p, g), true);
+                grabs.end(client, hand);
+                radial.markAssigned();
+                VrBridge.pulse(hand, 0.03f);
+                action("descartou a pilha (radial)");
+                return;
+            }
             if (target >= 0) {
                 grabs.end(client, hand);
                 int slot = InvOps.HOTBAR_START + target;
@@ -845,6 +898,7 @@ public final class HandsController {
                     refuse(hand); // (com a mesa de trabalho aberta, a armadura e o crafting 2x2 esperam ela fechar)
                 } else {
                     InvOps.moveStack(client, g.source(), e.handler());
+                    leaveHolster(g); // guardado na mochila: o coldre de onde ele saiu fica vazio
                     action("colocou no espaço " + e.handler());
                 }
                 return;
@@ -931,9 +985,19 @@ public final class HandsController {
         Holster zone = holsters.refreshZone(hand);
         grabs.end(client, hand);
         // Por cima do ombro, como no Saints & Sinners: soltar no ombro da mochila guarda o item nela.
+        boolean fromHolster = g.origin() == GrabSystem.Origin.HOLSTER && g.holster() != null;
+        if (zone != null && zone.isBackpack(config) && !backpack.isOpen() && fromHolster
+                && g.source() >= InvOps.MAIN_START && g.source() < InvOps.HOTBAR_START) {
+            // O item do coldre já mora na mochila (o inventário principal): guardar por cima do ombro só tira do coldre.
+            leaveHolster(g);
+            VrBridge.pulse(hand, 0.05f);
+            action("guardou na mochila (saiu do coldre)");
+            return;
+        }
         if (zone != null && zone.isBackpack(config) && !backpack.isOpen()
                 && (g.source() >= InvOps.HOTBAR_START || g.source() < InvOps.MAIN_START)) {
             if (storeInBackpack(client, g.source())) {
+                leaveHolster(g);
                 VrBridge.pulse(hand, 0.05f);
                 action("guardou na mochila (por cima do ombro)");
             } else {
@@ -1013,6 +1077,13 @@ public final class HandsController {
             int handSlot = GrabSystem.itemSlot(p, grabs.get(hand)); // onde o item pego está
             if (radial.isOpen()) {
                 int target = radial.targetAt(tip);
+                if (target == RadialMenu.DROP) {
+                    InvOps.throwFrom(client, handSlot, false);
+                    radial.markAssigned();
+                    VrBridge.pulse(hand, 0.01f);
+                    action("descartou um (radial)");
+                    return true;
+                }
                 if (target >= 0) {
                     int slot = InvOps.HOTBAR_START + target;
                     if (target != offSource && !isLocked(p, slot) && InvOps.placeOne(client, handSlot, slot)) {
@@ -1122,6 +1193,7 @@ public final class HandsController {
             Backpack.Element e = backpack.elementAt(tip);
             if (e != null) {
                 switch (e.kind()) {
+                    case SORT -> sortBackpack(client, hand);
                     case PREV -> flip(hand, -1);
                     case NEXT -> flip(hand, 1);
                     default -> { }
@@ -1144,12 +1216,15 @@ public final class HandsController {
         return false;
     }
 
-    /** "Usar" (A): não usa o item escondido da mão que segura a mochila, nem aponta para o painel. */
+    /** "Usar" (A): não usa o item escondido da mão que segura a mochila, nem aponta para o painel; no baú, abre o imersivo. */
     public boolean onUse(Minecraft client) {
         if (client.player == null || client.gui.screen() != null) {
             return false;
         }
-        return backpack.holder() == 0 || (backpack.isOpen() && backpack.onPanel(VrBridge.pointer(0)));
+        if (backpack.holder() == 0 || (backpack.isOpen() && backpack.onPanel(VrBridge.pointer(0)))) {
+            return true;
+        }
+        return chest.useOnContainer(client); // A no baú: o baú imersivo, não a janela antiga (só em VR)
     }
 
     // ------------------------------------------------------------------ arrastar com o gatilho (distribuir)
@@ -1285,7 +1360,32 @@ public final class HandsController {
                 && client.level.recipeAccess().propertySet(net.minecraft.world.item.crafting.RecipePropertySet.CAMPFIRE_INPUT).test(stack);
     }
 
-    /** A fogueira sob a ponta da mão (a mão nela ou até uns 40 cm acima, com uma folga dos lados), como um clique no topo dela; ou null. */
+    /** Raio de cada canto da fogueira em que a ponta da mão conta como "no lugar da comida". */
+    public static final double CAMPFIRE_SLOT_RADIUS = 0.17;
+
+    /**
+     * Os 4 lugares de comida da fogueira, nos cantos (o mesmo cálculo do CampfireRenderer do jogo), na altura da brasa.
+     * O servidor enche sempre o primeiro lugar vazio, na ordem do bloco, então {@code empty[i]} diz se o lugar i está livre.
+     */
+    public record CampfireSlots(Vec3[] at, boolean[] empty) {}
+
+    public static CampfireSlots campfireSlots(Minecraft client, net.minecraft.core.BlockPos pos) {
+        var state = client.level.getBlockState(pos);
+        int facing = state.getValue(net.minecraft.world.level.block.CampfireBlock.FACING).get2DDataValue();
+        var be = client.level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.CampfireBlockEntity fire ? fire : null;
+        Vec3[] at = new Vec3[4];
+        boolean[] empty = new boolean[4];
+        for (int i = 0; i < 4; i++) {
+            double theta = Math.toRadians(-net.minecraft.core.Direction.from2DDataValue((i + facing) % 4).toYRot());
+            double x = -0.25, z = -0.25;
+            at[i] = new Vec3(pos.getX() + 0.5 + x * Math.cos(theta) + z * Math.sin(theta), pos.getY() + 0.4375,
+                    pos.getZ() + 0.5 - x * Math.sin(theta) + z * Math.cos(theta));
+            empty[i] = be == null || be.getItems().get(i).isEmpty();
+        }
+        return new CampfireSlots(at, empty);
+    }
+
+    /** A fogueira com a ponta da mão sobre um de seus lugares de comida livres (ou até uns 40 cm acima dele); ou null. */
     public static net.minecraft.world.phys.BlockHitResult campfireUnder(Minecraft client, Vec3 tip) {
         if (tip == null || client.level == null) {
             return null;
@@ -1294,10 +1394,14 @@ public final class HandsController {
         for (net.minecraft.core.BlockPos q : net.minecraft.core.BlockPos.betweenClosed(at.offset(-1, -1, -1), at.offset(1, 0, 1))) {
             if (client.level.getBlockState(q).getBlock() instanceof net.minecraft.world.level.block.CampfireBlock) {
                 double above = tip.y - q.getY(); // a fogueira tem 7/16 de altura
-                double side = Math.max(Math.abs(tip.x - (q.getX() + 0.5)), Math.abs(tip.z - (q.getZ() + 0.5)));
-                if (above >= 0.0 && above <= 0.85 && side <= 0.6) {
-                    return new net.minecraft.world.phys.BlockHitResult(new Vec3(q.getX() + 0.5, q.getY() + 0.4375, q.getZ() + 0.5),
-                            net.minecraft.core.Direction.UP, q.immutable(), false);
+                if (above < 0.0 || above > 0.85) {
+                    continue;
+                }
+                CampfireSlots slots = campfireSlots(client, q);
+                for (int i = 0; i < 4; i++) {
+                    if (slots.empty()[i] && Math.hypot(tip.x - slots.at()[i].x, tip.z - slots.at()[i].z) <= CAMPFIRE_SLOT_RADIUS) {
+                        return new net.minecraft.world.phys.BlockHitResult(slots.at()[i], net.minecraft.core.Direction.UP, q.immutable(), false);
+                    }
                 }
             }
         }
@@ -1310,7 +1414,7 @@ public final class HandsController {
             return false;
         }
         var interactionHand = hand == 0 ? net.minecraft.world.InteractionHand.MAIN_HAND : net.minecraft.world.InteractionHand.OFF_HAND;
-        return client.gameMode.useItemOn(client.player, interactionHand, hit).consumesAction();
+        return NoShift.run(client, () -> client.gameMode.useItemOn(client.player, interactionHand, hit)).consumesAction();
     }
 
     /**
@@ -1365,6 +1469,10 @@ public final class HandsController {
             if (chest.updateHover(hand, target)) {
                 VrBridge.pulse(hand, 0.005f);
             }
+            if (target != ChestStation.NONE && chest.isSuspended() && InvOps.ready(client) && !table.isOpen() && craftJob == null
+                    && chest.resume(client)) {
+                action("a mão voltou ao baú: reabriu");
+            }
         }
     }
 
@@ -1381,7 +1489,7 @@ public final class HandsController {
                 VrBridge.pulse(hand, 0.005f);
             }
             ItemStack held = hand == 0 ? p.getMainHandItem() : p.getOffhandItem();
-            if (target >= 0 && (grabs.isGrabbing(hand) || brewing.likelyAccepts(client, target, held)) && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
+            if (target >= 0 && (grabs.isGrabbing(hand) || brewing.likelyAccepts(client, target, held) || chest.isOpen() && !brewing.isOpen()) && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
                 if (p.containerMenu != p.inventoryMenu) {
                     InvOps.releaseHidden(client); // uma fornalha ou um baú aberto cede o menu
                 }
@@ -1425,6 +1533,17 @@ public final class HandsController {
         }
         if (assigned || target == RadialMenu.NONE || hand < 0 || grabs.isGrabbing(hand) || backpack.holder() == hand
                 || !InvOps.ready(client)) {
+            return;
+        }
+        if (target == RadialMenu.DROP) {
+            LocalPlayer p = client.player;
+            if (p != null && !(hand == 0 ? p.getMainHandItem() : p.getOffhandItem()).isEmpty()) {
+                InvOps.throwFrom(client, InvOps.handSlot(p, hand), true);
+                VrBridge.pulse(hand, 0.03f);
+                action("radial: mão " + hand + " jogou fora a pilha");
+            } else {
+                refuse(hand);
+            }
             return;
         }
         boolean ok = hand == 0 ? equipMain(client, target) : equipOff(client, target);
@@ -1650,6 +1769,10 @@ public final class HandsController {
                     : furnace.targetAt(VrBridge.pointer(hand));
             if (furnace.updateHover(hand, target)) {
                 VrBridge.pulse(hand, 0.005f);
+            }
+            if (target != FurnaceStation.NONE && chest.isOpen() && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
+                InvOps.releaseHidden(client); // o baú aberto cede o menu (fica suspenso e volta com a mão nele)
+                furnace.ensureOpen(client, true);
             }
             if ((target == FurnaceStation.INPUT || target == FurnaceStation.FUEL) && grabs.isGrabbing(hand)
                     && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {

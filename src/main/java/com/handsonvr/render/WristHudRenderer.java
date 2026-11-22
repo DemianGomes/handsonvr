@@ -36,15 +36,18 @@ public final class WristHudRenderer {
     private static final int WIDTH = 81, ROW = 10;
     /**
      * Onde o relógio fica, no referencial do controle esquerdo (m), como o HUD "no pulso" do Vivecraft: na lateral
-     * interna do antebraço (+x, o lado do corpo), atrás da mão (+z, para o cotovelo), deitado ao longo do braço.
+     * interna do antebraço (+x, o lado do corpo), afastado o bastante para ficar fora da segunda camada (mangas) das skins, atrás da mão (+z, para o cotovelo), deitado ao longo do braço.
      */
-    private static final float WRIST_SIDE = 0.045f, WRIST_BACK = 0.15f, WRIST_UP = 0.0f;
+    private static final float WRIST_SIDE = 0.065f, WRIST_BACK = 0.15f, WRIST_UP = 0.0f;
     /** Fundo translúcido como o do chat do jogo. */
     private static final int BACKGROUND = 0x80000000;
     /** O verde do nível de XP do jogo. */
     private static final int XP_GREEN = 0xFF80FF20;
-    /** Quantidade na mão: o "espaço" (m) e onde fica o dedão no referencial do controle (lado, cima, trás). */
-    private static final float COUNT_SLOT = 0.05f, THUMB_SIDE = 0.035f, THUMB_UP = 0.03f, THUMB_BACK = 0.01f;
+    /**
+     * Quantidade na mão: o "espaço" (m) e onde ela fica no referencial do controle: na lateral do dedão (o lado de
+     * dentro: à esquerda do controle direito, à direita do esquerdo), fora do modelo da mão, grudada como o relógio.
+     */
+    private static final float COUNT_SLOT = 0.045f, THUMB_SIDE = 0.055f, THUMB_UP = 0.015f, THUMB_BACK = 0.02f;
 
 
     private static Vec3 axis(Quaternionfc rotation, float x, float y, float z) {
@@ -84,11 +87,11 @@ public final class WristHudRenderer {
         if (config.handCount) {
             for (int hand = 0; hand < 2; hand++) {
                 if (!hands.isHandHidden(hand)) {
-                    handCount(d, ms, camera, head.position(), hand, hand == 0 ? p.getMainHandItem() : p.getOffhandItem());
+                    handCount(d, ms, camera, hand, hand == 0 ? p.getMainHandItem() : p.getOffhandItem());
                 }
             }
         }
-        if (config.wristHud && !p.isCreative() && !p.isSpectator() && !hands.isHandHidden(1)) {
+        if (config.wristHud && !p.isCreative() && !p.isSpectator()) { // continua com a mochila na mão: só o item some, o relógio fica
             Panel panel = wristPanel();
             if (panel != null) {
                 wrist(d, ms, camera, client, p, panel);
@@ -96,21 +99,35 @@ public final class WristHudRenderer {
         }
     }
 
-    /** A quantidade da pilha da mão, perto do dedão, virada para o rosto. */
-    private static void handCount(Draw d, PoseStack ms, Vec3 camera, Vec3 eye, int hand, ItemStack stack) {
-        VrBridge.Pose pose = VrBridge.hand(hand);
-        if (pose == null || stack.getCount() <= 1) {
+    /** A quantidade da pilha da mão, grudada na lateral do dedão (anda e gira com o controle). */
+    private static void handCount(Draw d, PoseStack ms, Vec3 camera, int hand, ItemStack stack) {
+        Panel panel = stack.getCount() <= 1 ? null : thumbPanel(hand);
+        if (panel == null) {
             return;
         }
+        Vec3 at = panel.origin();
         float s = VrBridge.worldScale();
-        // O dedão: à esquerda do controle direito, à direita do esquerdo.
-        Vec3 at = pose.position().add(axis(pose.rotation(), (hand == 0 ? -THUMB_SIDE : THUMB_SIDE) * s, THUMB_UP * s, THUMB_BACK * s));
-        Panel panel = Panel.facing(at, eye, 0, 1.0);
         ms.pushPose();
         ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
         ms.rotate(panel.rotation());
         d.mcCount(stack, 0f, 0f, COUNT_SLOT * s, 0f);
         ms.popPose();
+    }
+
+    /**
+     * O plano da quantidade, na lateral do dedão: a frente do desenho virada para fora do lado do dedão, o "cima" o de
+     * cima do controle. Null sem a mão.
+     */
+    public static Panel thumbPanel(int hand) {
+        VrBridge.Pose pose = VrBridge.hand(hand);
+        if (pose == null) {
+            return null;
+        }
+        float s = VrBridge.worldScale();
+        float side = hand == 0 ? -1f : 1f; // o dedão: à esquerda do controle direito, à direita do esquerdo
+        Vec3 origin = pose.position().add(axis(pose.rotation(), side * THUMB_SIDE * s, THUMB_UP * s, THUMB_BACK * s));
+        Vec3 normal = axis(pose.rotation(), side, 0, 0), up = axis(pose.rotation(), 0, 1, 0);
+        return new Panel(origin, up.cross(normal), up, normal, 1.0); // direita x cima = normal: o desenho não fica espelhado
     }
 
     /** O "relógio": corações, armadura, fome, XP e efeitos, de cima para baixo. */
@@ -119,7 +136,10 @@ public final class WristHudRenderer {
         float px = PX * VrBridge.worldScale();
         List<MobEffectInstance> effects = new ArrayList<>(p.getActiveEffects());
         int armor = p.getArmorValue();
-        int rows = 2 + (armor > 0 ? 1 : 0) + 1 + (effects.isEmpty() ? 0 : 1); // corações, fome, XP (+ armadura, efeitos)
+        int maxAir = p.getMaxAirSupply(), air = Math.min(p.getAirSupply(), maxAir);
+        // As bolhas, como no HUD do jogo: debaixo d'água (olhos na água) ou enquanto o ar não voltou ao máximo.
+        boolean showAir = p.isEyeInFluid(net.minecraft.tags.FluidTags.WATER) || air < maxAir;
+        int rows = 2 + (armor > 0 ? 1 : 0) + (showAir ? 1 : 0) + 1 + (effects.isEmpty() ? 0 : 1); // corações, fome, XP (+ armadura, ar, efeitos)
         float height = rows * ROW + 4;
         ms.pushPose();
         ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
@@ -135,9 +155,9 @@ public final class WristHudRenderer {
             icon(d, "hud/heart/container", x0 + i * 8 * px, y, px);
             int v = health - i * 2;
             if (v >= 2) {
-                icon(d, "hud/heart/full", x0 + i * 8 * px, y, px);
+                iconAt(d, "hud/heart/full", x0 + i * 8 * px, y, px, 0.0014f);
             } else if (v == 1) {
-                icon(d, "hud/heart/half", x0 + i * 8 * px, y, px);
+                iconAt(d, "hud/heart/half", x0 + i * 8 * px, y, px, 0.0014f);
             }
         }
         y -= ROW * px;
@@ -154,6 +174,14 @@ public final class WristHudRenderer {
             icon(d, v >= 2 ? "hud/food_full" : v == 1 ? "hud/food_half" : "hud/food_empty", x0 + i * 8 * px, y, px);
         }
         y -= ROW * px;
+        if (showAir) {
+            // Como o jogo: bolhas cheias, a que está estourando e as vazias (10 no total).
+            int full = (int) Math.ceil((air - 2) * 10.0 / maxAir), popping = (int) Math.ceil(air * 10.0 / maxAir) - full;
+            for (int i = 0; i < 10; i++) {
+                icon(d, i < full ? "hud/air" : i < full + popping ? "hud/air_bursting" : "hud/air_empty", x0 + i * 8 * px, y, px);
+            }
+            y -= ROW * px;
+        }
         // XP: a barra do HUD (182 pixels) na largura dos corações, e o nível em verde.
         Sprite bar = Sprite.gui("hud/experience_bar_background", 256), fill = Sprite.gui("hud/experience_bar_progress", 256);
         if (bar != null && fill != null) {
@@ -184,6 +212,14 @@ public final class WristHudRenderer {
             ex += 10 * px;
         }
         ms.popPose();
+    }
+
+    /** Um ícone mais à frente (o coração cheio sobre o recipiente: no mesmo plano os dois brigam e piscam em vermelho e preto). */
+    private static void iconAt(Draw d, String name, float left, float top, float px, float z) {
+        Sprite s = Sprite.gui(name);
+        if (s != null) {
+            d.sprite(s, left, top, px * 9f / s.width(), z, Draw.KEEP_ALPHA);
+        }
     }
 
     private static void icon(Draw d, String name, float left, float top, float px) {

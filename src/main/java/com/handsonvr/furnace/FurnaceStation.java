@@ -438,14 +438,14 @@ public final class FurnaceStation {
         }
         LocalPlayer p = client.player;
         if (pos == null || kind == null || p == null || client.gameMode == null || client.gui.screen() != null
-                || p.containerMenu != p.inventoryMenu || p.isSecondaryUseActive() || ticks < retryAfter
+                || p.containerMenu != p.inventoryMenu || ticks < retryAfter
                 || (!asked && ticks < suppressUntil)) {
             return false;
         }
         expectUntil = ticks + OPEN_TIMEOUT;
         seen = lastUse = ticks;
         // Como o jogador usando a fornalha (o "usar" do jogo, na frente dela): o servidor abre o menu.
-        client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(frontCenter(), facing, pos, false));
+        com.handsonvr.hands.NoShift.run(client, () -> client.gameMode.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(frontCenter(), facing, pos, false)));
         last = "abrindo a fornalha";
         return true;
     }

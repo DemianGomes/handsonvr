@@ -1,8 +1,8 @@
 {
   "key.category.handsonvr.main": "HandsOn VR",
   "key.handsonvr.settings": "HandsOn VR: settings",
-  "button.handsonvr.settings": "VR Holsters",
-  "screen.handsonvr.title": "HandsOn VR — holsters, backpack and controls",
+  "button.handsonvr.settings": "HandsOn VR Options",
+  "screen.handsonvr.title": "HandsOn VR Options",
   "option.handsonvr.holsters": "Physical holsters",
   "option.handsonvr.backpack_on": "Backpack (left shoulder)",
   "option.handsonvr.radial": "Radial hotbar (B/X)",
@@ -19,11 +19,18 @@
   "option.handsonvr.pickup_main": "Pickup: backpack first",
   "option.handsonvr.bow_aim": "Bow aim marker",
   "option.handsonvr.throw": "Throw with your hand",
-  "option.handsonvr.throw_power": "Real throw power (singleplayer)",
-  "option.handsonvr.wrist_hud": "Wrist status (health, food...)",
+  "option.handsonvr.throw_power": "Real throw power (SP)",
+  "option.handsonvr.wrist_hud": "Wrist status",
   "option.handsonvr.hand_count": "Stack count on the hand",
   "backpack.handsonvr.page": "Page %s/%s",
   "backpack.handsonvr.slots": "Slots %s/%s",
   "radial.handsonvr.empty": "Empty hand",
-  "radial.handsonvr.empty_full": "Empty hand (no free slot)"
+  "radial.handsonvr.empty_full": "Empty hand (no free slot)",
+  "radial.handsonvr.drop": "Drop",
+  "button.handsonvr.sort": "Sort",
+  "option.handsonvr.hide_vivecraft_hud": "Bars only on wrist",
+  "group.handsonvr.holsters": "Holsters",
+  "group.handsonvr.backpack": "Backpack and radial menu",
+  "group.handsonvr.hands": "Hands and items",
+  "group.handsonvr.hud": "HUD (wrist and hand)"
 }
