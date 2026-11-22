@@ -364,6 +364,10 @@ public final class HandsController {
             blockToHand(client, hand, brewing.take(client, onBrewing), "tirou do suporte de poções o lugar " + onBrewing);
             return true;
         }
+        if (chest.onSortButton(tip)) {
+            sortChest(client, hand);
+            return true;
+        }
         // 3d) Baú aberto: um espaço com item vem para a mão (com o gatilho já apertado, a metade).
         int onChest = chest.slotAt(tip);
         if (onChest >= 0 && !chest.stack(onChest).isEmpty()) {
@@ -731,6 +735,7 @@ public final class HandsController {
                 }
             }
             case CRAFT_OUT -> gripResult(client, hand, ResultSource.BACKPACK); // uma vez (com o gatilho, tudo) para a mão
+            case SORT -> sortBackpack(client, hand);
             case PREV -> flip(hand, -1);
             case NEXT -> flip(hand, 1);
             default -> { }
@@ -752,6 +757,39 @@ public final class HandsController {
         if (g.origin() == GrabSystem.Origin.HOLSTER && g.holster() != null) {
             holsters.clear(g.holster());
         }
+    }
+
+    /** "Organizar" da mochila: junta e ordena o inventário principal (as 3 páginas). */
+    private void sortBackpack(Minecraft client, int hand) {
+        LocalPlayer p = client.player;
+        if (p == null || !InvOps.ready(client) || grabs.isGrabbing(0) || grabs.isGrabbing(1) || !InvOps.cursor(p).isEmpty()) {
+            refuse(hand);
+            return;
+        }
+        int clicks = com.handsonvr.inv.Sorter.sort(27, new com.handsonvr.inv.Sorter.Slots() {
+            @Override
+            public ItemStack get(int i) {
+                return InvOps.stack(p, InvOps.MAIN_START + i);
+            }
+
+            @Override
+            public void pickup(int i) {
+                InvOps.pickup(client, InvOps.MAIN_START + i);
+            }
+        });
+        InvOps.flushCursor(client);
+        VrBridge.pulse(hand, 0.03f);
+        action("organizou a mochila (" + clicks + " cliques)");
+    }
+
+    /** "Organizar" do baú aberto. */
+    private void sortChest(Minecraft client, int hand) {
+        if (grabs.isGrabbing(0) || grabs.isGrabbing(1) || !chest.sort(client)) {
+            refuse(hand);
+            return;
+        }
+        VrBridge.pulse(hand, 0.03f);
+        action("organizou o baú");
     }
 
     /** Fecha a mochila. Um item pego do crafting volta para lá antes: o que sobra no crafting vai para o inventário. */
@@ -1155,6 +1193,7 @@ public final class HandsController {
             Backpack.Element e = backpack.elementAt(tip);
             if (e != null) {
                 switch (e.kind()) {
+                    case SORT -> sortBackpack(client, hand);
                     case PREV -> flip(hand, -1);
                     case NEXT -> flip(hand, 1);
                     default -> { }
@@ -1430,6 +1469,10 @@ public final class HandsController {
             if (chest.updateHover(hand, target)) {
                 VrBridge.pulse(hand, 0.005f);
             }
+            if (target != ChestStation.NONE && chest.isSuspended() && InvOps.ready(client) && !table.isOpen() && craftJob == null
+                    && chest.resume(client)) {
+                action("a mão voltou ao baú: reabriu");
+            }
         }
     }
 
@@ -1446,7 +1489,7 @@ public final class HandsController {
                 VrBridge.pulse(hand, 0.005f);
             }
             ItemStack held = hand == 0 ? p.getMainHandItem() : p.getOffhandItem();
-            if (target >= 0 && (grabs.isGrabbing(hand) || brewing.likelyAccepts(client, target, held)) && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
+            if (target >= 0 && (grabs.isGrabbing(hand) || brewing.likelyAccepts(client, target, held) || chest.isOpen() && !brewing.isOpen()) && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
                 if (p.containerMenu != p.inventoryMenu) {
                     InvOps.releaseHidden(client); // uma fornalha ou um baú aberto cede o menu
                 }
@@ -1726,6 +1769,10 @@ public final class HandsController {
                     : furnace.targetAt(VrBridge.pointer(hand));
             if (furnace.updateHover(hand, target)) {
                 VrBridge.pulse(hand, 0.005f);
+            }
+            if (target != FurnaceStation.NONE && chest.isOpen() && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {
+                InvOps.releaseHidden(client); // o baú aberto cede o menu (fica suspenso e volta com a mão nele)
+                furnace.ensureOpen(client, true);
             }
             if ((target == FurnaceStation.INPUT || target == FurnaceStation.FUEL) && grabs.isGrabbing(hand)
                     && InvOps.ready(client) && !table.isOpen() && !grabbingOutsideMenus()) {

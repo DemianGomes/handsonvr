@@ -2,6 +2,15 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.8.5-alpha (Minecraft 26.3)
+
+- **Dica do item na mochila e no baú VR:** com a mão sobre um item aparece a caixa de dica do jogo, com o nome, os encantamentos, os efeitos e a descrição (como no inventário do jogo).
+- **Baú aberto e outros blocos ao mesmo tempo:** o servidor só deixa um menu aberto por vez. Agora, ao levar a mão à fornalha (ou ao suporte de poções, ou à mesa), o baú cede o menu e fica **suspenso**: continua à vista com o que tinha e reabre sozinho quando a mão volta aos espaços dele. A tampa pode fechar e abrir rapidinho nessa troca.
+- **Bolhas de ar no relógio do pulso** quando você está debaixo d'água (ou o ar ainda não voltou).
+- **HUD do Vivecraft com o minimapa:** em VR, em vez de esconder o HUD inteiro (o F1), o HandsOn tira dele só a hotbar, a vida, a armadura, a fome, as bolhas, a XP, os efeitos e o nome do item (o relógio do pulso já mostra). O resto continua: o minimapa do Xaero e o HUD de outros mods, o chat. A opção agora se chama "Barras só no pulso".
+- **Botão "Organizar" (A-Z)** na mochila (à direita da primeira fileira) e no baú VR (abaixo da grade): junta as pilhas iguais e põe em ordem, com cliques normais. É do próprio HandsOn: funciona com ou sem o Inventory Profiles Next.
+- **Compatível com o Inventory Profiles Next:** o reabastecimento automático do IPN via a mão esvaziar ao guardar um item no coldre ou na mochila e punha o item de volta na mão. Agora, depois de cada ação do HandsOn, o IPN recomeça a "foto" da mão; ele continua repondo o que acaba de verdade (um bloco colocado, uma ferramenta quebrada). Os cliques do HandsOn também não passam mais pelo ponto que outros mods interceptam. Testado com o IPN, o Xaero's Minimap e o Voxy carregados.
+
 ## 0.8.4-alpha (Minecraft 26.3)
 
 ### Depois do teste em multiplayer (dois jogadores em VR)

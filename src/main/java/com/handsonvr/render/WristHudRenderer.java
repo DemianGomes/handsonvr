@@ -136,7 +136,10 @@ public final class WristHudRenderer {
         float px = PX * VrBridge.worldScale();
         List<MobEffectInstance> effects = new ArrayList<>(p.getActiveEffects());
         int armor = p.getArmorValue();
-        int rows = 2 + (armor > 0 ? 1 : 0) + 1 + (effects.isEmpty() ? 0 : 1); // corações, fome, XP (+ armadura, efeitos)
+        int maxAir = p.getMaxAirSupply(), air = Math.min(p.getAirSupply(), maxAir);
+        // As bolhas, como no HUD do jogo: debaixo d'água (olhos na água) ou enquanto o ar não voltou ao máximo.
+        boolean showAir = p.isEyeInFluid(net.minecraft.tags.FluidTags.WATER) || air < maxAir;
+        int rows = 2 + (armor > 0 ? 1 : 0) + (showAir ? 1 : 0) + 1 + (effects.isEmpty() ? 0 : 1); // corações, fome, XP (+ armadura, ar, efeitos)
         float height = rows * ROW + 4;
         ms.pushPose();
         ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
@@ -171,6 +174,14 @@ public final class WristHudRenderer {
             icon(d, v >= 2 ? "hud/food_full" : v == 1 ? "hud/food_half" : "hud/food_empty", x0 + i * 8 * px, y, px);
         }
         y -= ROW * px;
+        if (showAir) {
+            // Como o jogo: bolhas cheias, a que está estourando e as vazias (10 no total).
+            int full = (int) Math.ceil((air - 2) * 10.0 / maxAir), popping = (int) Math.ceil(air * 10.0 / maxAir) - full;
+            for (int i = 0; i < 10; i++) {
+                icon(d, i < full ? "hud/air" : i < full + popping ? "hud/air_bursting" : "hud/air_empty", x0 + i * 8 * px, y, px);
+            }
+            y -= ROW * px;
+        }
         // XP: a barra do HUD (182 pixels) na largura dos corações, e o nível em verde.
         Sprite bar = Sprite.gui("hud/experience_bar_background", 256), fill = Sprite.gui("hud/experience_bar_progress", 256);
         if (bar != null && fill != null) {

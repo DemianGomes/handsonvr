@@ -357,7 +357,7 @@ O que pede cuidado:
 - **Pulso esquerdo:** grudado na lateral interna do antebraço esquerdo, como o HUD "no pulso" do Vivecraft: anda e gira com o controle, deitado ao longo do braço (a leitura vai do cotovelo para a mão). Mostra a vida (corações), a armadura, a fome, a barra de XP com o nível e os ícones dos efeitos ativos, com os ícones do HUD do jogo, pequenos, num fundo escuro como o do chat. Para ler, vire o lado interno do braço para o rosto. Continua aparecendo com a mochila na mão (só o item some). Fica afastado do braço o bastante para não ser coberto pela segunda camada (mangas) das skins.
 - **Quantidade na mão:** grudada na lateral do dedão de cada mão (presa ao controle, como o relógio, e fora do modelo da mão) aparece a quantidade da pilha que ela segura, como num espaço do inventário. O que é sozinho (espada, arco) não mostra nada.
 - É só desenho do cliente: os outros jogadores não veem.
-- Opções "Relógio no pulso", "Quantidade na mão" e "Sem HUD do Vivecraft" (em VR, esconde o HUD do Vivecraft no pulso de fora, como o F1; ligada por padrão).
+- Opções "Relógio no pulso", "Quantidade na mão" e "Barras só no pulso" (em VR, tira do HUD do Vivecraft a hotbar, a vida, a fome, as bolhas, a XP e os efeitos; o minimapa e o chat ficam; ligada por padrão).
 
 ## 10. Fogueira e armadura no corpo
 
@@ -389,6 +389,8 @@ Os gestos são os da mochila:
 Por baixo é o menu do jogo, aberto como o jogador faria: o jogo anima a tampa para todo mundo, e funciona em qualquer servidor. Como fechar não perde nada, o baú cede o menu quando a mochila precisa da armadura ou do crafting 2x2.
 
 **O grip com a mão dentro do bloco:** ali o Vivecraft liga a ação "VR Interact" (o grip faz o "usar" do bloco, o que abria a janela antiga) e ela recebe o botão no lugar da ação que o HandsOn escuta. Por isso o HandsOn registra no Vivecraft um módulo de interação (`StationInteractModule`, prioridade 1400, antes do de blocos, 1500) que, com a mão num baú, barril, baú do Ender, caixa de shulker, suporte de poções, fornalha ou mesa de trabalho, é o próprio grip do HandsOn: apertar, segurar e soltar. O A (usar) olhando para o baú, em VR, também abre o baú imersivo.
+
+**Com outros blocos ao mesmo tempo:** o servidor só deixa um menu aberto. Levando a mão à fornalha, ao suporte de poções ou à mesa, o baú cede o menu e fica suspenso (à vista, com o que tinha); a mão de volta aos espaços dele o reabre. **Dica do item:** a mão sobre um item mostra a caixa de dica do jogo (nome, encantamentos, descrição), na mochila e no baú. **Organizar (A-Z):** botão abaixo da grade do baú e à direita da primeira fileira da mochila; junta as pilhas iguais e ordena, com cliques normais (não depende do Inventory Profiles Next).
 
 ## 12. Suporte de poções
 

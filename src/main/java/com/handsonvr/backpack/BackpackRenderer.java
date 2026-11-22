@@ -32,6 +32,8 @@ import java.util.Map;
  * milímetros umas das outras.
  */
 public final class BackpackRenderer {
+    /** Um pixel da caixa de dica do item (m). */
+    private static final float TOOLTIP_PX = 0.0022f;
     private BackpackRenderer() {}
 
     // Lona e couro da mochila.
@@ -141,6 +143,17 @@ public final class BackpackRenderer {
                     && hands.dragMarked(HandsController.DragKind.BACKPACK, e.handler())); // marcado pelo arrastar
             drawElement(p, hands, d, e, hovered);
         }
+        // A dica do item sob a mão (nome, encantamentos, descrição), acima do espaço, como no inventário do jogo.
+        if (hover != null && hover.kind() == Backpack.Kind.SORT) {
+            d.mcTooltip(net.minecraft.network.chat.Component.translatable("button.handsonvr.sort"), (float) hover.x(),
+                    (float) hover.y() + 0.03f, TOOLTIP_PX, 0.02f);
+        }
+        if (hover != null && hover.isSlotLike()) {
+            ItemStack shown = hands.displayStack(p, hover.handler());
+            if (!shown.isEmpty()) {
+                d.mcTooltip(Draw.itemTooltip(shown), (float) hover.x(), (float) hover.y() + 0.03f, TOOLTIP_PX, 0.02f);
+            }
+        }
 
         // "Fabricação" acima do crafting (o mesmo texto do inventário do jogo).
         d.text(Component.translatable("container.crafting").getString(), -0.170f, -0.034f, 0.002f, 0.011f,
@@ -189,6 +202,10 @@ public final class BackpackRenderer {
             case DROP -> {
                 d.mcSlot(x, y, size, 0.002f, hovered);
                 d.spriteCentered(DROP_ICON, x, y, size * 16f / 18f, 0.003f, hovered ? Draw.MC_SLOT_HOVER : Draw.MC_SLOT);
+            }
+            case SORT -> {
+                d.mcSlot(x, y, size, 0.002f, hovered);
+                d.text("A-Z", x, y, 0.003f, size * 0.32f, Draw.MC_LABEL, true);
             }
             case PREV, NEXT -> {
                 // As setas de página do livro de receitas (12x17); destacadas sob a mão.

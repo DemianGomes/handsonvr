@@ -69,6 +69,36 @@ public final class ChestStation {
 
     private final Lid[] lids = new Lid[2];
 
+    /**
+     * Baú suspenso: ele cedeu o menu a outro bloco (fornalha, suporte de poções, mesa) ou à mochila, porque o servidor só
+     * deixa um menu aberto por vez. Continua desenhado com o que tinha (esta cópia) e reabre sozinho quando a mão volta
+     * aos espaços dele ({@link #resume}). Null = não suspenso.
+     */
+    private ItemStack[] ghost = null;
+
+    /** O baú aparece (aberto ou suspenso)? */
+    public boolean isShown() {
+        return menu != null || ghost != null;
+    }
+
+    public boolean isSuspended() {
+        return menu == null && ghost != null;
+    }
+
+    /** A mão voltou ao baú suspenso: reabre (o menu do outro bloco fecha sem perder nada). */
+    public boolean resume(Minecraft client) {
+        return isSuspended() && expectUntil < 0 && pos != null && open(client, pos);
+    }
+
+    private void suspend(Minecraft client) {
+        ItemStack[] snap = new ItemStack[size];
+        for (int i = 0; i < size && menu != null; i++) {
+            snap[i] = menu.getSlot(i).getItem().copy();
+        }
+        close(client, "cedeu o menu (suspenso: a mão no baú reabre)");
+        ghost = snap;
+    }
+
     public BlockPos pos() {
         return pos;
     }
@@ -98,7 +128,10 @@ public final class ChestStation {
     }
 
     public ItemStack stack(int slot) {
-        return menu == null || slot < 0 || slot >= size ? ItemStack.EMPTY : menu.getSlot(slot).getItem();
+        if (menu == null) {
+            return ghost == null || slot < 0 || slot >= ghost.length || ghost[slot] == null ? ItemStack.EMPTY : ghost[slot];
+        }
+        return slot < 0 || slot >= size ? ItemStack.EMPTY : menu.getSlot(slot).getItem();
     }
 
     public boolean blocksSwing() {
@@ -106,6 +139,7 @@ public final class ChestStation {
     }
 
     public void reset() {
+        ghost = null;
         InvOps.clearHidden(menu);
         menu = null;
         pos = null;
@@ -236,7 +270,7 @@ public final class ChestStation {
 
     /** O espaço sob a ponta da mão, ou {@link #NONE}. */
     public int slotAt(Vec3 tip) {
-        Panel p = menu == null ? null : surface();
+        Panel p = !isShown() ? null : surface();
         if (p == null || tip == null) {
             return NONE;
         }
@@ -252,9 +286,50 @@ public final class ChestStation {
         return row * 9 + col;
     }
 
+    /** O botão "Organizar" (x, y locais e meio lado): abaixo da grade, à direita, do lado de quem olha. */
+    public double[] sortButton() {
+        double s = slot();
+        return new double[] {3.5 * s, -(rows() * s / 2 + s * 0.85), s * 0.4};
+    }
+
+    /** A ponta da mão está no botão "Organizar" (com o baú aberto)? */
+    public boolean onSortButton(Vec3 tip) {
+        Panel p = menu == null ? null : surface();
+        if (p == null || tip == null) {
+            return false;
+        }
+        Vec3 l = p.local(tip);
+        double[] b = sortButton();
+        double reach = b[2] + 0.015;
+        return l.z >= depthMin() && l.z <= depthMax() && Math.abs(l.x - b[0]) <= reach && Math.abs(l.y - b[1]) <= reach;
+    }
+
+    /** "Organizar": junta e ordena os itens do baú com cliques normais. True se organizou. */
+    public boolean sort(Minecraft client) {
+        LocalPlayer p = client.player;
+        if (menu == null || p == null || p.containerMenu != menu || !InvOps.cursor(p).isEmpty()) {
+            return false;
+        }
+        AbstractContainerMenu m = menu;
+        com.handsonvr.inv.Sorter.sort(size, new com.handsonvr.inv.Sorter.Slots() {
+            @Override
+            public ItemStack get(int i) {
+                return m.getSlot(i).getItem();
+            }
+
+            @Override
+            public void pickup(int i) {
+                InvOps.clickHidden(client, i, 0, ContainerInput.PICKUP);
+            }
+        });
+        InvOps.flushCursor(client);
+        last = "organizado";
+        return true;
+    }
+
     /** A ponta da mão está na superfície dos itens? */
     public boolean onPanel(Vec3 tip) {
-        Panel p = menu == null ? null : surface();
+        Panel p = !isShown() ? null : surface();
         if (p == null || tip == null) {
             return false;
         }
@@ -276,9 +351,13 @@ public final class ChestStation {
      * Retorna true (o grip é do baú).
      */
     public boolean beginLid(int hand, BlockPos block, Vec3 tip) {
-        boolean opening = !(isOpenChest(block) && (menu != null || expectUntil >= 0));
+        boolean opening = !(isOpenChest(block) && isShownOrWaiting());
         lids[hand] = new Lid(block, tip, opening);
         return true;
+    }
+
+    private boolean isShownOrWaiting() {
+        return isShown() || expectUntil >= 0;
     }
 
     /** Há um gesto da tampa nesta mão? */
@@ -368,7 +447,8 @@ public final class ChestStation {
         client.player.containerMenu = m;
         menu = m;
         size = m.slots.size() - 36;
-        InvOps.setHidden(m, () -> close(client, "cedeu o menu ao inventário"));
+        InvOps.setHidden(m, () -> suspend(client));
+        ghost = null;
         last = "aberto (sem tela), " + size + " espaços";
         HandsOnVR.LOGGER.debug("[HandsOn VR] baú aberto sem tela em {}", pos);
         return true;
@@ -384,6 +464,7 @@ public final class ChestStation {
     }
 
     private void drop(String why) {
+        ghost = null;
         if (menu != null) {
             last = "fechado: " + why;
         }
@@ -413,11 +494,11 @@ public final class ChestStation {
             queue.clear();
             last = "não abriu";
         }
-        if ((menu != null || expectUntil >= 0) && (pos == null || !isContainer(client.level.getBlockState(pos))
+        if ((menu != null || expectUntil >= 0 || ghost != null) && (pos == null || !isContainer(client.level.getBlockState(pos))
                 || p.getEyePosition().distanceTo(Vec3.atCenterOf(pos)) > FAR)) {
             close(client, "longe do baú");
         }
-        if (menu == null) {
+        if (!isShown()) {
             hover[0] = hover[1] = NONE;
         }
         if (menu != null && !queue.isEmpty()) {

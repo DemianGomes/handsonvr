@@ -382,8 +382,8 @@ public final class SelfTest {
                     stepTicks = 0;
                 } else if (stepTicks > 60) {
                     pass("mod carregou e o mundo abriu (mixins aplicados)");
-                    check(VrBridge.isVRActive() == client.gui.hud.isHidden(),
-                            "em VR, o HUD do Vivecraft (hotbar e vida no pulso) nasce escondido; sem VR, o HUD do jogo fica normal");
+                    check(com.handsonvr.render.VivecraftHud.hidesBars() == VrBridge.isVRActive() && !client.gui.hud.isHidden(),
+                            "em VR, as barras do jogo (hotbar, vida, fome) saem do HUD do Vivecraft e o resto (minimapa, chat) fica; sem VR, o HUD do jogo fica normal");
                     next();
                 }
             }
@@ -3139,6 +3139,38 @@ public final class SelfTest {
             check(chest.stack(13).is(Items.SAND) && chest.stack(13).getCount() == 32, "soltar a areia num espaço vazio do baú: as 32 entram");
             photoPose(client, true);
             p.setXRot(60f); // olhando para dentro do baú
+        }
+        if (at(85)) {
+            int before = 0, after = 0;
+            for (int i = 0; i < chest.size(); i++) {
+                before += chest.stack(i).getCount();
+            }
+            boolean sorted = chest.sort(client);
+            boolean contiguous = true, seenEmpty = false;
+            for (int i = 0; i < chest.size(); i++) {
+                after += chest.stack(i).getCount();
+                contiguous &= !(seenEmpty && !chest.stack(i).isEmpty());
+                seenEmpty |= chest.stack(i).isEmpty();
+            }
+            check(sorted && contiguous && before == after && before > 0,
+                    "Organizar no baú: os itens ficam juntos no começo, sem perder nada (" + before + " itens)");
+            ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+            sword.enchant(client.level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                    .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.SHARPNESS), 3);
+            List<Component> tip = com.handsonvr.render.Draw.itemTooltip(sword);
+            check(tip.size() >= 2 && tip.stream().anyMatch(l -> l.getString().contains(
+                            Component.translatable("enchantment.minecraft.sharpness").getString())),
+                    "dica do item (mochila e baú): o nome e os encantamentos (" + tip.size() + " linhas)");
+            // Outro bloco pede o menu (como a fornalha com a mão nela): o baú cede e fica suspenso, ainda à vista.
+            InvOps.releaseHidden(client);
+            check(chest.isSuspended() && chest.isShown() && !chest.stack(0).isEmpty(),
+                    "o baú cede o menu a outro bloco e fica suspenso, ainda mostrando os itens");
+            Panel panel = chest.surface();
+            double[] c0 = chest.slotCenter(0);
+            pointAt(0, panel.world(c0[0], c0[1], 0.01), panel.normal().reverse());
+        }
+        if (at(89)) {
+            check(chest.isOpen() && client.gui.screen() == null, "a mão voltou aos espaços do baú suspenso: ele reabriu (" + chest.last() + ")");
         }
         if (at(88)) {
             screenshot(client, "17-bau");

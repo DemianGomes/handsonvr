@@ -208,14 +208,49 @@ public final class InvOps {
                 }
             }
         }
-        client.gameMode.handleContainerInput(menu.containerId, slot, button, type, p);
+        rawClick(client, menu, slot, button, type, p);
+    }
+
+    /**
+     * O clique de um espaço exatamente como o jogo faz ({@code MultiPlayerGameMode.handleContainerInput}): simula no
+     * cliente e manda o mesmo pacote ao servidor. Feito aqui, e não chamando o jogo, porque outros mods interceptam
+     * aquele método e podem engolir o clique sem tela (o Inventory Profiles Next, durante o reabastecimento automático
+     * dele, cancela todos os cliques: guardar no coldre ou na mochila não acontecia).
+     */
+    private static void rawClick(Minecraft client, AbstractContainerMenu menu, int slot, int button, ContainerInput type, LocalPlayer p) {
+        if (client.getConnection() == null || p.containerMenu != menu) {
+            return;
+        }
+        java.util.List<ItemStack> before = new java.util.ArrayList<>(menu.slots.size());
+        for (net.minecraft.world.inventory.Slot s : menu.slots) {
+            before.add(s.getItem().copy());
+        }
+        menu.clicked(slot, button, type, p);
+        var hashes = client.getConnection().decoratedHashOpsGenenerator();
+        it.unimi.dsi.fastutil.ints.Int2ObjectMap<net.minecraft.network.HashedStack> changed = new it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap<>();
+        for (int i = 0; i < before.size(); i++) {
+            ItemStack now = menu.slots.get(i).getItem();
+            if (!ItemStack.matches(before.get(i), now)) {
+                changed.put(i, net.minecraft.network.HashedStack.create(now, hashes));
+            }
+        }
+        client.getConnection().send(new net.minecraft.network.protocol.game.ServerboundContainerClickPacket(menu.containerId,
+                menu.getStateId(), com.google.common.primitives.Shorts.checkedCast(slot),
+                com.google.common.primitives.SignedBytes.checkedCast(button), type, changed,
+                net.minecraft.network.HashedStack.create(menu.getCarried(), hashes)));
+        IpnCompat.afterClick();
+    }
+
+    /** Clique de pegar/pôr (o esquerdo) num espaço do menu do jogador (ou no mesmo espaço do menu escondido). */
+    public static void pickup(Minecraft client, int handlerSlot) {
+        click(client, handlerSlot, 0, ContainerInput.PICKUP);
     }
 
     /** Um clique direto no menu escondido da mesa (índices do menu da mesa: 0 resultado, 1-9 grade). */
     public static void clickHidden(Minecraft client, int menuSlot, int button, ContainerInput type) {
         LocalPlayer p = client.player;
         if (hiddenOpen(p)) {
-            client.gameMode.handleContainerInput(hidden.containerId, menuSlot, button, type, p);
+            rawClick(client, hidden, menuSlot, button, type, p);
         }
     }
 

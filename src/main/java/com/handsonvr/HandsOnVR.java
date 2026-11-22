@@ -68,7 +68,6 @@ public class HandsOnVR implements ClientModInitializer {
         });
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             guard("grip (soltura perdida)", HandsOnVR::gripWatch);
-            guard("HUD do Vivecraft", () -> com.handsonvr.render.VivecraftHud.tick(client));
             guard("mãos", () -> HANDS.tick(client));
             guard("coleta no inventário", () -> com.handsonvr.inv.PickupOrder.tick(client, HANDS));
             guard("estado para os outros jogadores", () -> com.handsonvr.net.PeerSync.tick(client, HANDS));
@@ -108,6 +107,7 @@ public class HandsOnVR implements ClientModInitializer {
             }
         });
 
+        com.handsonvr.render.VivecraftHud.register(); // em VR, as barras do jogo saem do HUD do Vivecraft (o resto, como o minimapa, fica)
         com.handsonvr.net.PeerSync.register();
         SelfTest.register();
         LOGGER.info("[HandsOn VR] Pronto (Vivecraft {})", VrBridge.isVivecraftLoaded() ? "presente" : "ausente");

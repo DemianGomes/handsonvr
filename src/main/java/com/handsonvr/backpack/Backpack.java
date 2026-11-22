@@ -24,7 +24,7 @@ import java.util.List;
  * a direita, y para cima (o painel vai de y = 0 a y = -{@link #HEIGHT}).
  */
 public final class Backpack {
-    public enum Kind { SLOT, CRAFT_IN, CRAFT_OUT, ARMOR, DROP, PREV, NEXT }
+    public enum Kind { SLOT, CRAFT_IN, CRAFT_OUT, ARMOR, DROP, PREV, NEXT, SORT }
 
     /** Um alvo do painel: tipo, espaço do menu do jogador (-1 se não for espaço), centro (x, y) e meio lado (é quadrado). */
     public record Element(Kind kind, int handler, double x, double y, double half) {
@@ -168,6 +168,8 @@ public final class Backpack {
                         GRID_SLOT / 2));
             }
         }
+        // "Organizar" (A-Z), à direita da primeira fileira da página.
+        out.add(new Element(Kind.SORT, -1, 0.163, GRID_TOP - GRID_SLOT / 2, 0.022));
         // Barra de baixo: setas de página e o descarte (canto inferior direito).
         out.add(new Element(Kind.PREV, -1, -0.150, BOTTOM_Y, 0.03));
         out.add(new Element(Kind.NEXT, -1, 0.040, BOTTOM_Y, 0.03));
