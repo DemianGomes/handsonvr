@@ -21,6 +21,7 @@
   "option.handsonvr.throw": "Arremesso com a mão",
   "option.handsonvr.throw_power": "Força real (1 jogador)",
   "option.handsonvr.wrist_hud": "Relógio no pulso",
+  "option.handsonvr.minimap_right_wrist": "Minimapa no pulso direito",
   "option.handsonvr.hand_count": "Quantidade na mão",
   "backpack.handsonvr.page": "Página %s/%s",
   "backpack.handsonvr.slots": "Espaços %s/%s",

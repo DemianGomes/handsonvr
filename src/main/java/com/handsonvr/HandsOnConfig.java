@@ -71,6 +71,9 @@ public final class HandsOnConfig {
     /** A quantidade da pilha de cada mão, perto do dedão (só para o próprio jogador). */
     public boolean handCount = true;
 
+    /** O minimapa (Xaero's Minimap) na parte de dentro do pulso direito, em vez de no HUD do pulso esquerdo. */
+    public boolean minimapRightWrist = true;
+
     /**
      * Em VR, esconde o HUD do Vivecraft (a hotbar, os corações e a fome no pulso, o mesmo "esconder HUD" do F1): o
      * relógio do pulso e o radial do HandsOn mostram isso. Não muda o arquivo do Vivecraft; sem VR o HUD volta.

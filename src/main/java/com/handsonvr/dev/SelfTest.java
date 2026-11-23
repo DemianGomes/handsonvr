@@ -413,6 +413,7 @@ public final class SelfTest {
             case 25 -> pack07(client);
             case 26 -> bowAimMarker(client);
             case 27 -> holsterToBackpack(client);
+            case 28 -> ultimineVr(client);
             default -> { }
         }
     }
@@ -3418,8 +3419,92 @@ public final class SelfTest {
             inv.setSelectedSlot(0);
         }
         if (at(20)) {
+            next();
+        }
+    }
+
+    // ------------------------------------------------------------------ FTB Ultimine (opcional)
+
+    private static void ultimineVr(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        if (!com.handsonvr.compat.UltimineVr.isLoaded()) {
+            if (at(1)) {
+                info("FTB Ultimine: não está entre os mods deste teste; nada a conferir");
+            }
+            if (at(2)) {
+                finish(client);
+            }
+            return;
+        }
+        BlockPos base = BlockPos.containing(p.getX(), p.getY(), p.getZ()).offset(0, 0, 2);
+        if (at(1)) {
+            section("FTB Ultimine em VR (botões abaixo do relógio do pulso)");
+            onServer(client, player -> {
+                player.setGameMode(GameType.SURVIVAL);
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.NETHERITE_SHOVEL));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.HASTE, 2400, 20));
+                for (int k = 0; k < 5; k++) {
+                    player.level().setBlock(base.offset(k, 0, 0), Blocks.CLAY.defaultBlockState(), 3);
+                }
+            });
+            inv.setSelectedSlot(0);
+            p.setYRot(0f);
+            p.setXRot(30f);
+            SimulatedVr.setHand(1, p.getEyePosition().add(-0.15, -0.35, 0.3), new Vec3(0.3, 0.2, 1).normalize());
+        }
+        if (at(3)) {
+            pressUltimine(com.handsonvr.compat.UltimineVr.TOGGLE);
+        }
+        if (at(8)) {
+            check(com.handsonvr.compat.UltimineVr.isActive(),
+                    "FTB Ultimine: a ponta da mão direita na picareta abaixo do relógio liga o Ultimine (" + com.handsonvr.compat.UltimineVr.last() + ")");
+            handAway(0);
+        }
+        if (at(14)) {
+            client.gameMode.startDestroyBlock(base, net.minecraft.core.Direction.UP);
+        }
+        if (at(26)) {
+            BlockPos at = base;
+            onServer(client, player -> {
+                int left = 0;
+                for (int k = 0; k < 5; k++) {
+                    left += player.level().getBlockState(at.offset(k, 0, 0)).is(Blocks.CLAY) ? 1 : 0;
+                }
+                probeCount = left;
+            });
+        }
+        if (at(30)) {
+            check(probeCount == 0, "FTB Ultimine ligado pelo pulso: quebrar uma argila quebra as 5 juntas (sobraram " + probeCount + ")");
+            pressUltimine(com.handsonvr.compat.UltimineVr.NEXT);
+        }
+        if (at(35)) {
+            check("próxima forma".equals(com.handsonvr.compat.UltimineVr.last()),
+                    "FTB Ultimine: a seta da direita pede a próxima forma (" + com.handsonvr.compat.UltimineVr.last() + ")");
+            handAway(0);
+        }
+        if (at(38)) {
+            pressUltimine(com.handsonvr.compat.UltimineVr.TOGGLE);
+        }
+        if (at(43)) {
+            check(!com.handsonvr.compat.UltimineVr.isActive(), "FTB Ultimine: a picareta de novo desliga");
+            handAway(0);
+            handAway(1);
+            p.setXRot(0f);
+        }
+        if (at(46)) {
             finish(client);
         }
+    }
+
+    /** A ponta da mão direita num botão do Ultimine, abaixo do relógio do pulso esquerdo. */
+    private static void pressUltimine(int button) {
+        Panel w = com.handsonvr.render.WristHudRenderer.wristPanel();
+        float[] c = com.handsonvr.compat.UltimineVr.buttonCenter(button);
+        float s = VrBridge.worldScale();
+        pointAt(0, w.world(c[0] * s, c[1] * s, 0.01), w.normal().reverse());
     }
 
     private static String fmt3(Vec3 v) {
@@ -3705,6 +3790,65 @@ public final class SelfTest {
                                     && p.getMainHandItem().getCount() == 15,
                             "Vivecraft: o arremesso sai para onde a mão ia (a esquerda), não para a mira do controle ("
                                     + fmt3(probeVel) + "; mira do controle " + org.vivecraft.client.network.ClientNetworking.getActiveAimDir() + ")");
+                    handAway(0);
+                    next();
+                }
+            }
+            case 10 -> { // minimapa do Xaero no pulso direito: sai do painel do HUD do Vivecraft e vai para o pulso
+                boolean xaero = net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("xaerominimap");
+                if (at(1)) {
+                    SimulatedVr.setHand(0, p.getEyePosition().add(0.1, -0.2, 0.3), new Vec3(0, 1, 0)); // mão levantada
+                }
+                if (at(60)) {
+                    if (!xaero) {
+                        info("minimapa: o Xaero's Minimap não está carregado neste teste; nada a conferir");
+                    } else {
+                        int[] r = com.handsonvr.render.MinimapWrist.currentRect();
+                        check(r != null && r[2] - r[0] >= 20 && r[3] - r[1] >= 20 && r[2] - r[0] <= 100 && r[3] - r[1] <= 100,
+                                "minimapa: o HandsOn achou o minimapa do Xaero no HUD (" + (r == null ? "nada" : r[0] + "," + r[1] + " até " + r[2] + "," + r[3]) + ")");
+                        check(com.handsonvr.render.MinimapWrist.debugCarved > 0,
+                                "minimapa: o painel do HUD do Vivecraft é desenhado sem ele (" + com.handsonvr.render.MinimapWrist.debugCarved + " vezes)");
+                        check(com.handsonvr.render.MinimapWrist.debugDrawn > 0,
+                                "minimapa: desenhado no pulso direito (" + com.handsonvr.render.MinimapWrist.debugDrawn + " vezes)");
+                    }
+                    Panel w = com.handsonvr.render.MinimapWrist.wristPanel();
+                    VrBridge.Pose hand = VrBridge.hand(0);
+                    check(w != null && hand != null && w.up().dot(hand.direction()) > 0.95 && Math.abs(w.normal().dot(hand.direction())) < 0.05
+                                    && w.origin().subtract(hand.position()).dot(hand.direction()) < -0.08,
+                            "minimapa: no pulso direito, atrás da mão, com o norte do mapa para os dedos");
+                    if (xaero && org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler.GUI_FRAMEBUFFER != null) {
+                        info("minimapa: HUD " + client.getWindow().getGuiScaledWidth() + "x" + client.getWindow().getGuiScaledHeight() + " (Vivecraft " + org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler.SCALED_WIDTH + "x" + org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler.SCALED_HEIGHT + ", textura " + org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler.GUI_WIDTH + "x" + org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler.GUI_HEIGHT + "): " + String.join(" | ", com.handsonvr.render.MinimapWrist.debugParts));
+                        Screenshot.grab(client.gameDirectory, "20-hud-vivecraft.png",
+                                org.vivecraft.client_vr.gameplay.screenhandlers.GuiHandler.GUI_FRAMEBUFFER, 1, text -> { });
+                    }
+                    // Para o print: a mão direita na frente dos olhos, com a parte de dentro do pulso virada para eles.
+                    VrBridge.Pose head = VrBridge.head();
+                    if (head != null) {
+                        Vec3 eye = head.position(), target = eye.add(head.direction().scale(0.32));
+                        Vec3 best = new Vec3(0, 1, 0);
+                        double bestScore = -9;
+                        for (double yaw = 0; yaw < 360; yaw += 15) {
+                            for (double pitch = -80; pitch <= 80; pitch += 20) {
+                                double r = Math.toRadians(yaw), q = Math.toRadians(pitch);
+                                Vec3 dir = new Vec3(Math.cos(q) * Math.sin(r), Math.sin(q), Math.cos(q) * Math.cos(r));
+                                SimulatedVr.setHand(0, target, dir);
+                                Panel m = com.handsonvr.render.MinimapWrist.wristPanel();
+                                double score = m == null ? -9 : m.normal().dot(eye.subtract(m.origin()).normalize()) + 0.5 * m.up().y;
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    best = dir;
+                                }
+                            }
+                        }
+                        SimulatedVr.setHand(0, target, best);
+                        Panel m = com.handsonvr.render.MinimapWrist.wristPanel();
+                        SimulatedVr.setHand(0, target.add(target.subtract(m.origin())), best);
+                    }
+                }
+                if (at(66)) {
+                    screenshot(client, "21-minimapa-pulso");
+                }
+                if (at(68)) {
                     handAway(0);
                     next();
                 }

@@ -69,6 +69,8 @@ public class HandsOnVR implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             guard("grip (soltura perdida)", HandsOnVR::gripWatch);
             guard("HUD do Vivecraft", () -> com.handsonvr.render.VivecraftHud.tick(client));
+            guard("minimapa no pulso", com.handsonvr.render.MinimapWrist::tick);
+            guard("FTB Ultimine (VR)", () -> com.handsonvr.compat.UltimineVr.tick(client));
             guard("mãos", () -> HANDS.tick(client));
             guard("coleta no inventário", () -> com.handsonvr.inv.PickupOrder.tick(client, HANDS));
             guard("estado para os outros jogadores", () -> com.handsonvr.net.PeerSync.tick(client, HANDS));
@@ -93,6 +95,7 @@ public class HandsOnVR implements ClientModInitializer {
             renderSafely(context.poseStack(), "suporte de poções (desenho)",
                     () -> com.handsonvr.brewing.BrewingRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "fogueira (desenho)", () -> com.handsonvr.render.CampfireHint.render(context, HANDS));
+            renderSafely(context.poseStack(), "minimapa no pulso (desenho)", () -> com.handsonvr.render.MinimapWrist.render(context, HANDS));
             renderSafely(context.poseStack(), "pulso e quantidade (desenho)",
                     () -> com.handsonvr.render.WristHudRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "outros jogadores (desenho)", () -> com.handsonvr.net.PeerRenderer.render(context));

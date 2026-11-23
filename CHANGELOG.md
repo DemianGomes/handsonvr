@@ -2,6 +2,11 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.9.0-alpha (Minecraft 26.3)
+
+- **Minimapa no pulso direito** ([#60](https://github.com/DemianGomes/handsonvr/issues/60)): o minimapa do Xaero's Minimap sai do HUD do Vivecraft (pulso esquerdo) e fica grudado na parte de dentro do pulso direito. Levante a mão direita com a palma virada para o rosto: o mapa fica de pé, com o "cima" para os dedos. O chat e o resto do HUD continuam no pulso esquerdo, sem o mapa por cima. Opção "Minimapa no pulso direito".
+- **FTB Ultimine em VR** ([#61](https://github.com/DemianGomes/handsonvr/issues/61)): com o Ultimine instalado, três botões abaixo do relógio do pulso esquerdo: a picareta liga e desliga o Ultimine (como segurar a tecla), as setas trocam a forma. Aperte encostando a ponta da mão direita. **O FTB Ultimine ainda não tem versão para o 26.3**: a mais nova (26.1.2.7, com a FTB Library 26.1.2.12) fecha o jogo do 26.3 ao abrir (a FTB Library usa uma parte do controle de teclas que o 26.3 tirou). Testado numa cópia dos mods, fora do perfil. Os botões ficam prontos para quando sair a versão do 26.3 (e ainda não foram testados com ele).
+
 ## 0.8.6-alpha (Minecraft 26.3)
 
 - **HUD do Vivecraft só com o que importa, sempre no pulso esquerdo.** Em VR, o HUD do Vivecraft fica à vista e preso ao pulso esquerdo, com só: o chat, a lista de jogadores, os títulos, as mensagens da barra de ação, a barra do chefe, o placar do servidor e o HUD de outros mods, como o **minimapa do Xaero's Minimap** (aparece sempre que o mod está instalado; sem ele, nada muda). Saem dele a hotbar, a vida, a armadura, a fome, as bolhas, a XP, os efeitos, o nome do item, a mira do jogo e as sobreposições de tela cheia (o relógio do pulso e o radial já mostram isso).

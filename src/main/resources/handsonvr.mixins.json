@@ -14,7 +14,9 @@
     "BackpackTrackerMixin",
     "SwingTrackerMixin",
     "VRArmHelperMixin",
-    "VivecraftItemRenderingMixin"
+    "VivecraftItemRenderingMixin",
+    "GuiRenderStateMixin",
+    "VREffectsHelperMixin"
   ],
   "injectors": {
     "defaultRequire": 0
