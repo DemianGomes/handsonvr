@@ -1,4 +1,10 @@
 {
+  "key.handsonvr.mine": "Group mining (hold)",
+  "key.handsonvr.mine_prev": "Group mining: previous shape (Shift + key)",
+  "key.handsonvr.mine_next": "Group mining: next shape (Shift + key)",
+  "handsonvr.mine.title": "Group mining",
+  "handsonvr.mine.hint": "Shift + ' + Up/Down: change shape",
+  "handsonvr.mine.no_server": "the server doesn't have HandsOn",
   "handsonvr.mine.shape.shapeless": "Shapeless",
   "handsonvr.mine.shape.small_tunnel": "Small Tunnel",
   "handsonvr.mine.shape.small_square": "Small Square",

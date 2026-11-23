@@ -16,7 +16,8 @@
     "VRArmHelperMixin",
     "VivecraftItemRenderingMixin",
     "GuiRenderStateMixin",
-    "VREffectsHelperMixin"
+    "VREffectsHelperMixin",
+    "MultiPlayerGameModeMixin"
   ],
   "injectors": {
     "defaultRequire": 0

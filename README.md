@@ -12,7 +12,7 @@ Add-on para o [Vivecraft](https://modrinth.com/mod/vivecraft) (Minecraft 26.3, F
 - **Arremesso com a mão:** segure uma bola de neve, um ovo, uma pérola do Ender, uma poção arremessável ou uma carga de vento com o grip, faça o movimento e solte. O item sai na direção da mão. Nos servidores, a velocidade é a do jogo; no singleplayer, a força do gesto conta.
 - **Pulso e mão:** vire o pulso esquerdo para o rosto e veja a vida, a armadura, a fome, a XP e os efeitos; a quantidade da pilha aparece perto do dedão.
 - **Minimapa no pulso direito:** com o Xaero's Minimap, levante a mão direita com a palma para o rosto e o mapa está na parte de dentro do pulso.
-- **Mineração em grupo (como o FTB Ultimine):** botões abaixo do relógio do pulso esquerdo ligam e trocam a forma (sem forma, túneis, quadrado 3x3, escada); os blocos que vão quebrar ficam contornados.
+- **Mineração em grupo (como o FTB Ultimine):** botões abaixo do relógio do pulso esquerdo ligam e trocam a forma (sem forma, túneis, quadrado 3x3, escadas para baixo e para cima); no computador, segure ' e use Shift + ' + setas. Os blocos que vão quebrar ficam contornados.
 - **Fogueira, armadura, baú e poções:** encoste a comida crua num dos 4 cantos da fogueira; leve o capacete à cabeça e o peitoral ao peito para vestir; segure a tampa do baú e levante a mão para abrir, e os itens aparecem deitados no fundo escuro da caixa (9x3, ou 9x6 no baú duplo); encoste a garrafa, o ingrediente ou o pó de blaze no lugar dele no suporte de poções.
 - **Multiplayer:** no mundo aberto pelo jogo (LAN ou Essential), quem tem o HandsOn vê os itens nos coldres e a mochila dos amigos em VR.
 - **Regra das mãos:**
@@ -42,6 +42,8 @@ O design completo está em [docs/DESIGN.md](docs/DESIGN.md). O padrão visual (t
 | Analógico direito | Gira a câmera, como no Vivecraft. A hotbar fica com o menu radial (B/X). |
 
 Tudo pode ser ligado e desligado em **Opções HandsOn VR**, no menu de pausa (separadas em grupos, com rolagem).
+
+**Sem VR, o jogo é o original:** com o VR desligado, nada do HandsOn muda o jogo (só a mineração em grupo, pela tecla ').
 
 ## Requisitos
 

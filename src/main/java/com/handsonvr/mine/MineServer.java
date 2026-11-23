@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -47,7 +48,20 @@ public final class MineServer {
         }
     }
 
+    /** Do cliente para o servidor: o bloco que ele começou a quebrar e a face batida (as formas seguem a face). */
+    public record Aim(BlockPos pos, int face) implements CustomPacketPayload {
+        public static final Type<Aim> TYPE = new Type<>(Identifier.fromNamespaceAndPath(HandsOnVR.MOD_ID, "mine_aim"));
+        static final StreamCodec<RegistryFriendlyByteBuf, Aim> CODEC = StreamCodec.composite(
+                BlockPos.STREAM_CODEC, Aim::pos, ByteBufCodecs.VAR_INT, Aim::face, Aim::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     private static final Map<UUID, Mode> MODES = new ConcurrentHashMap<>();
+    private static final Map<UUID, Aim> AIMS = new ConcurrentHashMap<>();
     /** Quem está no meio de uma quebra em grupo (a quebra dos outros blocos não puxa outra). */
     private static final Set<UUID> BUSY = ConcurrentHashMap.newKeySet();
     /** Teste automático: quantos blocos a última quebra em grupo levou (além do primeiro). */
@@ -55,8 +69,13 @@ public final class MineServer {
 
     public static void register() {
         PayloadTypeRegistry.serverboundPlay().register(Mode.TYPE, Mode.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(Aim.TYPE, Aim.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Mode.TYPE, (payload, context) -> MODES.put(context.player().getUUID(), payload));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> MODES.remove(handler.player.getUUID()));
+        ServerPlayNetworking.registerGlobalReceiver(Aim.TYPE, (payload, context) -> AIMS.put(context.player().getUUID(), payload));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            MODES.remove(handler.player.getUUID());
+            AIMS.remove(handler.player.getUUID());
+        });
         PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
             if (player instanceof ServerPlayer sp) {
                 afterBreak(sp, pos, state);
@@ -70,8 +89,12 @@ public final class MineServer {
             return;
         }
         try {
-            List<BlockPos> blocks = MineShapes.blocks(player.level(), pos, state, MineShape.of(mode.shape()),
-                    player.getEyePosition(), MineShapes.LIMIT);
+            // A face batida (mandada pelo cliente ao começar a quebrar); sem ela, a face virada para o jogador.
+            Aim aim = AIMS.get(player.getUUID());
+            Direction face = aim != null && aim.pos().equals(pos) ? Direction.from3DDataValue(aim.face())
+                    : Direction.getApproximateNearest(player.getEyePosition().subtract(net.minecraft.world.phys.Vec3.atCenterOf(pos)));
+            List<BlockPos> blocks = MineShapes.blocks(player.level(), pos, state, MineShape.of(mode.shape()), face,
+                    player.getDirection(), MineShapes.LIMIT);
             int extra = 0;
             for (BlockPos p : blocks.subList(1, blocks.size())) {
                 if (!player.isCreative()) {
@@ -120,8 +143,21 @@ public final class MineServer {
         sent = now;
     }
 
+    private static Aim aimSent = null;
+
+    /** O bloco que o jogador começou a quebrar e a face (só com a mineração em grupo ligada; manda se mudou). */
+    public static void sendAim(BlockPos pos, Direction face) {
+        Aim now = new Aim(pos.immutable(), face.get3DDataValue());
+        if (now.equals(aimSent) || !serverSupports()) {
+            return;
+        }
+        ClientPlayNetworking.send(now);
+        aimSent = now;
+    }
+
     /** Ao sair do mundo: o próximo servidor recebe o estado de novo. */
     public static void resetClient() {
         sent = null;
+        aimSent = null;
     }
 }
