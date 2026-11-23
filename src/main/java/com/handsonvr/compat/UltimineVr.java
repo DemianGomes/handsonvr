@@ -1,6 +1,8 @@
 package com.handsonvr.compat;
 
 import com.handsonvr.HandsOnVR;
+import com.handsonvr.mine.MineServer;
+import com.handsonvr.mine.MineShape;
 import com.handsonvr.render.Draw;
 import com.handsonvr.render.Sprite;
 import com.handsonvr.render.WristHudRenderer;
@@ -9,6 +11,7 @@ import com.handsonvr.vr.VrBridge;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
@@ -16,18 +19,15 @@ import net.minecraft.world.phys.Vec3;
 import java.lang.reflect.Method;
 
 /**
- * O FTB Ultimine em VR, pelo relógio do pulso esquerdo.
- *
- * <p>No computador, o Ultimine funciona segurando uma tecla (o "`") enquanto quebra um bloco, e a forma (sem forma,
- * túnel, 3x3...) muda com a roda do mouse segurando a tecla. Em VR não há teclado, então abaixo do relógio ficam três
- * botões, com as texturas do jogo, que a ponta da mão direita aperta encostando:
+ * Mineração em grupo em VR, pelo relógio do pulso esquerdo: três botões, com as texturas do jogo, abaixo do relógio,
+ * que a ponta da mão direita aperta encostando.
  * <ul>
- *   <li><b>picareta</b> no meio: liga e desliga o Ultimine (fica clara enquanto ligado; é como segurar a tecla). Com
- *       ele ligado, quebrar um bloco quebra o grupo, como no computador, e o próprio Ultimine contorna o grupo;</li>
- *   <li><b>setas</b> dos lados: forma anterior e próxima (ligam o Ultimine se estava desligado).</li>
+ *   <li><b>picareta</b> no meio: liga e desliga (fica clara enquanto ligada);</li>
+ *   <li><b>setas</b> dos lados: forma anterior e próxima (ligam se estava desligada). O nome da forma fica embaixo.</li>
  * </ul>
- * Por baixo é a tecla do próprio Ultimine (segurada pelo HandsOn) e o pedido de troca de forma dele: nada do Ultimine
- * muda, e o servidor (que precisa ter o Ultimine) decide tudo, como no computador. Sem o Ultimine instalado, nada aparece.
+ * Com o <b>FTB Ultimine</b> instalado, os botões são a tecla dele (segurada pelo HandsOn) e o pedido de troca de forma
+ * dele. Sem ele, controlam a cópia temporária do HandsOn ({@link MineServer}, as mesmas formas), que precisa do HandsOn
+ * no servidor (singleplayer, LAN, Essential).
  */
 public final class UltimineVr {
     private UltimineVr() {}
@@ -38,23 +38,37 @@ public final class UltimineVr {
     /** Ticks com a ponta no botão para apertar (evita apertar só de passar a mão). */
     private static final int PRESS_TICKS = 2;
     private static final String KEY_NAME = "key.ftbultimine.default.ftbultimine";
+    /** Fundo do nome da forma, como o do chat do jogo. */
+    private static final int LABEL_BACKGROUND = 0x80000000;
 
-    private static Boolean loaded = null;
+    private static Boolean ftb = null;
     private static KeyMapping key;
     private static boolean active = false;
+    private static int shape = 0;
     private static int touching = NONE, touchTicks = 0;
     private static int pendingCycle = 0;
     private static String last = "-";
 
+    /** O FTB Ultimine está instalado (os botões são dele)? */
     public static boolean isLoaded() {
-        if (loaded == null) {
-            loaded = FabricLoader.getInstance().isModLoaded("ftbultimine");
+        if (ftb == null) {
+            ftb = FabricLoader.getInstance().isModLoaded("ftbultimine");
         }
-        return loaded;
+        return ftb;
+    }
+
+    /** Os botões aparecem (em VR, com o FTB Ultimine ou com a cópia do HandsOn)? */
+    public static boolean showButtons() {
+        return VrBridge.isVRActive();
     }
 
     public static boolean isActive() {
         return active;
+    }
+
+    /** A forma da cópia do HandsOn. */
+    public static MineShape shape() {
+        return MineShape.of(shape);
     }
 
     public static String last() {
@@ -66,7 +80,7 @@ public final class UltimineVr {
         return touching;
     }
 
-    /** O centro de um botão no plano do relógio (x, y locais). */
+    /** O centro de um botão no plano do relógio (x, y locais, sem a escala do mundo). */
     public static float[] buttonCenter(int button) {
         Minecraft client = Minecraft.getInstance();
         float below = client.player == null ? 0.03f : WristHudRenderer.halfHeight(client.player);
@@ -93,12 +107,13 @@ public final class UltimineVr {
         return NONE;
     }
 
-    /** A cada tick: o toque da mão direita nos botões e a tecla do Ultimine segurada enquanto ligado. */
+    /** A cada tick: o toque da mão direita nos botões; com o Ultimine, a tecla dele; sem ele, o estado no servidor. */
     public static void tick(Minecraft client) {
-        if (!isLoaded() || client.player == null) {
+        if (client.player == null) {
+            MineServer.resetClient();
             return;
         }
-        if (key == null) {
+        if (isLoaded() && key == null) {
             for (KeyMapping k : client.options.keyMappings) {
                 if (KEY_NAME.equals(k.getName())) {
                     key = k;
@@ -110,34 +125,48 @@ public final class UltimineVr {
                 setActive(false);
             }
             touching = NONE;
-            return;
+        } else {
+            int b = buttonAt(VrBridge.pointer(0));
+            if (b != touching) {
+                touching = b;
+                touchTicks = 0;
+            }
+            if (b != NONE && ++touchTicks == PRESS_TICKS) {
+                press(b);
+            }
         }
-        int b = buttonAt(VrBridge.pointer(0));
-        if (b != touching) {
-            touching = b;
-            touchTicks = 0;
-        }
-        if (b != NONE && ++touchTicks == PRESS_TICKS) {
-            press(b);
-        }
-        if (active && key != null && client.gui.screen() == null) {
-            key.setDown(true); // como segurar a tecla (o jogo solta as teclas ao abrir uma tela)
-        }
-        if (pendingCycle != 0 && active) {
-            cycle(pendingCycle > 0);
-            pendingCycle = 0;
+        if (isLoaded()) {
+            if (active && key != null && client.gui.screen() == null) {
+                key.setDown(true); // como segurar a tecla (o jogo solta as teclas ao abrir uma tela)
+            }
+            if (pendingCycle != 0 && active) {
+                ftbCycle(pendingCycle > 0);
+                pendingCycle = 0;
+            }
+        } else {
+            MineServer.send(active, shape);
         }
     }
 
     private static void press(int b) {
+        if (!isLoaded() && !MineServer.serverSupports()) {
+            VrBridge.pulse(0, 0.08f);
+            last = "o servidor não tem o HandsOn";
+            return;
+        }
         VrBridge.pulse(0, 0.02f);
         if (b == TOGGLE) {
             setActive(!active);
-        } else {
-            if (!active) {
-                setActive(true);
-            }
+            return;
+        }
+        if (!active) {
+            setActive(true);
+        }
+        if (isLoaded()) {
             pendingCycle = b == NEXT ? 1 : -1; // no próximo tick, com a tecla já segurada para o Ultimine
+        } else {
+            shape = Math.floorMod(shape + (b == NEXT ? 1 : -1), MineShape.values().length);
+            last = "forma: " + MineShape.of(shape).name();
         }
     }
 
@@ -149,8 +178,8 @@ public final class UltimineVr {
         last = on ? "ligado" : "desligado";
     }
 
-    /** Pede ao servidor a forma anterior ou a próxima, como a roda do mouse do Ultimine. */
-    private static void cycle(boolean next) {
+    /** Pede ao FTB Ultimine a forma anterior ou a próxima, como a roda do mouse dele. */
+    private static void ftbCycle(boolean next) {
         try {
             Class<?> packet = Class.forName("dev.ftb.mods.ftbultimine.net.ModeChangedPacket");
             Object payload = packet.getConstructor(boolean.class).newInstance(next);
@@ -169,9 +198,9 @@ public final class UltimineVr {
         }
     }
 
-    /** Os três botões, abaixo do relógio (no plano dele, já posicionado). */
+    /** Os três botões abaixo do relógio (no plano dele, já posicionado) e, na cópia do HandsOn, o nome da forma. */
     public static void draw(Draw d) {
-        if (!isLoaded() || !VrBridge.isVRActive()) {
+        if (!showButtons()) {
             return;
         }
         float s = VrBridge.worldScale();
@@ -192,6 +221,14 @@ public final class UltimineVr {
                     d.spriteCentered(arrow, x, y, size * 0.5f, 0.003f, Draw.MC_PANEL);
                 }
             }
+        }
+        if (!isLoaded()) {
+            // O nome da forma, logo abaixo dos botões (no FTB Ultimine, o próprio HUD dele mostra a lista de formas).
+            float[] c = buttonCenter(TOGGLE);
+            float y = (c[1] - SLOT / 2f - 0.009f) * s, h = 0.0065f * s, w = (3 * SLOT + 2 * GAP) * s;
+            d.rect(-w / 2f, y - h, w / 2f, y + h, 0.001f, LABEL_BACKGROUND);
+            Component name = Component.translatable(shape().translationKey());
+            d.text(name, 0f, y, 0.002f, h * 1.1f, active ? 0xFFFFFFFF : 0xFFA0A0A0, true);
         }
     }
 }

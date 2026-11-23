@@ -364,20 +364,33 @@ O que pede cuidado:
   ![O pedaço do HUD que vai para o pulso direito: o mapa e as coordenadas](img/minimapa-pulso.png)
 
 
-### FTB Ultimine (opcional)
+### Mineração em grupo (cópia temporária do FTB Ultimine)
 
-> **Ainda não funciona no 26.3:** o FTB Ultimine mais novo é para o 26.1.2 e fecha o jogo do 26.3 ao abrir (testado numa cópia dos mods). Os botões abaixo estão prontos para quando sair a versão do 26.3.
+O FTB Ultimine ainda não tem versão para o 26.3 (a mais nova é do 26.1.2 e fecha o jogo do 26.3 ao abrir; o port da FTB existe no código, mas não foi lançado). Até lá, o HandsOn tem uma cópia das formas dele, controlada pelo pulso.
 
-Com o FTB Ultimine instalado, aparecem três botões logo abaixo do relógio do pulso esquerdo, com as texturas do jogo:
+Três botões ficam logo abaixo do relógio do pulso esquerdo, com as texturas do jogo, e o nome da forma embaixo deles:
 
 | Botão | O que faz |
 |---|---|
-| Picareta (meio) | Liga e desliga o Ultimine. Fica clara enquanto ligado. É como segurar a tecla do Ultimine no computador. |
-| Seta da esquerda / da direita | Forma anterior / próxima (sem forma, túnel, 3x3...). Liga o Ultimine se estava desligado. |
+| Picareta (meio) | Liga e desliga. Fica clara enquanto ligada. |
+| Seta da esquerda / da direita | Forma anterior / próxima. Liga se estava desligada. |
 
 - Aperte encostando a ponta da mão direita no botão (um instante parado; para apertar de novo, tire a mão e volte). O controle vibra.
-- Com o Ultimine ligado, quebre um bloco como sempre: o grupo inteiro quebra, e o próprio Ultimine contorna o grupo e mostra a lista de formas no HUD.
-- Por baixo é a tecla do Ultimine segurada pelo HandsOn e o pedido de troca de forma do próprio Ultimine: o servidor (que precisa ter o Ultimine) decide tudo, como no computador. Sem o Ultimine, os botões não aparecem.
+- Ligada, os blocos que vão quebrar junto com o bloco mirado ganham o contorno do jogo (as linhas pretas do bloco mirado). Quebre o bloco como sempre e o grupo quebra junto.
+
+| Forma | Blocos |
+|---|---|
+| Sem forma | Os blocos iguais encostados (inclusive na diagonal), como um veio de minério ou um tronco. |
+| Túnel pequeno | Uma linha de 1x1 para dentro do bloco. |
+| Quadrado pequeno | Um quadrado de 3x3 na face do bloco, com 1 de profundidade. |
+| Túnel grande | Um túnel de 3x3 para dentro do bloco. |
+| Túnel de mineração | Um túnel da altura do jogador (1 de largura, 2 de altura). |
+| Túnel de fuga | Uma escada para cima, da altura do jogador, subindo 1 a cada bloco. |
+
+- "Para dentro" é a direção do olhar até o bloco (para o lado, para baixo ou para cima). No máximo 64 blocos por vez, como o padrão do Ultimine.
+- A quebra é a do próprio jogo, bloco a bloco, no servidor: os itens caem como sempre, a ferramenta gasta, a fome gasta, e o que a ferramenta não colhe não dá item. Para antes de a ferramenta quebrar e quando a fome acaba. Ar, líquidos, blocos inquebráveis e blocos que guardam itens (baús, fornalhas) ficam de fora.
+- Precisa do HandsOn no servidor: o singleplayer e o mundo aberto pelo jogo (LAN, Essential). Num servidor sem o mod, a picareta não liga e o controle vibra forte.
+- Com o FTB Ultimine instalado (quando sair a versão do 26.3), a cópia se desliga e os mesmos botões controlam o Ultimine: a picareta segura a tecla dele e as setas pedem a troca de forma dele.
 
 ## 10. Fogueira e armadura no corpo
 

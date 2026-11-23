@@ -2,6 +2,15 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.10.0-alpha (Minecraft 26.3)
+
+### Mineração em grupo, uma cópia temporária do FTB Ultimine ([#63](https://github.com/DemianGomes/handsonvr/issues/63))
+
+- O FTB Ultimine não roda no 26.3 (nenhuma versão lançada é do 26.3, e a do 26.1.2 usa 17 partes do jogo que mudaram). Até a FTB lançar, o HandsOn tem as mesmas formas: **sem forma, túnel pequeno, quadrado pequeno, túnel grande, túnel de mineração e túnel de fuga** (até 64 blocos).
+- Os botões abaixo do relógio do pulso esquerdo ligam (a picareta) e trocam a forma (as setas); o nome da forma fica embaixo deles. Ligada, os blocos que vão quebrar ficam com o contorno do jogo.
+- A quebra é a do jogo, bloco a bloco: itens, ferramenta e fome como sempre; para antes de a ferramenta quebrar. Precisa do HandsOn no servidor (singleplayer, LAN, Essential).
+- Quando o FTB Ultimine do 26.3 sair e for instalado, a cópia se desliga e os botões passam a controlar ele.
+
 ## 0.9.0-alpha (Minecraft 26.3)
 
 - **Minimapa no pulso direito** ([#60](https://github.com/DemianGomes/handsonvr/issues/60)): o minimapa do Xaero's Minimap sai do HUD do Vivecraft (pulso esquerdo) e fica grudado na parte de dentro do pulso direito. Levante a mão direita com a palma virada para o rosto: o mapa fica de pé, com o "cima" para os dedos. O chat e o resto do HUD continuam no pulso esquerdo, sem o mapa por cima. Opção "Minimapa no pulso direito".
