@@ -3428,29 +3428,33 @@ public final class SelfTest {
     private static void ultimineVr(Minecraft client) {
         LocalPlayer p = client.player;
         Inventory inv = p.getInventory();
-        if (!com.handsonvr.compat.UltimineVr.isLoaded()) {
+        if (com.handsonvr.compat.UltimineVr.isLoaded()) {
             if (at(1)) {
-                info("FTB Ultimine: não está entre os mods deste teste; nada a conferir");
+                info("mineração em grupo: o FTB Ultimine está instalado (os botões são dele); a cópia do HandsOn não é testada");
             }
             if (at(2)) {
                 finish(client);
             }
             return;
         }
-        BlockPos base = BlockPos.containing(p.getX(), p.getY(), p.getZ()).offset(0, 0, 2);
+        BlockPos feet = BlockPos.containing(p.getX(), p.getY(), p.getZ());
+        BlockPos base = feet.offset(0, 0, 2);
+        BlockPos cube = feet.offset(0, 0, 3);
         if (at(1)) {
-            section("FTB Ultimine em VR (botões abaixo do relógio do pulso)");
+            section("Mineração em grupo do HandsOn (cópia do FTB Ultimine): botões abaixo do relógio e as 6 formas");
             onServer(client, player -> {
                 player.setGameMode(GameType.SURVIVAL);
                 Inventory pinv = player.getInventory();
                 pinv.clearContent();
-                pinv.setItem(0, new ItemStack(Items.NETHERITE_SHOVEL));
-                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.HASTE, 2400, 20));
+                pinv.setItem(0, new ItemStack(Items.NETHERITE_PICKAXE));
+                pinv.setItem(1, new ItemStack(Items.NETHERITE_SHOVEL));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.HASTE, 6000, 40));
+                player.getFoodData().setFoodLevel(20);
                 for (int k = 0; k < 5; k++) {
                     player.level().setBlock(base.offset(k, 0, 0), Blocks.CLAY.defaultBlockState(), 3);
                 }
             });
-            inv.setSelectedSlot(0);
+            inv.setSelectedSlot(1); // pá na argila
             p.setYRot(0f);
             p.setXRot(30f);
             SimulatedVr.setHand(1, p.getEyePosition().add(-0.15, -0.35, 0.3), new Vec3(0.3, 0.2, 1).normalize());
@@ -3459,14 +3463,17 @@ public final class SelfTest {
             pressUltimine(com.handsonvr.compat.UltimineVr.TOGGLE);
         }
         if (at(8)) {
-            check(com.handsonvr.compat.UltimineVr.isActive(),
-                    "FTB Ultimine: a ponta da mão direita na picareta abaixo do relógio liga o Ultimine (" + com.handsonvr.compat.UltimineVr.last() + ")");
+            check(com.handsonvr.compat.UltimineVr.isActive() && com.handsonvr.compat.UltimineVr.shape() == com.handsonvr.mine.MineShape.SHAPELESS,
+                    "mineração em grupo: a ponta da mão direita na picareta abaixo do relógio liga, em \"sem forma\" (" + com.handsonvr.compat.UltimineVr.last() + ")");
+            java.util.List<BlockPos> preview = com.handsonvr.mine.MineShapes.blocks(client.level, base, client.level.getBlockState(base),
+                    com.handsonvr.mine.MineShape.SHAPELESS, p.getEyePosition(), com.handsonvr.mine.MineShapes.LIMIT);
+            check(preview.size() == 5, "o contorno mostra as 5 argilas encostadas (" + preview.size() + ")");
             handAway(0);
         }
-        if (at(14)) {
+        if (at(12)) {
             client.gameMode.startDestroyBlock(base, net.minecraft.core.Direction.UP);
         }
-        if (at(26)) {
+        if (at(22)) {
             BlockPos at = base;
             onServer(client, player -> {
                 int left = 0;
@@ -3476,27 +3483,66 @@ public final class SelfTest {
                 probeCount = left;
             });
         }
-        if (at(30)) {
-            check(probeCount == 0, "FTB Ultimine ligado pelo pulso: quebrar uma argila quebra as 5 juntas (sobraram " + probeCount + ")");
-            pressUltimine(com.handsonvr.compat.UltimineVr.NEXT);
+        if (at(26)) {
+            check(probeCount == 0 && com.handsonvr.mine.MineServer.lastExtra == 4,
+                    "sem forma: quebrar uma argila quebra as 5 juntas (sobraram " + probeCount + ", extras " + com.handsonvr.mine.MineServer.lastExtra + ")");
+            inv.setSelectedSlot(0); // picareta na pedra
+            p.setXRot(10f);
         }
-        if (at(35)) {
-            check("próxima forma".equals(com.handsonvr.compat.UltimineVr.last()),
-                    "FTB Ultimine: a seta da direita pede a próxima forma (" + com.handsonvr.compat.UltimineVr.last() + ")");
-            handAway(0);
+        // As outras formas, num cubo de pedra 3x3x4 na frente (o meio da face de baixo para cima, ou o de baixo na escada).
+        String[] names = {"túnel pequeno (1x1 para dentro)", "quadrado pequeno (3x3 na face)", "túnel grande (3x3 para dentro)",
+                "túnel de mineração (1x2 para dentro)", "túnel de fuga (escada para cima)"};
+        int[] expected = {4, 9, 36, 8, 5};
+        for (int i = 1; i <= 5; i++) {
+            int t = 30 + (i - 1) * 30;
+            com.handsonvr.mine.MineShape shape = com.handsonvr.mine.MineShape.of(i);
+            BlockPos origin = shape == com.handsonvr.mine.MineShape.ESCAPE_TUNNEL ? cube : cube.offset(0, 1, 0);
+            if (at(t)) {
+                fillCube(client, cube, Blocks.STONE);
+                pressUltimine(com.handsonvr.compat.UltimineVr.NEXT);
+            }
+            if (at(t + 5)) {
+                check(com.handsonvr.compat.UltimineVr.shape() == shape, "a seta da direita passa para " + names[i - 1]);
+                handAway(0);
+            }
+            if (at(t + 8)) {
+                client.gameMode.startDestroyBlock(origin, net.minecraft.core.Direction.SOUTH);
+            }
+            if (at(t + 20)) {
+                BlockPos at = cube;
+                onServer(client, player -> {
+                    int left = 0;
+                    for (BlockPos q : BlockPos.betweenClosed(at.offset(-1, 0, 0), at.offset(1, 2, 3))) {
+                        left += player.level().getBlockState(q).is(Blocks.STONE) ? 1 : 0;
+                    }
+                    probeCount = 36 - left;
+                });
+            }
+            if (at(t + 24)) {
+                check(probeCount == expected[i - 1], names[i - 1] + ": saíram " + probeCount + " de " + expected[i - 1] + " blocos esperados");
+            }
         }
-        if (at(38)) {
+        if (at(182)) {
             pressUltimine(com.handsonvr.compat.UltimineVr.TOGGLE);
         }
-        if (at(43)) {
-            check(!com.handsonvr.compat.UltimineVr.isActive(), "FTB Ultimine: a picareta de novo desliga");
+        if (at(187)) {
+            check(!com.handsonvr.compat.UltimineVr.isActive(), "a picareta de novo desliga");
             handAway(0);
             handAway(1);
+            fillCube(client, cube, Blocks.AIR);
             p.setXRot(0f);
         }
-        if (at(46)) {
+        if (at(190)) {
             finish(client);
         }
+    }
+
+    private static void fillCube(Minecraft client, BlockPos cube, net.minecraft.world.level.block.Block block) {
+        onServer(client, player -> {
+            for (BlockPos q : BlockPos.betweenClosed(cube.offset(-1, 0, 0), cube.offset(1, 2, 3))) {
+                player.level().setBlock(q, block.defaultBlockState(), 3);
+            }
+        });
     }
 
     /** A ponta da mão direita num botão do Ultimine, abaixo do relógio do pulso esquerdo. */

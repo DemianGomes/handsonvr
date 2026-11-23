@@ -97,7 +97,7 @@ public final class WristHudRenderer {
                 wrist(d, ms, camera, client, p, panel);
             }
         }
-        if (com.handsonvr.compat.UltimineVr.isLoaded() && !hands.isHandHidden(1)) {
+        if (com.handsonvr.compat.UltimineVr.showButtons() && !hands.isHandHidden(1)) {
             // Os botões do FTB Ultimine, abaixo do relógio.
             Panel panel = wristPanel();
             if (panel != null) {

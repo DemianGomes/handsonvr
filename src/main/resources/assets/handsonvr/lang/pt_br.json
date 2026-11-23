@@ -1,4 +1,10 @@
 {
+  "handsonvr.mine.shape.shapeless": "Sem forma",
+  "handsonvr.mine.shape.small_tunnel": "Túnel pequeno",
+  "handsonvr.mine.shape.small_square": "Quadrado pequeno",
+  "handsonvr.mine.shape.large_tunnel": "Túnel grande",
+  "handsonvr.mine.shape.mining_tunnel": "Túnel de mineração",
+  "handsonvr.mine.shape.escape_tunnel": "Túnel de fuga",
   "key.category.handsonvr.main": "HandsOn VR",
   "key.handsonvr.settings": "HandsOn VR: ajustes",
   "button.handsonvr.settings": "Opções HandsOn VR",

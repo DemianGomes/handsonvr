@@ -95,6 +95,7 @@ public class HandsOnVR implements ClientModInitializer {
             renderSafely(context.poseStack(), "suporte de poções (desenho)",
                     () -> com.handsonvr.brewing.BrewingRenderer.render(context, HANDS));
             renderSafely(context.poseStack(), "fogueira (desenho)", () -> com.handsonvr.render.CampfireHint.render(context, HANDS));
+            renderSafely(context.poseStack(), "mineração em grupo (contorno)", () -> com.handsonvr.mine.MinePreview.render(context));
             renderSafely(context.poseStack(), "minimapa no pulso (desenho)", () -> com.handsonvr.render.MinimapWrist.render(context, HANDS));
             renderSafely(context.poseStack(), "pulso e quantidade (desenho)",
                     () -> com.handsonvr.render.WristHudRenderer.render(context, HANDS));
@@ -113,6 +114,7 @@ public class HandsOnVR implements ClientModInitializer {
 
         com.handsonvr.render.VivecraftHud.register(); // em VR, as barras do jogo saem do HUD do Vivecraft (o resto, como o minimapa, fica)
         com.handsonvr.net.PeerSync.register();
+        com.handsonvr.mine.MineServer.register();
         SelfTest.register();
         LOGGER.info("[HandsOn VR] Pronto (Vivecraft {})", VrBridge.isVivecraftLoaded() ? "presente" : "ausente");
     }
