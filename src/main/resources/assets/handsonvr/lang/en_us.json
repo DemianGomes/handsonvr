@@ -21,6 +21,7 @@
   "option.handsonvr.throw": "Throw with your hand",
   "option.handsonvr.throw_power": "Real throw power (SP)",
   "option.handsonvr.wrist_hud": "Wrist status",
+  "option.handsonvr.minimap_right_wrist": "Minimap on right wrist",
   "option.handsonvr.hand_count": "Stack count on the hand",
   "backpack.handsonvr.page": "Page %s/%s",
   "backpack.handsonvr.slots": "Slots %s/%s",

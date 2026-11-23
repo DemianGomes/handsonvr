@@ -97,6 +97,18 @@ public final class WristHudRenderer {
                 wrist(d, ms, camera, client, p, panel);
             }
         }
+        if (com.handsonvr.compat.UltimineVr.isLoaded() && !hands.isHandHidden(1)) {
+            // Os botões do FTB Ultimine, abaixo do relógio.
+            Panel panel = wristPanel();
+            if (panel != null) {
+                Vec3 at = panel.origin();
+                ms.pushPose();
+                ms.translate(at.x - camera.x, at.y - camera.y, at.z - camera.z);
+                ms.rotate(panel.rotation());
+                com.handsonvr.compat.UltimineVr.draw(d);
+                ms.popPose();
+            }
+        }
     }
 
     /** A quantidade da pilha da mão, grudada na lateral do dedão (anda e gira com o controle). */
@@ -128,6 +140,18 @@ public final class WristHudRenderer {
         Vec3 origin = pose.position().add(axis(pose.rotation(), side * THUMB_SIDE * s, THUMB_UP * s, THUMB_BACK * s));
         Vec3 normal = axis(pose.rotation(), side, 0, 0), up = axis(pose.rotation(), 0, 1, 0);
         return new Panel(origin, up.cross(normal), up, normal, 1.0); // direita x cima = normal: o desenho não fica espelhado
+    }
+
+    /** Metade da altura do relógio (m, sem a escala do mundo): os botões do Ultimine ficam logo abaixo. */
+    public static float halfHeight(LocalPlayer p) {
+        HandsOnConfig config = HandsOnConfig.get();
+        if (!config.wristHud || p.isCreative() || p.isSpectator()) {
+            return 0.01f;
+        }
+        int maxAir = p.getMaxAirSupply(), air = Math.min(p.getAirSupply(), maxAir);
+        boolean showAir = p.isEyeInFluid(net.minecraft.tags.FluidTags.WATER) || air < maxAir;
+        int rows = 2 + (p.getArmorValue() > 0 ? 1 : 0) + (showAir ? 1 : 0) + 1 + (p.getActiveEffects().isEmpty() ? 0 : 1);
+        return (rows * ROW + 4) * PX / 2f;
     }
 
     /** O "relógio": corações, armadura, fome, XP e efeitos, de cima para baixo. */

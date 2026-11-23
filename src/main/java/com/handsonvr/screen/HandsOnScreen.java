@@ -107,6 +107,7 @@ public class HandsOnScreen extends Screen {
             toggle(left(), y, "option.handsonvr.wrist_hud", config.wristHud, v -> config.wristHud = v);
             toggle(right(), y, "option.handsonvr.hand_count", config.handCount, v -> config.handCount = v);
         }));
+        lines.add(row(y -> toggle(left(), y, "option.handsonvr.minimap_right_wrist", config.minimapRightWrist, v -> config.minimapRightWrist = v)));
         return lines;
     }
 

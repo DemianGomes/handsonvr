@@ -359,6 +359,25 @@ O que pede cuidado:
 - É só desenho do cliente: os outros jogadores não veem.
 - Opções "Relógio no pulso" e "Quantidade na mão".
 - **HUD do Vivecraft (pulso esquerdo, de fora):** em VR fica sempre à vista e no pulso, só com o chat, a lista de jogadores, os títulos, a barra de ação, a barra do chefe, o placar e o HUD de outros mods (o minimapa do Xaero, se instalado). A hotbar, a vida, a fome, a XP, os efeitos e a mira saem dele. Escondido pelo F1, o HandsOn mostra ao ligar o VR e devolve ao desligar (só em memória).
+- **Minimapa no pulso direito:** com o Xaero's Minimap instalado, o minimapa sai do HUD do Vivecraft (pulso esquerdo) e fica grudado na parte de dentro do pulso direito. Levante a mão direita com a palma virada para o rosto: o mapa fica de pé, com o "cima" dele apontando para os dedos. É o mesmo desenho do Xaero (as mesmas cores, o mesmo tamanho em pixels, as coordenadas embaixo), só que recortado do HUD: o HandsOn anota onde o Xaero desenhou neste quadro, mostra só aquele pedaço no pulso direito e tira esse pedaço do painel do pulso esquerdo (o chat e o resto continuam lá). Opção "Minimapa no pulso direito".
+
+  ![O pedaço do HUD que vai para o pulso direito: o mapa e as coordenadas](img/minimapa-pulso.png)
+
+
+### FTB Ultimine (opcional)
+
+> **Ainda não funciona no 26.3:** o FTB Ultimine mais novo é para o 26.1.2 e fecha o jogo do 26.3 ao abrir (testado numa cópia dos mods). Os botões abaixo estão prontos para quando sair a versão do 26.3.
+
+Com o FTB Ultimine instalado, aparecem três botões logo abaixo do relógio do pulso esquerdo, com as texturas do jogo:
+
+| Botão | O que faz |
+|---|---|
+| Picareta (meio) | Liga e desliga o Ultimine. Fica clara enquanto ligado. É como segurar a tecla do Ultimine no computador. |
+| Seta da esquerda / da direita | Forma anterior / próxima (sem forma, túnel, 3x3...). Liga o Ultimine se estava desligado. |
+
+- Aperte encostando a ponta da mão direita no botão (um instante parado; para apertar de novo, tire a mão e volte). O controle vibra.
+- Com o Ultimine ligado, quebre um bloco como sempre: o grupo inteiro quebra, e o próprio Ultimine contorna o grupo e mostra a lista de formas no HUD.
+- Por baixo é a tecla do Ultimine segurada pelo HandsOn e o pedido de troca de forma do próprio Ultimine: o servidor (que precisa ter o Ultimine) decide tudo, como no computador. Sem o Ultimine, os botões não aparecem.
 
 ## 10. Fogueira e armadura no corpo
 
