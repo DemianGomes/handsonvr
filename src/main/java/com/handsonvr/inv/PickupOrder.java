@@ -37,7 +37,7 @@ public final class PickupOrder {
 
     /** O mixin muda a escolha do espaço livre deste inventário? (O jogador local, com o servidor neste programa.) */
     public static boolean appliesTo(Player player) {
-        if (player == null || debugRemote || !HandsOnConfig.get().pickupToMain) {
+        if (player == null || debugRemote || !HandsOnConfig.get().pickupToMain || !com.handsonvr.vr.VrBridge.isVRActive()) {
             return false;
         }
         Minecraft client = Minecraft.getInstance();
@@ -91,7 +91,7 @@ public final class PickupOrder {
             return;
         }
         boolean remote = debugRemote || !client.hasSingleplayerServer();
-        boolean canAct = remote && hasBefore && HandsOnConfig.get().pickupToMain && InvOps.ready(client)
+        boolean canAct = remote && hasBefore && HandsOnConfig.get().pickupToMain && com.handsonvr.vr.VrBridge.isVRActive() && InvOps.ready(client)
                 && client.gui.screen() == null && InvOps.cursor(p).isEmpty();
         if (canAct) {
             for (int from = InvOps.HOTBAR_START; from < InvOps.HOTBAR_START + 9; from++) {

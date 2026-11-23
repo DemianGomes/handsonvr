@@ -2,6 +2,18 @@
 
 Todas as versões do HandsOn VR. As issues e os pull requests estão no [GitHub](https://github.com/DemianGomes/handsonvr). Cada mudança testada ganha uma versão nova (0.2.1, 0.2.2...).
 
+## 0.11.0-alpha (Minecraft 26.3)
+
+### Sem VR, o jogo original ([#65](https://github.com/DemianGomes/handsonvr/issues/65))
+
+- Com o VR desligado, o HandsOn não muda mais nada do jogo: a coleta vai para a hotbar como sempre (a "coleta na mochila" ficou só para o VR), as bancadas não abrem nada por baixo ao olhar para elas (o que atrapalhava o crafting e as fornalhas), toda tela de bloco abre como no jogo, e o botão do HandsOn sai do menu de pausa. Ao desligar o VR, o HandsOn fecha o que estava segurando.
+
+### Mineração em grupo igual ao FTB Ultimine ([#66](https://github.com/DemianGomes/handsonvr/issues/66))
+
+- As formas seguem as regras do código do FTB Ultimine: tudo segue a **face batida** do bloco; o **túnel de mineração é uma escada diagonal para baixo** e o de fuga, para cima; os túneis param no primeiro buraco; o túnel grande vai camada por camada; no "sem forma", pedras do Overworld e minérios contam como iguais entre si.
+- **No computador:** segure **'** para ligar e use **Shift + ' + seta para cima/baixo** para trocar a forma; o nome aparece no HUD enquanto a tecla está apertada.
+- **VR:** com a mão direita perto dos botões do pulso, a mira do jogo mostra o ponto exato que aperta; a área de toque dos botões ficou maior.
+
 ## 0.10.0-alpha (Minecraft 26.3)
 
 ### Mineração em grupo, uma cópia temporária do FTB Ultimine ([#63](https://github.com/DemianGomes/handsonvr/issues/63))

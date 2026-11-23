@@ -1,4 +1,10 @@
 {
+  "key.handsonvr.mine": "Mineração em grupo (segurar)",
+  "key.handsonvr.mine_prev": "Mineração em grupo: forma anterior (Shift + tecla)",
+  "key.handsonvr.mine_next": "Mineração em grupo: próxima forma (Shift + tecla)",
+  "handsonvr.mine.title": "Mineração em grupo",
+  "handsonvr.mine.hint": "Shift + ' + Cima/Baixo: trocar a forma",
+  "handsonvr.mine.no_server": "o servidor não tem o HandsOn",
   "handsonvr.mine.shape.shapeless": "Sem forma",
   "handsonvr.mine.shape.small_tunnel": "Túnel pequeno",
   "handsonvr.mine.shape.small_square": "Quadrado pequeno",

@@ -50,6 +50,8 @@ public class HandsOnVR implements ClientModInitializer {
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
         settingsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.handsonvr.settings",
                 InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), category));
+        com.handsonvr.compat.UltimineVr.registerKeys(category);
+        com.handsonvr.compat.UltimineVr.registerHud();
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
                 guard("entrar no mundo", () -> {
@@ -104,7 +106,7 @@ public class HandsOnVR implements ClientModInitializer {
 
         // Botão "Opções HandsOn VR" no menu de pausa (Y no controle): os ajustes sem precisar de tecla.
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-            if (screen instanceof PauseScreen) {
+            if (screen instanceof PauseScreen && VrBridge.isVRActive()) { // sem VR, o menu de pausa fica o original
                 guard("botão no menu de pausa", () -> Screens.getWidgets(screen).add(
                         Button.builder(Component.translatable("button.handsonvr.settings"),
                                         b -> client.gui.setScreen(new HandsOnScreen(screen, HANDS.holsters())))
@@ -129,6 +131,9 @@ public class HandsOnVR implements ClientModInitializer {
 
     /** Mixin do MenuScreens: o menu que o servidor abriu é o da mesa ou de uma fornalha imersiva? Então fica sem tela. */
     public static boolean openHiddenMenu(net.minecraft.world.inventory.MenuType<?> type, Minecraft client, int containerId) {
+        if (!VrBridge.isVRActive()) {
+            return false; // sem VR, toda tela abre como no jogo original
+        }
         return call("mesa de trabalho (abrir)", () -> HANDS.table().onOpenScreen(type, client, containerId))
                 || call("fornalha (abrir)", () -> HANDS.furnace().onOpenScreen(type, client, containerId))
                 || call("baú (abrir)", () -> HANDS.chest().onOpenScreen(type, client, containerId))

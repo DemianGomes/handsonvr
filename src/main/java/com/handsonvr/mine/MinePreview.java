@@ -1,7 +1,6 @@
 package com.handsonvr.mine;
 
 import com.handsonvr.compat.UltimineVr;
-import com.handsonvr.vr.VrBridge;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
@@ -26,6 +25,7 @@ public final class MinePreview {
     private static BlockPos cachedPos;
     private static MineShape cachedShape;
     private static long cachedTick = -1;
+    private static net.minecraft.core.Direction cachedFace;
     private static List<BlockPos> cached = List.of();
 
     /** Os blocos que o contorno mostra agora (teste automático). */
@@ -36,8 +36,8 @@ public final class MinePreview {
     public static void render(LevelRenderContext context) {
         Minecraft client = Minecraft.getInstance();
         PoseStack ms = context.poseStack();
-        if (UltimineVr.isLoaded() || !UltimineVr.isActive() || client.level == null || client.player == null || ms == null
-                || context.submitNodeCollector() == null || !VrBridge.isVRActive() || !MineServer.serverSupports()) {
+        if (!UltimineVr.ownActive() || client.level == null || client.player == null || ms == null
+                || context.submitNodeCollector() == null || !MineServer.serverSupports()) {
             cached = List.of();
             return;
         }
@@ -53,8 +53,9 @@ public final class MinePreview {
             return;
         }
         long tick = client.level.getGameTime();
-        if (!pos.equals(cachedPos) || UltimineVr.shape() != cachedShape || tick != cachedTick) {
-            cached = MineShapes.blocks(client.level, pos, state, UltimineVr.shape(), client.player.getEyePosition(), MineShapes.LIMIT);
+        if (!pos.equals(cachedPos) || UltimineVr.shape() != cachedShape || tick != cachedTick || bhr.getDirection() != cachedFace) {
+            cachedFace = bhr.getDirection();
+            cached = MineShapes.blocks(client.level, pos, state, UltimineVr.shape(), bhr.getDirection(), client.player.getDirection(), MineShapes.LIMIT);
             cachedPos = pos.immutable();
             cachedShape = UltimineVr.shape();
             cachedTick = tick;

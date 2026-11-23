@@ -414,6 +414,7 @@ public final class SelfTest {
             case 26 -> bowAimMarker(client);
             case 27 -> holsterToBackpack(client);
             case 28 -> ultimineVr(client);
+            case 29 -> flatscreenIsVanilla(client);
             default -> { }
         }
     }
@@ -3433,13 +3434,13 @@ public final class SelfTest {
                 info("mineração em grupo: o FTB Ultimine está instalado (os botões são dele); a cópia do HandsOn não é testada");
             }
             if (at(2)) {
-                finish(client);
+                next();
             }
             return;
         }
         BlockPos feet = BlockPos.containing(p.getX(), p.getY(), p.getZ());
         BlockPos base = feet.offset(0, 0, 2);
-        BlockPos cube = feet.offset(0, 0, 3);
+        BlockPos cube = feet.offset(0, 3, 2); // no ar: as escadas param no buraco embaixo e em cima
         if (at(1)) {
             section("Mineração em grupo do HandsOn (cópia do FTB Ultimine): botões abaixo do relógio e as 6 formas");
             onServer(client, player -> {
@@ -3466,7 +3467,7 @@ public final class SelfTest {
             check(com.handsonvr.compat.UltimineVr.isActive() && com.handsonvr.compat.UltimineVr.shape() == com.handsonvr.mine.MineShape.SHAPELESS,
                     "mineração em grupo: a ponta da mão direita na picareta abaixo do relógio liga, em \"sem forma\" (" + com.handsonvr.compat.UltimineVr.last() + ")");
             java.util.List<BlockPos> preview = com.handsonvr.mine.MineShapes.blocks(client.level, base, client.level.getBlockState(base),
-                    com.handsonvr.mine.MineShape.SHAPELESS, p.getEyePosition(), com.handsonvr.mine.MineShapes.LIMIT);
+                    com.handsonvr.mine.MineShape.SHAPELESS, net.minecraft.core.Direction.NORTH, net.minecraft.core.Direction.SOUTH, com.handsonvr.mine.MineShapes.LIMIT);
             check(preview.size() == 5, "o contorno mostra as 5 argilas encostadas (" + preview.size() + ")");
             handAway(0);
         }
@@ -3489,14 +3490,15 @@ public final class SelfTest {
             inv.setSelectedSlot(0); // picareta na pedra
             p.setXRot(10f);
         }
-        // As outras formas, num cubo de pedra 3x3x4 na frente (o meio da face de baixo para cima, ou o de baixo na escada).
-        String[] names = {"túnel pequeno (1x1 para dentro)", "quadrado pequeno (3x3 na face)", "túnel grande (3x3 para dentro)",
-                "túnel de mineração (1x2 para dentro)", "túnel de fuga (escada para cima)"};
-        int[] expected = {4, 9, 36, 8, 5};
+        // As outras formas, num cubo de pedra 3x3x4 no ar, na frente: batendo na face de frente (norte), como no FTB Ultimine.
+        String[] names = {"túnel pequeno (1x1 para dentro, até o buraco)", "quadrado pequeno (3x3 na face)", "túnel grande (3x3 para dentro)",
+                "túnel de mineração (escada diagonal para baixo, do topo)", "túnel de fuga (escada diagonal para cima, de baixo)"};
+        int[] expected = {4, 9, 36, 3, 3};
         for (int i = 1; i <= 5; i++) {
             int t = 30 + (i - 1) * 30;
             com.handsonvr.mine.MineShape shape = com.handsonvr.mine.MineShape.of(i);
-            BlockPos origin = shape == com.handsonvr.mine.MineShape.ESCAPE_TUNNEL ? cube : cube.offset(0, 1, 0);
+            BlockPos origin = shape == com.handsonvr.mine.MineShape.ESCAPE_TUNNEL ? cube
+                    : shape == com.handsonvr.mine.MineShape.MINING_TUNNEL ? cube.offset(0, 2, 0) : cube.offset(0, 1, 0);
             if (at(t)) {
                 fillCube(client, cube, Blocks.STONE);
                 pressUltimine(com.handsonvr.compat.UltimineVr.NEXT);
@@ -3506,7 +3508,7 @@ public final class SelfTest {
                 handAway(0);
             }
             if (at(t + 8)) {
-                client.gameMode.startDestroyBlock(origin, net.minecraft.core.Direction.SOUTH);
+                client.gameMode.startDestroyBlock(origin, net.minecraft.core.Direction.NORTH);
             }
             if (at(t + 20)) {
                 BlockPos at = cube;
@@ -3533,7 +3535,7 @@ public final class SelfTest {
             p.setXRot(0f);
         }
         if (at(190)) {
-            finish(client);
+            next();
         }
     }
 
@@ -3542,6 +3544,105 @@ public final class SelfTest {
             for (BlockPos q : BlockPos.betweenClosed(cube.offset(-1, 0, 0), cube.offset(1, 2, 3))) {
                 player.level().setBlock(q, block.defaultBlockState(), 3);
             }
+        });
+    }
+
+    // ------------------------------------------------------------------ sem VR: o jogo original
+
+    /** Com o VR desligado, nada do HandsOn muda o jogo: a coleta vai para a hotbar, olhar a fornalha não abre nada. */
+    private static void flatscreenIsVanilla(Minecraft client) {
+        LocalPlayer p = client.player;
+        Inventory inv = p.getInventory();
+        BlockPos feet = BlockPos.containing(p.getX(), p.getY(), p.getZ());
+        if (at(1)) {
+            section("Sem VR, o jogo é o original");
+            handAway(0);
+            handAway(1);
+            SimulatedVr.setEnabled(false);
+            clearDrops(client);
+            inv.setSelectedSlot(0);
+            onServer(client, player -> {
+                Inventory pinv = player.getInventory();
+                pinv.clearContent();
+                pinv.setItem(0, new ItemStack(Items.IRON_SWORD));
+                pinv.add(new ItemStack(Items.OAK_LOG, 5));
+                player.level().setBlock(feet.offset(0, 0, 2), Blocks.FURNACE.defaultBlockState(), 3);
+            });
+            p.setYRot(0f);
+            p.setXRot(30f);
+        }
+        if (at(12)) {
+            check(!com.handsonvr.vr.VrBridge.isVRActive() && inv.getItem(1).is(Items.OAK_LOG) && inv.getItem(9).isEmpty(),
+                    "sem VR: o item recebido vai para a hotbar, como no jogo (espaço 1: " + describe(inv.getItem(1)) + ")");
+            onServer(client, player -> dropAtFeet(player, new ItemStack(Items.COBBLESTONE, 3)));
+        }
+        if (at(50)) {
+            int at = find(inv, Items.COBBLESTONE);
+            check(at >= 0 && at < 9, "sem VR: coletar do chão vai para a hotbar, como no jogo (espaço " + at + ")");
+            check(p.containerMenu == p.inventoryMenu && client.gui.screen() == null && !hands().furnace().isOpen(),
+                    "sem VR: olhar para a fornalha de perto não abre nada por baixo");
+            check(!HandsOnVR.openHiddenMenu(net.minecraft.world.inventory.MenuType.CRAFTING, client, 99),
+                    "sem VR: toda tela de bloco abre como no jogo (o HandsOn não segura nenhum menu)");
+        }
+        if (at(52)) {
+            // A mineração em grupo no computador: segurar a tecla ' liga; sem ela, quebra só um bloco, como no jogo.
+            BlockPos line = feet.offset(0, 0, 3);
+            onServer(client, player -> {
+                player.setGameMode(GameType.SURVIVAL);
+                player.getInventory().setItem(0, new ItemStack(Items.NETHERITE_SHOVEL));
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.HASTE, 2400, 40));
+                for (int k = 0; k < 4; k++) {
+                    player.level().setBlock(line.offset(k, 0, 0), Blocks.CLAY.defaultBlockState(), 3);
+                }
+            });
+            inv.setSelectedSlot(0);
+        }
+        if (at(55)) {
+            client.gameMode.startDestroyBlock(feet.offset(0, 0, 3), net.minecraft.core.Direction.NORTH);
+        }
+        if (at(63)) {
+            countClay(client, feet.offset(0, 0, 3));
+        }
+        if (at(66)) {
+            check(probeCount == 3, "sem VR e sem a tecla ': quebrar uma argila quebra só ela, como no jogo (sobraram " + probeCount + ")");
+            com.handsonvr.compat.UltimineVr.debugHoldKey(true);
+            while (com.handsonvr.compat.UltimineVr.shape() != com.handsonvr.mine.MineShape.SHAPELESS) {
+                com.handsonvr.compat.UltimineVr.debugArrow(true);
+            }
+        }
+        if (at(70)) {
+            check(com.handsonvr.compat.UltimineVr.ownActive(), "computador: segurar a tecla ' liga a mineração em grupo");
+            client.gameMode.startDestroyBlock(feet.offset(1, 0, 3), net.minecraft.core.Direction.NORTH);
+        }
+        if (at(80)) {
+            countClay(client, feet.offset(0, 0, 3));
+        }
+        if (at(83)) {
+            check(probeCount == 0, "computador, com a tecla ' segurada: quebrar uma argila quebra as outras encostadas (sobraram " + probeCount + ")");
+            com.handsonvr.compat.UltimineVr.debugArrow(true);
+            check(com.handsonvr.compat.UltimineVr.shape() == com.handsonvr.mine.MineShape.SMALL_TUNNEL,
+                    "computador: Shift + ' + seta para baixo passa para a próxima forma (túnel pequeno)");
+            com.handsonvr.compat.UltimineVr.debugArrow(false);
+            com.handsonvr.compat.UltimineVr.debugHoldKey(false);
+        }
+        if (at(86)) {
+            check(!com.handsonvr.compat.UltimineVr.ownActive(), "computador: soltar a tecla ' desliga");
+            SimulatedVr.setEnabled(true);
+            onServer(client, player -> player.level().setBlock(feet.offset(0, 0, 2), Blocks.AIR.defaultBlockState(), 3));
+            p.setXRot(0f);
+        }
+        if (at(90)) {
+            finish(client);
+        }
+    }
+
+    private static void countClay(Minecraft client, BlockPos line) {
+        onServer(client, player -> {
+            int left = 0;
+            for (int k = 0; k < 4; k++) {
+                left += player.level().getBlockState(line.offset(k, 0, 0)).is(Blocks.CLAY) ? 1 : 0;
+            }
+            probeCount = left;
         });
     }
 

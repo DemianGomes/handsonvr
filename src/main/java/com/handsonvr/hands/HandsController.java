@@ -117,6 +117,8 @@ public final class HandsController {
     }
 
     private CraftJob craftJob;
+    /** O VR estava ligado no tick anterior (ao desligar, fecha o que o HandsOn abriu). */
+    private boolean wasVr = true;
     /** O que aconteceu por último (log e teste automático). */
     private String lastAction = "-";
 
@@ -171,6 +173,17 @@ public final class HandsController {
     }
 
     // ------------------------------------------------------------------ mundo
+
+    /** O VR desligou: fecha os menus que o HandsOn segurava sem tela e para o que estava em andamento. */
+    private void leaveVr(Minecraft client) {
+        table.close(client, "VR desligado");
+        furnace.close(client, "VR desligado");
+        chest.close(client, "VR desligado");
+        brewing.close(client, "VR desligado");
+        craftJob = null;
+        drags[0] = drags[1] = null;
+        action("VR desligado: o jogo fica como o original");
+    }
 
     public void onJoin(Minecraft client) {
         holsters.onJoin(client);
@@ -1742,6 +1755,15 @@ public final class HandsController {
         if (offSource >= 0 && !grabs.isGrabbing(1) && p.getOffhandItem().isEmpty()) {
             offSource = -1; // o item acabou (tochas usadas): nada a devolver
         }
+        if (!vr) {
+            // Sem VR, o jogo é o original: nada das bancadas, coldres, arco ou mochila roda (os itens pegos já voltaram).
+            if (wasVr) {
+                leaveVr(client);
+            }
+            wasVr = false;
+            return;
+        }
+        wasVr = true;
         holsters.tick(client);
         BowHand.tick(client);
         tableTick(client);

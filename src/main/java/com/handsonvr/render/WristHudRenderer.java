@@ -107,6 +107,7 @@ public final class WristHudRenderer {
                 ms.rotate(panel.rotation());
                 com.handsonvr.compat.UltimineVr.draw(d);
                 ms.popPose();
+                com.handsonvr.compat.UltimineVr.drawTouchPoint(d, ms, camera);
             }
         }
     }

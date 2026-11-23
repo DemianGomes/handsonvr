@@ -375,19 +375,21 @@ Três botões ficam logo abaixo do relógio do pulso esquerdo, com as texturas d
 | Picareta (meio) | Liga e desliga. Fica clara enquanto ligada. |
 | Seta da esquerda / da direita | Forma anterior / próxima. Liga se estava desligada. |
 
-- Aperte encostando a ponta da mão direita no botão (um instante parado; para apertar de novo, tire a mão e volte). O controle vibra.
+- Aperte encostando a ponta da mão direita no botão (um instante parado; para apertar de novo, tire a mão e volte). O controle vibra. O ponto que aperta fica um pouco à frente do controle: com a mão direita perto dos botões, a mira do jogo aparece exatamente nesse ponto.
+- **No computador** (VR desligado), como no Ultimine: segure a tecla **'** para ligar (só enquanto ela está apertada) e use **Shift + ' + seta para cima / para baixo** para a forma anterior / próxima. Enquanto a tecla está apertada, o nome da forma aparece no canto do HUD. As teclas mudam em Controles.
 - Ligada, os blocos que vão quebrar junto com o bloco mirado ganham o contorno do jogo (as linhas pretas do bloco mirado). Quebre o bloco como sempre e o grupo quebra junto.
 
-| Forma | Blocos |
+| Forma | Blocos (como no FTB Ultimine) |
 |---|---|
-| Sem forma | Os blocos iguais encostados (inclusive na diagonal), como um veio de minério ou um tronco. |
-| Túnel pequeno | Uma linha de 1x1 para dentro do bloco. |
-| Quadrado pequeno | Um quadrado de 3x3 na face do bloco, com 1 de profundidade. |
-| Túnel grande | Um túnel de 3x3 para dentro do bloco. |
-| Túnel de mineração | Um túnel da altura do jogador (1 de largura, 2 de altura). |
-| Túnel de fuga | Uma escada para cima, da altura do jogador, subindo 1 a cada bloco. |
+| Sem forma | Os blocos iguais encostados (inclusive na diagonal), do mais perto para o mais longe. As pedras do Overworld (pedra, ardósia, granito, diorito, andesito, tufo) contam como iguais entre si, e os minérios também. |
+| Túnel pequeno | Uma linha de 1x1 para dentro da face batida, até o primeiro buraco. |
+| Quadrado pequeno | Um quadrado de 3x3 na face batida, com 1 de profundidade. |
+| Túnel grande | Um túnel de 3x3 para dentro da face batida, camada por camada, até uma camada sem nenhum bloco. |
+| Túnel de mineração | Uma **escada diagonal para baixo**: a cada passo, 1 para dentro e 1 para baixo, até o primeiro buraco. |
+| Túnel de fuga | A mesma escada, **subindo**: 1 para dentro e 1 para cima a cada passo. |
 
-- "Para dentro" é a direção do olhar até o bloco (para o lado, para baixo ou para cima). No máximo 64 blocos por vez, como o padrão do Ultimine.
+- "Para dentro" é o lado oposto à **face batida** do bloco (a face em que a picareta bate), como no Ultimine. Nas escadas, batendo no topo ou no fundo do bloco, vale a direção horizontal para onde você está virado. No máximo 64 blocos por vez, como o padrão do Ultimine.
+- As formas com forma pegam qualquer bloco quebrável e param no primeiro buraco (ar, líquido, inquebrável).
 - A quebra é a do próprio jogo, bloco a bloco, no servidor: os itens caem como sempre, a ferramenta gasta, a fome gasta, e o que a ferramenta não colhe não dá item. Para antes de a ferramenta quebrar e quando a fome acaba. Ar, líquidos, blocos inquebráveis e blocos que guardam itens (baús, fornalhas) ficam de fora.
 - Precisa do HandsOn no servidor: o singleplayer e o mundo aberto pelo jogo (LAN, Essential). Num servidor sem o mod, a picareta não liga e o controle vibra forte.
 - Com o FTB Ultimine instalado (quando sair a versão do 26.3), a cópia se desliga e os mesmos botões controlam o Ultimine: a picareta segura a tecla dele e as setas pedem a troca de forma dele.
@@ -449,6 +451,10 @@ Por baixo é o menu do jogo, aberto como o jogador faria: o jogo anima a tampa p
 - Isso só existe onde o servidor roda o HandsOn: o mundo aberto pelo próprio jogo (singleplayer aberto para LAN, ou o Essential, que hospeda no jogo de quem convida). Num servidor sem o mod, nada é mandado.
 - Os visuais de blocos (mesa, fornalhas, baú, suporte de poções) só aparecem para quem está em VR. Quem joga sem VR vê o jogo exatamente como sempre, mais os coldres e a mochila dos amigos em VR.
 - O que vai pela rede é só o que está nos coldres e se a mochila está aberta, a cada meio segundo e só quando muda.
+
+## Sem VR, o jogo original
+
+Com o VR desligado (ou sem o Vivecraft), o HandsOn não muda nada do jogo: a coleta vai para a hotbar como sempre, as bancadas (mesa, fornalhas, baú, suporte de poções) abrem as telas do jogo, o menu de pausa fica o original, e nada do HandsOn é desenhado. Ao desligar o VR, o HandsOn fecha o que estava segurando por baixo. A única coisa do HandsOn no computador é a mineração em grupo, pela tecla ' (só enquanto ela está apertada). As opções ficam na tecla "Opções HandsOn VR" (em Controles, sem tecla por padrão) e, em VR, no menu de pausa.
 
 ## Testes sem VR
 
